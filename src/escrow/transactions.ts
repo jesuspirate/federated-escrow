@@ -129,10 +129,28 @@ export async function getEscrowUtxo(
   };
 }
 
-/**
+ /**
  * Build and sign a release transaction (2-of-3 multisig spend)
- * This sends funds from the escrow to a destination address
+ *
+ * ESCROW FLOW:
+ *   - Seller locks sats into escrow (funding TX)
+ *   - On happy path: sats go to BUYER (destinationAddress = buyer's address)
+ *   - On refund: sats return to SELLER (destinationAddress = seller's address)
+ *   - On dispute: arbiter co-signs with winning party
+ *
+ * WHO SIGNS:
+ *   Happy path:              Seller + Buyer   -> sats to Buyer
+ *   Dispute (buyer lied):    Seller + Arbiter -> sats to Seller (refund)
+ *   Dispute (seller lied):   Buyer + Arbiter  -> sats to Buyer
+ *
+ * @param escrowWallet - The 2-of-3 multisig wallet
+ * @param utxo - The escrow UTXO to spend
+ * @param destinationAddress - Where the sats go (buyer or seller depending on outcome)
+ * @param signer1 - First signer (any of the 3 participants)
+ * @param signer2 - Second signer (any of the 3 participants, different from signer1)
+ * @param feeSats - Transaction fee in satoshis
  */
+
 export function buildReleaseTx(
   escrowWallet: EscrowWallet,
   utxo: { txid: string; vout: number; value: number; txHex: string },

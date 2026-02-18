@@ -12,84 +12,164 @@ import {
   broadcastTx,
 } from "../src/escrow/transactions";
 
-async function main() {
-  console.log("=== FULL ESCROW FLOW TEST ===\n");
+import axios from "axios";
 
-  // PHASE 1: Setup
-  console.log("--- Phase 1: Setup ---\n");
+// RPC helper for address generation
+async function rpcCall(method: string, params: any[] = []) {
+  const response = await axios.post(
+    "http://127.0.0.1:18443",
+    { jsonrpc: "1.0", id: "test", method, params },
+    {
+      auth: { username: "escrow", password: "escrow123" },
+      validateStatus: () => true,
+    }
+  );
+  if (response.data.error) {
+    throw new Error(response.data.error.message);
+  }
+  return response.data.result;
+}
+
+async function main() {
+  console.log("=== FULL ESCROW FLOW TEST ===");
+  console.log("");
+  console.log("ROLES:");
+  console.log("  SELLER - Has sats, wants fiat. Locks sats into escrow.");
+  console.log("  BUYER  - Has fiat, wants sats. Receives sats from escrow.");
+  console.log("  ARBITER - Resolves disputes (not needed in happy path).");
+  console.log("");
+
+  // =============================================
+  // PHASE 1: Setup participants
+  // =============================================
+  console.log("--- Phase 1: Setup ---");
+  console.log("");
 
   console.log("Creating participants...");
   const buyer = createParticipant("buyer");
   const seller = createParticipant("seller");
   const arbiter = createParticipant("arbiter");
 
+  console.log("  Buyer pubkey:", buyer.publicKey.toString("hex").substring(0, 16) + "...");
+  console.log("  Seller pubkey:", seller.publicKey.toString("hex").substring(0, 16) + "...");
+  console.log("  Arbiter pubkey:", arbiter.publicKey.toString("hex").substring(0, 16) + "...");
+
+  console.log("");
   console.log("Creating 2-of-3 multisig escrow...");
   const escrow = createEscrowWallet(buyer, seller, arbiter);
   const info = getWalletInfo(escrow);
-  console.log("Escrow address:", info.address);
+  console.log("  Escrow address:", info.address);
 
-  // PHASE 2: Fund
-  console.log("\n--- Phase 2: Funding ---\n");
+  // =============================================
+  // PHASE 2: Seller funds the escrow
+  // =============================================
+  console.log("");
+  console.log("--- Phase 2: Seller Locks Sats ---");
+  console.log("");
 
   console.log("Setting up regtest funder wallet...");
   await setupFunding();
 
   const escrowAmount = 0.01; // 0.01 BTC = 1,000,000 sats
-  console.log("Funding escrow with", escrowAmount, "BTC...");
+  console.log("Seller locks", escrowAmount, "BTC into escrow...");
+  console.log("  (Seller is selling BTC for fiat)");
   const fundingTxid = await fundEscrow(escrow.address, escrowAmount);
-  console.log("Funding txid:", fundingTxid);
+  console.log("  Funding txid:", fundingTxid);
 
-  // PHASE 3: Verify
-  console.log("\n--- Phase 3: Verify UTXO ---\n");
+  // =============================================
+  // PHASE 3: Verify UTXO
+  // =============================================
+  console.log("");
+  console.log("--- Phase 3: Verify Escrow UTXO ---");
+  console.log("");
 
   const utxo = await getEscrowUtxo(escrow.address, fundingTxid);
-  console.log("UTXO found:");
-  console.log("  txid:", utxo.txid);
-  console.log("  vout:", utxo.vout);
-  console.log("  value:", utxo.value, "satoshis");
+  console.log("  UTXO found:");
+  console.log("    txid:", utxo.txid);
+  console.log("    vout:", utxo.vout);
+  console.log("    value:", utxo.value, "satoshis");
+  console.log("");
+  console.log("  +----------------------------------+");
+  console.log("  |  ESCROW STATUS: LOCKED           |");
+  console.log("  |  Amount:", utxo.value, "sats          |");
+  console.log("  |  Funded by: SELLER               |");
+  console.log("  |  Awaiting: Buyer fiat payment     |");
+  console.log("  +----------------------------------+");
 
-  // PHASE 4: Happy Path — Buyer + Seller release to seller
-  console.log("\n--- Phase 4: Happy Path Release ---\n");
+  // =============================================
+  // PHASE 4: Buyer sends fiat (simulated)
+  // =============================================
+  console.log("");
+  console.log("--- Phase 4: Buyer Sends Fiat (Simulated) ---");
+  console.log("");
+  console.log("  Buyer sends $200 via Zelle to Seller...");
+  console.log("  Seller checks bank account...");
+  console.log("  Seller confirms: fiat received!");
 
-  // Generate a destination address for the seller to receive funds
-  const sellerDestination = "bcrt1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080";
+  // =============================================
+  // PHASE 5: Happy Path Release -> Sats go to BUYER
+  // =============================================
+  console.log("");
+  console.log("--- Phase 5: Happy Path Release ---");
+  console.log("");
 
-  // In production this would be the seller's actual wallet address
-  // For regtest we need a valid address from our node
-  const axios = require("axios");
-  const rpcCall = async (method: string, params: any[] = []) => {
-    const response = await axios.post(
-      "http://127.0.0.1:18443",
-      { jsonrpc: "1.0", id: "test", method, params },
-      { auth: { username: "escrow", password: "escrow123" } }
-    );
-    return response.data.result;
-  };
-  const sellerAddress = await rpcCall("getnewaddress");
-  console.log("Seller destination:", sellerAddress);
+  // Generate a destination address for the BUYER to receive sats
+  const buyerAddress = await rpcCall("getnewaddress");
+  console.log("  Buyer destination:", buyerAddress);
+  console.log("  (This is where the BUYER receives sats after paying fiat)");
 
-  console.log("Building release transaction (buyer + seller sign)...");
+  console.log("");
+  console.log("  Building release transaction...");
+  console.log("    Signer 1: SELLER (confirms fiat received)");
+  console.log("    Signer 2: BUYER (co-signs to receive sats)");
+  console.log("    Destination: BUYER address");
+
   const rawTx = buildReleaseTx(
     escrow,
     utxo,
-    sellerAddress,
-    buyer,   // Signer 1: Buyer approves
-    seller,  // Signer 2: Seller co-signs
-    1000     // Fee: 1000 sats
+    buyerAddress,   // BUYER receives the sats
+    seller,         // Signer 1: Seller confirms fiat received
+    buyer,          // Signer 2: Buyer co-signs
+    1000            // Fee: 1000 sats
   );
-  console.log("Raw TX hex:", rawTx.substring(0, 64) + "...");
+  console.log("  Raw TX hex:", rawTx.substring(0, 64) + "...");
 
-  console.log("Broadcasting release transaction...");
+  console.log("");
+  console.log("  Broadcasting release transaction...");
   const releaseTxid = await broadcastTx(rawTx);
-  console.log("Release txid:", releaseTxid);
+  console.log("  Release txid:", releaseTxid);
 
-  // Verify final balance
-  const finalBalance = await rpcCall("getreceivedbyaddress", [sellerAddress, 1]);
-  console.log("\nSeller received:", finalBalance, "BTC");
+  // =============================================
+  // PHASE 6: Verify final state
+  // =============================================
+  console.log("");
+  console.log("--- Phase 6: Verify Final State ---");
+  console.log("");
 
-  console.log("\n=== ESCROW FLOW COMPLETE ===");
-  console.log("Buyer approved + Seller co-signed = Funds released to seller");
-  console.log("This is the HAPPY PATH of a 2-of-3 multisig escrow!");
+  const buyerReceived = await rpcCall("getreceivedbyaddress", [buyerAddress, 1]);
+  console.log("  Buyer received:", buyerReceived, "BTC");
+
+  const expectedSats = utxo.value - 1000;
+  const expectedBTC = expectedSats / 100000000;
+  console.log("  Expected:", expectedBTC, "BTC (", expectedSats, "sats )");
+
+  console.log("");
+  console.log("===========================================");
+  console.log("  HAPPY PATH COMPLETE");
+  console.log("===========================================");
+  console.log("");
+  console.log("  Summary:");
+  console.log("    1. Seller locked 0.01 BTC in escrow");
+  console.log("    2. Buyer sent $200 fiat to Seller");
+  console.log("    3. Seller confirmed fiat received");
+  console.log("    4. Seller + Buyer co-signed release");
+  console.log("    5. Buyer received", buyerReceived, "BTC");
+  console.log("    6. Seller kept the $200 fiat");
+  console.log("");
+  console.log("  Dispute scenarios (not tested here):");
+  console.log("    Arbiter + Seller -> refund to Seller");
+  console.log("    Arbiter + Buyer  -> release to Buyer");
+  console.log("===========================================");
 }
 
 main().catch(console.error);

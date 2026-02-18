@@ -2,6 +2,29 @@ import * as bitcoin from "bitcoinjs-lib";
 import * as ecc from "tiny-secp256k1";
 import ECPairFactory from "ecpair";
 
+/**
+ * ESCROW ROLES:
+ *
+ * SELLER - Has Bitcoin, wants fiat.
+ *          Locks their sats into the 2-of-3 multisig escrow.
+ *          Co-signs release after confirming fiat received.
+ *
+ * BUYER  - Has fiat, wants Bitcoin.
+ *          Sends fiat to seller out-of-band.
+ *          Co-signs release to receive sats from escrow.
+ *
+ * ARBITER - Trusted third party for dispute resolution.
+ *           Only involved if buyer and seller disagree.
+ *           Co-signs with the honest party.
+ *
+ * POLICY: 2-of-3 multisig (any two of {seller, buyer, arbiter})
+ *
+ * OUTCOMES:
+ *   Seller + Buyer   -> sats to Buyer (happy path)
+ *   Seller + Arbiter  -> sats to Seller (buyer lied about fiat)
+ *   Buyer  + Arbiter  -> sats to Buyer (seller won't release)
+ */
+
 const ECPair = ECPairFactory(ecc);
 
 // Use regtest network
