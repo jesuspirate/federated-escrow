@@ -1,0 +1,24 @@
+{
+  "name": "fedi-escrow",
+  "version": "2.0.0",
+  "description": "P2P e-cash escrow for Fedi federations — 2-of-3 voting with strict trade flow",
+  "main": "src/server.ts",
+  "scripts": {
+    "start": "tsx src/server.ts",
+    "dev": "tsx watch src/server.ts",
+    "test": "bash scripts/test-ecash-escrow.sh"
+  },
+  "keywords": ["fedimint", "ecash", "escrow", "fedi", "bitcoin", "p2p"],
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.2.3",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
