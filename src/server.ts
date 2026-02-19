@@ -17,7 +17,7 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: Date.now() });
 });
 
-app.use("/api", ecashEscrowRoutes);
+app.use("/api/ecash-escrows", ecashEscrowRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 Escrow API running at http://localhost:${PORT}`);
