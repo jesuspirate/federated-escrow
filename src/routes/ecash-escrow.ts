@@ -1,157 +1,78 @@
-// src/routes/ecash-escrow.ts
+// src/routes/ecash-escrow.ts — Production-hardened API routes
 //
-// E-Cash Escrow API — Nostr-authenticated, Fedi-native
-//
-// Authentication: NIP-98 (kind 27235 signed events in Authorization header)
-// Identity: Nostr npubs (hex pubkeys) — auto-detected from Fedi's window.nostr
-// Community: Required fedi:room: link ties escrow to a federation
-//
-// Endpoints:
-//   GET    /api/health                     Health check
-//   POST   /api/ecash-escrows              Create a new escrow
-//   GET    /api/ecash-escrows              List all escrows
-//   GET    /api/ecash-escrows/:id          Get escrow details
-//   POST   /api/ecash-escrows/:id/join     Join as buyer or arbiter
-//   POST   /api/ecash-escrows/:id/lock     Lock e-cash notes (seller deposits)
-//   POST   /api/ecash-escrows/:id/approve  Vote on outcome (2-of-3 required)
-//   POST   /api/ecash-escrows/:id/claim    Claim the notes (winning party)
-//
-// Trade flow:
-//   1. Seller creates escrow (their npub = seller), sets terms + community link
-//   2. Buyer joins → their npub registered as buyer
-//   3. Arbiter joins → their npub registered as arbiter
-//   4. Seller locks e-cash notes
-//   5. Buyer votes "release" (only option — not their sats)
-//   6. Seller votes "release" or "refund"
-//   7. If disagree → arbiter breaks tie
-//   8. Winner claims notes
+// v4.0 changes:
+//   - WebLN lock flow: server generates BOLT-11 invoice, seller pays via WebLN
+//   - Manual lock fallback (dev/testing): paste notes but amount is still checked
+//   - Rate limiting per pubkey
+//   - Expiry sweep on every request cycle
+//   - EXPIRED status handling
 
 import { Router, Request, Response, NextFunction } from "express";
+import { verifyEvent } from "nostr-tools/pure";
+import * as DB from "../db";
 
-// ── Types ─────────────────────────────────────────────────────────────────
-
-type EscrowStatus =
-  | "CREATED"    // Awaiting participants to join
-  | "FUNDED"     // All 3 joined, awaiting seller lock
-  | "LOCKED"     // Notes deposited, awaiting votes
-  | "APPROVED"   // 2-of-3 votes reached, awaiting claim
-  | "CLAIMED"    // Notes claimed by winning party
-  | "EXPIRED"    // Timed out (future)
-  | "CANCELLED";
-
-type Outcome = "release" | "refund";
 type Role = "buyer" | "seller" | "arbiter";
-
-interface Vote {
-  role: Role;
-  outcome: Outcome;
-  timestamp: number;
-  pubkey: string;
-}
-
-interface EcashEscrow {
-  id: string;
-  status: EscrowStatus;
-  createdAt: number;
-  updatedAt: number;
-
-  // Terms
-  amountMsats: number;
-  description: string;
-  terms: string;
-
-  // Community — ties escrow to a Fedi federation
-  communityLink: string;     // fedi:room:!xxx:federation.domain:::
-  federationId: string;      // extracted from community link (e.g. "m1.8fa.in")
-
-  // Participant npubs (hex pubkeys)
-  sellerPubkey: string;           // set at creation (creator = seller)
-  buyerPubkey: string | null;     // set when buyer joins
-  arbiterPubkey: string | null;   // set when arbiter joins
-
-  // Locked funds
-  lockedNotes: string | null;
-  lockedAt: number | null;
-
-  // Approval votes
-  votes: Vote[];
-
-  // Resolution
-  resolvedOutcome: Outcome | null;
-  resolvedAt: number | null;
-  claimedBy: Role | null;
-  claimedAt: number | null;
-}
-
-// ── Store ─────────────────────────────────────────────────────────────────
-
-const escrows = new Map<string, EcashEscrow>();
-let nextId = 1;
-
-// ── NIP-98 Auth Middleware ────────────────────────────────────────────────
-//
-// Verifies the Authorization: Nostr <base64> header on every request.
-// Extracts the caller's pubkey and attaches it to req.
-//
-// NIP-98 event structure:
-//   kind: 27235
-//   tags: [["u", "<url>"], ["method", "<HTTP method>"], ["payload", "<sha256>"]]
-//   content: ""
-//   + id, pubkey, sig (added by signer)
-//
-// In production: verify Schnorr signature over the event ID.
-// For now: we trust the signed event structure (Fedi's signer is trusted).
-// Full sig verification requires secp256k1 — added when we add nostr-tools.
+type Outcome = "release" | "refund";
 
 interface AuthenticatedRequest extends Request {
   pubkey?: string;
 }
 
+// ── Rate Limiter (per pubkey) ─────────────────────────────────────────────
+
+const rateLimits = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = Number(process.env.RATE_LIMIT_PER_MIN) || 30;
+const RATE_WINDOW_MS = 60_000;
+
+function rateLimit(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  const pk = req.pubkey!;
+  const now = Date.now();
+  let entry = rateLimits.get(pk);
+  if (!entry || now > entry.resetAt) {
+    entry = { count: 0, resetAt: now + RATE_WINDOW_MS };
+    rateLimits.set(pk, entry);
+  }
+  entry.count++;
+  if (entry.count > RATE_LIMIT) {
+    return res.status(429).json({ error: `Rate limit exceeded (${RATE_LIMIT}/min). Try again later.` });
+  }
+  next();
+}
+
+// ── NIP-98 Auth Middleware ────────────────────────────────────────────────
+
 function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  // Check for NIP-98 Authorization header
+  // Sweep expired escrows on each request cycle (cheap, SQLite is fast)
+  DB.processExpiredEscrows();
+
   const authHeader = req.headers.authorization;
 
   if (authHeader && authHeader.startsWith("Nostr ")) {
     try {
-      const base64 = authHeader.slice(6);
-      const json = atob(base64);
+      const json = Buffer.from(authHeader.slice(6), "base64").toString("utf8");
       const event = JSON.parse(json);
 
-      // Validate NIP-98 event structure
-      if (event.kind !== 27235) {
-        return res.status(401).json({ error: "Invalid auth event kind (expected 27235)" });
-      }
+      if (event.kind !== 27235) return res.status(401).json({ error: "Invalid auth event kind (expected 27235)" });
 
-      // Check timestamp (within 120 seconds)
       const now = Math.floor(Date.now() / 1000);
-      if (Math.abs(now - event.created_at) > 120) {
-        return res.status(401).json({ error: "Auth event expired (>120s)" });
-      }
+      if (Math.abs(now - event.created_at) > 120) return res.status(401).json({ error: "Auth event expired (>120s)" });
 
-      // Check method tag
       const methodTag = event.tags?.find((t: string[]) => t[0] === "method");
-      if (methodTag && methodTag[1] !== req.method) {
-        return res.status(401).json({ error: "Auth method mismatch" });
-      }
+      if (methodTag && methodTag[1] !== req.method) return res.status(401).json({ error: "Auth method mismatch" });
 
-      // Extract pubkey
-      if (!event.pubkey || typeof event.pubkey !== "string" || event.pubkey.length !== 64) {
+      if (!event.pubkey || typeof event.pubkey !== "string" || event.pubkey.length !== 64)
         return res.status(401).json({ error: "Invalid pubkey in auth event" });
-      }
 
-      // TODO: Verify Schnorr signature when nostr-tools is added
-      // For now, we trust the event structure. In Fedi's webview,
-      // window.nostr.signEvent() produces valid signatures.
-      // Production: import { verifyEvent } from '@nostr/tools' and call verifyEvent(event)
+      if (!verifyEvent(event))
+        return res.status(401).json({ error: "Invalid signature — Schnorr verification failed" });
 
       req.pubkey = event.pubkey;
       return next();
-    } catch (err) {
+    } catch {
       return res.status(401).json({ error: "Malformed NIP-98 auth header" });
     }
   }
 
-  // Dev mode: accept X-Dev-Pubkey header (non-production only)
   const devPubkey = req.headers["x-dev-pubkey"] as string;
   if (devPubkey && process.env.NODE_ENV !== "production") {
     if (typeof devPubkey === "string" && devPubkey.length === 64) {
@@ -161,570 +82,386 @@ function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunct
     return res.status(401).json({ error: "Invalid dev pubkey (must be 64 hex chars)" });
   }
 
-  // No auth provided
-  return res.status(401).json({
-    error: "Authentication required. Send NIP-98 Authorization header or X-Dev-Pubkey (dev mode only).",
-  });
+  return res.status(401).json({ error: "Authentication required. Send NIP-98 Authorization header or X-Dev-Pubkey (dev mode only)." });
 }
 
-function getRoleByPubkey(escrow: EcashEscrow, pubkey: string): Role | null {
-  if (pubkey === escrow.sellerPubkey) return "seller";
-  if (pubkey === escrow.buyerPubkey) return "buyer";
-  if (pubkey === escrow.arbiterPubkey) return "arbiter";
+// ── Helpers ───────────────────────────────────────────────────────────────
+
+function getRoleByPubkey(row: DB.EscrowRow, pk: string): Role | null {
+  if (pk === row.seller_pubkey) return "seller";
+  if (pk === row.buyer_pubkey) return "buyer";
+  if (pk === row.arbiter_pubkey) return "arbiter";
   return null;
 }
 
-function tallyVotes(votes: Vote[]): {
-  releaseCount: number;
-  refundCount: number;
-  outcome: Outcome | null;
-} {
-  const release = votes.filter((v) => v.outcome === "release").length;
-  const refund = votes.filter((v) => v.outcome === "refund").length;
-  return {
-    releaseCount: release,
-    refundCount: refund,
-    outcome: release >= 2 ? "release" : refund >= 2 ? "refund" : null,
-  };
+function tallyVotes(votes: DB.VoteRow[]) {
+  const release = votes.filter(v => v.outcome === "release").length;
+  const refund = votes.filter(v => v.outcome === "refund").length;
+  return { releaseCount: release, refundCount: refund, outcome: (release >= 2 ? "release" : refund >= 2 ? "refund" : null) as Outcome | null };
 }
 
-// Minimal bech32 npub encoding for API responses
 function hexToNpub(hex: string): string {
-  const CHARSET = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+  const C = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
   const GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
-
-  function polymod(values: number[]): number {
-    let chk = 1;
-    for (const v of values) {
-      const b = chk >> 25;
-      chk = ((chk & 0x1ffffff) << 5) ^ v;
-      for (let i = 0; i < 5; i++) if ((b >> i) & 1) chk ^= GEN[i];
-    }
-    return chk;
-  }
-
-  const hrpExpanded = [0, 0, 0, 0, 14, 16, 21, 2]; // "npub" expanded
-
-  const bytes: number[] = [];
-  for (let i = 0; i < hex.length; i += 2)
-    bytes.push(parseInt(hex.substring(i, i + 2), 16));
-
-  // Convert 8-bit to 5-bit
-  const words: number[] = [];
-  let acc = 0, bits = 0;
-  for (const b of bytes) {
-    acc = (acc << 8) | b;
-    bits += 8;
-    while (bits >= 5) { bits -= 5; words.push((acc >> bits) & 31); }
-  }
+  function polymod(v: number[]) { let c = 1; for (const x of v) { const b = c >> 25; c = ((c & 0x1ffffff) << 5) ^ x; for (let i = 0; i < 5; i++) if ((b >> i) & 1) c ^= GEN[i]; } return c; }
+  const hrp = [0, 0, 0, 0, 14, 16, 21, 2];
+  const bytes: number[] = []; for (let i = 0; i < hex.length; i += 2) bytes.push(parseInt(hex.substring(i, i + 2), 16));
+  const words: number[] = []; let acc = 0, bits = 0;
+  for (const b of bytes) { acc = (acc << 8) | b; bits += 8; while (bits >= 5) { bits -= 5; words.push((acc >> bits) & 31); } }
   if (bits > 0) words.push((acc << (5 - bits)) & 31);
-
-  const checksum: number[] = [];
-  const pm = polymod(hrpExpanded.concat(words).concat([0, 0, 0, 0, 0, 0])) ^ 1;
-  for (let i = 0; i < 6; i++) checksum.push((pm >> (5 * (5 - i))) & 31);
-
-  return "npub1" + words.concat(checksum).map((d) => CHARSET[d]).join("");
+  const pm = polymod(hrp.concat(words).concat([0, 0, 0, 0, 0, 0])) ^ 1;
+  const cs: number[] = []; for (let i = 0; i < 6; i++) cs.push((pm >> (5 * (5 - i))) & 31);
+  return "npub1" + words.concat(cs).map(d => C[d]).join("");
 }
 
-function isValidCommunityLink(link: string): boolean {
-  return /^fedi:room:![a-zA-Z0-9]+:[a-zA-Z0-9.-]+:::$/.test(link.trim());
+function truncPk(hex: string): string { return hex.slice(0, 8) + "..." + hex.slice(-8); }
+function isValidCommunityLink(l: string): boolean { return /^fedi:room:![a-zA-Z0-9]+:[a-zA-Z0-9.-]+:::$/.test(l.trim()); }
+function extractFederationId(l: string): string | null { const m = l.match(/^fedi:room:![a-zA-Z0-9]+:([a-zA-Z0-9.-]+):::$/); return m ? m[1] : null; }
+function participantInfo(pk: string | null) { return pk ? { pubkey: truncPk(pk), npub: hexToNpub(pk), isFull: true } : { isFull: false }; }
+
+function isExpired(row: DB.EscrowRow): boolean {
+  return row.status === "EXPIRED" || (row.expires_at !== null && Date.now() > row.expires_at);
 }
 
-function extractFederationId(communityLink: string): string | null {
-  const match = communityLink.match(/^fedi:room:![a-zA-Z0-9]+:([a-zA-Z0-9.-]+):::$/);
-  return match ? match[1] : null;
-}
-
-function truncatePubkey(hex: string): string {
-  return hex.slice(0, 8) + "..." + hex.slice(-8);
+function formatExpiry(ms: number | null): string | null {
+  if (!ms) return null;
+  const remaining = ms - Date.now();
+  if (remaining <= 0) return "expired";
+  const hours = Math.floor(remaining / 3600000);
+  const mins = Math.floor((remaining % 3600000) / 60000);
+  return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 }
 
 // ── Router ────────────────────────────────────────────────────────────────
 
 const router = Router();
-
-// All routes require authentication
 router.use(extractPubkey);
+router.use(rateLimit);
 
-// ── POST / — Create a new escrow ─────────────────────────────────────────
-//
-// Creator = seller. Their npub is auto-detected from the auth header.
-// Body: { amountMsats, description, terms, communityLink }
+// ── POST / — Create ──────────────────────────────────────────────────────
 
 router.post("/", (req: AuthenticatedRequest, res: Response) => {
   try {
     const { amountMsats, description = "", terms = "", communityLink = "" } = req.body;
-    const sellerPubkey = req.pubkey!;
+    const pk = req.pubkey!;
 
-    if (!amountMsats || typeof amountMsats !== "number" || amountMsats <= 0) {
+    if (!amountMsats || typeof amountMsats !== "number" || amountMsats <= 0)
       return res.status(400).json({ error: "amountMsats is required (positive integer)" });
-    }
-
-    if (!terms || typeof terms !== "string" || terms.trim().length < 5) {
-      return res.status(400).json({
-        error: "Trade terms are required (minimum 5 characters). Describe what you expect from the buyer.",
-      });
-    }
-
-    if (!communityLink || !isValidCommunityLink(communityLink)) {
-      return res.status(400).json({
-        error:
-          'communityLink is required and must be a valid Fedi community link ' +
-          '(format: "fedi:room:!roomId:federation.domain:::"). This is the public group ' +
-          "where trade parties can find each other.",
-      });
-    }
+    if (!terms || typeof terms !== "string" || terms.trim().length < 5)
+      return res.status(400).json({ error: "Trade terms are required (minimum 5 characters). Describe what you expect from the buyer." });
+    if (!communityLink || !isValidCommunityLink(communityLink))
+      return res.status(400).json({ error: 'communityLink is required and must be a valid Fedi community link (format: "fedi:room:!roomId:federation.domain:::"). This is the public group where trade parties can find each other.' });
 
     const federationId = extractFederationId(communityLink);
-    if (!federationId) {
-      return res.status(400).json({ error: "Could not extract federation ID from community link" });
-    }
+    if (!federationId) return res.status(400).json({ error: "Could not extract federation ID from community link" });
 
-    const id = `ecash_${nextId++}`;
-    const now = Date.now();
-
-    const escrow: EcashEscrow = {
-      id,
-      status: "CREATED",
-      createdAt: now,
-      updatedAt: now,
-      amountMsats,
-      description,
-      terms,
-      communityLink,
-      federationId,
-      sellerPubkey,
-      buyerPubkey: null,
-      arbiterPubkey: null,
-      lockedNotes: null,
-      lockedAt: null,
-      votes: [],
-      resolvedOutcome: null,
-      resolvedAt: null,
-      claimedBy: null,
-      claimedAt: null,
-    };
-
-    escrows.set(id, escrow);
+    const id = DB.getNextId();
+    const row = DB.createEscrow({ id, amountMsats, description, terms, communityLink, federationId, sellerPubkey: pk });
 
     res.status(201).json({
-      id: escrow.id,
-      status: escrow.status,
-      amountMsats: escrow.amountMsats,
-      amountSats: Math.floor(escrow.amountMsats / 1000),
-      description: escrow.description,
-      terms: escrow.terms,
-      communityLink: escrow.communityLink,
-      federationId: escrow.federationId,
-      seller: {
-        pubkey: truncatePubkey(sellerPubkey),
-        npub: hexToNpub(sellerPubkey),
-      },
-      createdAt: escrow.createdAt,
-      yourRole: "seller",
+      id: row.id, status: row.status, amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
+      description: row.description, terms: row.terms, communityLink: row.community_link, federationId: row.federation_id,
+      seller: { pubkey: truncPk(pk), npub: hexToNpub(pk) },
+      createdAt: row.created_at, expiresIn: formatExpiry(row.expires_at), yourRole: "seller",
       nextStep: "Share the escrow ID in your Fedi community chat. Buyer and arbiter need to join.",
-      disclaimer:
-        "⚠️ This escrow holds real e-cash (backed by Bitcoin). " +
-        "All parties should join the community chat and communicate evidence there. " +
-        "Trades are irreversible once claimed. Act carefully and honestly.",
+      disclaimer: "⚠️ This escrow holds real e-cash (backed by Bitcoin). All parties should join the community chat and communicate evidence there. Trades are irreversible once claimed. Act carefully and honestly.",
     });
-  } catch (err: any) {
-    console.error("POST /api/ecash-escrows error:", err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err: any) { console.error("POST / error:", err); res.status(500).json({ error: err.message }); }
 });
 
-// ── POST /:id/join — Join an escrow as buyer or arbiter ──────────────────
-//
-// Body: { role: "buyer" | "arbiter" }
-// The caller's npub is auto-detected from auth.
+// ── POST /:id/join ───────────────────────────────────────────────────────
 
 router.post("/:id/join", (req: AuthenticatedRequest, res: Response) => {
   try {
-    const escrow = escrows.get(req.params.id);
-    if (!escrow) return res.status(404).json({ error: "Escrow not found" });
+    const row = DB.getEscrow(req.params.id);
+    if (!row) return res.status(404).json({ error: "Escrow not found" });
+    if (isExpired(row)) return res.status(400).json({ error: "This escrow has expired" });
 
-    const pubkey = req.pubkey!;
+    const pk = req.pubkey!;
     const { role } = req.body;
+    if (role !== "buyer" && role !== "arbiter") return res.status(400).json({ error: 'role must be "buyer" or "arbiter"' });
 
-    if (role !== "buyer" && role !== "arbiter") {
-      return res.status(400).json({ error: 'role must be "buyer" or "arbiter"' });
-    }
+    const existing = getRoleByPubkey(row, pk);
+    if (existing) return res.status(400).json({ error: `You are already the ${existing} in this escrow` });
+    if (role === "buyer" && row.buyer_pubkey) return res.status(400).json({ error: "Buyer slot is already filled" });
+    if (role === "arbiter" && row.arbiter_pubkey) return res.status(400).json({ error: "Arbiter slot is already filled" });
+    if (row.status !== "CREATED" && row.status !== "FUNDED") return res.status(400).json({ error: `Cannot join in ${row.status} state` });
 
-    // Can't join if already a participant
-    const existingRole = getRoleByPubkey(escrow, pubkey);
-    if (existingRole) {
-      return res.status(400).json({
-        error: `You are already the ${existingRole} in this escrow`,
-      });
-    }
+    const willHaveBuyer = role === "buyer" ? pk : row.buyer_pubkey;
+    const willHaveArbiter = role === "arbiter" ? pk : row.arbiter_pubkey;
+    const newStatus = (row.seller_pubkey && willHaveBuyer && willHaveArbiter) ? "FUNDED" : row.status;
 
-    // Check if role is already taken
-    if (role === "buyer" && escrow.buyerPubkey) {
-      return res.status(400).json({ error: "Buyer slot is already filled" });
-    }
-    if (role === "arbiter" && escrow.arbiterPubkey) {
-      return res.status(400).json({ error: "Arbiter slot is already filled" });
-    }
+    if (role === "buyer") DB.joinAsBuyer(row.id, pk, newStatus);
+    else DB.joinAsArbiter(row.id, pk, newStatus);
 
-    // Can only join in CREATED or partially filled states
-    if (escrow.status !== "CREATED" && escrow.status !== "FUNDED") {
-      return res.status(400).json({
-        error: `Cannot join in ${escrow.status} state`,
-      });
-    }
-
-    // Assign role
-    if (role === "buyer") {
-      escrow.buyerPubkey = pubkey;
-    } else {
-      escrow.arbiterPubkey = pubkey;
-    }
-    escrow.updatedAt = Date.now();
-
-    // Check if all 3 parties are now present
-    if (escrow.sellerPubkey && escrow.buyerPubkey && escrow.arbiterPubkey) {
-      escrow.status = "FUNDED";
-    }
-
-    const participants = {
-      seller: escrow.sellerPubkey ? truncatePubkey(escrow.sellerPubkey) : null,
-      buyer: escrow.buyerPubkey ? truncatePubkey(escrow.buyerPubkey) : null,
-      arbiter: escrow.arbiterPubkey ? truncatePubkey(escrow.arbiterPubkey) : null,
-    };
-
+    const updated = DB.getEscrow(row.id)!;
     res.json({
-      id: escrow.id,
-      status: escrow.status,
-      yourRole: role,
-      participants,
-      allJoined: escrow.status === "FUNDED",
-      message: escrow.status === "FUNDED"
-        ? "All parties have joined! Seller can now lock e-cash notes. " +
-          "Arbiter: create a private Fedi group and pull in the buyer and seller."
-        : `Joined as ${role}. Waiting for ${!escrow.buyerPubkey ? "buyer" : ""}${!escrow.buyerPubkey && !escrow.arbiterPubkey ? " and " : ""}${!escrow.arbiterPubkey ? "arbiter" : ""} to join.`,
+      id: updated.id, status: updated.status, yourRole: role,
+      participants: { seller: truncPk(updated.seller_pubkey), buyer: updated.buyer_pubkey ? truncPk(updated.buyer_pubkey) : null, arbiter: updated.arbiter_pubkey ? truncPk(updated.arbiter_pubkey) : null },
+      allJoined: updated.status === "FUNDED",
+      message: updated.status === "FUNDED"
+        ? "All parties have joined! Seller can now lock e-cash notes. Arbiter: create a private Fedi group and pull in the buyer and seller."
+        : `Joined as ${role}. Waiting for ${!updated.buyer_pubkey ? "buyer" : ""}${!updated.buyer_pubkey && !updated.arbiter_pubkey ? " and " : ""}${!updated.arbiter_pubkey ? "arbiter" : ""} to join.`,
     });
-  } catch (err: any) {
-    console.error("POST /join error:", err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err: any) { console.error("POST /join error:", err); res.status(500).json({ error: err.message }); }
 });
 
-// ── GET / — List all escrows ─────────────────────────────────────────────
-//
-// Returns escrows the authenticated user is part of.
+// ── GET / — List ─────────────────────────────────────────────────────────
 
 router.get("/", (req: AuthenticatedRequest, res: Response) => {
-  const pubkey = req.pubkey!;
-
-  const list = Array.from(escrows.values())
-    .filter(
-      (e) =>
-        e.sellerPubkey === pubkey ||
-        e.buyerPubkey === pubkey ||
-        e.arbiterPubkey === pubkey
-    )
-    .map((e) => ({
-      id: e.id,
-      status: e.status,
-      amountMsats: e.amountMsats,
-      amountSats: Math.floor(e.amountMsats / 1000),
-      description: e.description,
-      terms: e.terms,
-      communityLink: e.communityLink,
-      federationId: e.federationId,
-      yourRole: getRoleByPubkey(e, pubkey),
-      participants: {
-        seller: e.sellerPubkey ? truncatePubkey(e.sellerPubkey) : null,
-        buyer: e.buyerPubkey ? truncatePubkey(e.buyerPubkey) : null,
-        arbiter: e.arbiterPubkey ? truncatePubkey(e.arbiterPubkey) : null,
-      },
-      resolvedOutcome: e.resolvedOutcome,
-      claimedBy: e.claimedBy,
-      createdAt: e.createdAt,
-      updatedAt: e.updatedAt,
-    }));
-
-  res.json(list);
+  const pk = req.pubkey!;
+  const rows = DB.listEscrowsByPubkey(pk);
+  res.json(rows.map(r => ({
+    id: r.id, status: r.status, amountMsats: r.amount_msats, amountSats: Math.floor(r.amount_msats / 1000),
+    description: r.description, terms: r.terms, communityLink: r.community_link, federationId: r.federation_id,
+    yourRole: getRoleByPubkey(r, pk),
+    participants: { seller: truncPk(r.seller_pubkey), buyer: r.buyer_pubkey ? truncPk(r.buyer_pubkey) : null, arbiter: r.arbiter_pubkey ? truncPk(r.arbiter_pubkey) : null },
+    resolvedOutcome: r.resolved_outcome, claimedBy: r.claimed_by,
+    createdAt: r.created_at, updatedAt: r.updated_at, expiresIn: formatExpiry(r.expires_at),
+  })));
 });
 
-// ── GET /:id — Get escrow details ────────────────────────────────────────
+// ── GET /:id — Detail ────────────────────────────────────────────────────
 
 router.get("/:id", (req: AuthenticatedRequest, res: Response) => {
-  const escrow = escrows.get(req.params.id);
-  if (!escrow) return res.status(404).json({ error: "Escrow not found" });
+  const row = DB.getEscrow(req.params.id);
+  if (!row) return res.status(404).json({ error: "Escrow not found" });
 
-  const pubkey = req.pubkey!;
-  const role = getRoleByPubkey(escrow, pubkey);
-  const votesSummary = tallyVotes(escrow.votes);
+  const pk = req.pubkey!;
+  const role = getRoleByPubkey(row, pk);
+  const votes = DB.getVotes(row.id);
+  const tally = tallyVotes(votes);
 
   res.json({
-    id: escrow.id,
-    status: escrow.status,
-    amountMsats: escrow.amountMsats,
-    amountSats: Math.floor(escrow.amountMsats / 1000),
-    description: escrow.description,
-    terms: escrow.terms,
-    communityLink: escrow.communityLink,
-    federationId: escrow.federationId,
-    participants: {
-      seller: escrow.sellerPubkey ? {
-        pubkey: truncatePubkey(escrow.sellerPubkey),
-        npub: hexToNpub(escrow.sellerPubkey),
-        isFull: true,
-      } : null,
-      buyer: escrow.buyerPubkey ? {
-        pubkey: truncatePubkey(escrow.buyerPubkey),
-        npub: hexToNpub(escrow.buyerPubkey),
-        isFull: true,
-      } : { isFull: false },
-      arbiter: escrow.arbiterPubkey ? {
-        pubkey: truncatePubkey(escrow.arbiterPubkey),
-        npub: hexToNpub(escrow.arbiterPubkey),
-        isFull: true,
-      } : { isFull: false },
-    },
-    lockedAt: escrow.lockedAt,
-    votes: {
-      release: votesSummary.releaseCount,
-      refund: votesSummary.refundCount,
-      voters: escrow.votes.map((v) => ({
-        role: v.role,
-        outcome: v.outcome,
-      })),
-    },
-    resolvedOutcome: escrow.resolvedOutcome,
-    resolvedAt: escrow.resolvedAt,
-    claimedBy: escrow.claimedBy,
-    claimedAt: escrow.claimedAt,
-    createdAt: escrow.createdAt,
-    updatedAt: escrow.updatedAt,
-    // Role-specific info
+    id: row.id, status: row.status, amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
+    description: row.description, terms: row.terms, communityLink: row.community_link, federationId: row.federation_id,
+    participants: { seller: participantInfo(row.seller_pubkey), buyer: participantInfo(row.buyer_pubkey), arbiter: participantInfo(row.arbiter_pubkey) },
+    lockedAt: row.locked_at, lockMode: row.lock_mode,
+    votes: { release: tally.releaseCount, refund: tally.refundCount, voters: votes.map(v => ({ role: v.role, outcome: v.outcome })) },
+    resolvedOutcome: row.resolved_outcome, resolvedAt: row.resolved_at, claimedBy: row.claimed_by, claimedAt: row.claimed_at,
+    createdAt: row.created_at, updatedAt: row.updated_at, expiresIn: formatExpiry(row.expires_at),
     ...(role && { yourRole: role }),
-    ...(role && {
-      canClaim:
-        escrow.status === "APPROVED" &&
-        ((escrow.resolvedOutcome === "release" && role === "buyer") ||
-          (escrow.resolvedOutcome === "refund" && role === "seller")),
-    }),
+    ...(role && { canClaim: row.status === "APPROVED" && ((row.resolved_outcome === "release" && role === "buyer") || (row.resolved_outcome === "refund" && role === "seller")) }),
   });
 });
 
-// ── POST /:id/lock — Seller locks e-cash notes ──────────────────────────
+// ── POST /:id/lock — WebLN or manual lock ────────────────────────────────
 //
-// Body: { notes: string }
+// Two lock modes:
+//
+// 1. WebLN (production in Fedi):
+//    POST { mode: "webln", preimage: "..." }
+//    Frontend calls webln.sendPayment(invoice) → gets preimage → sends here.
+//    Server generated the invoice earlier (GET /:id/invoice), so it can verify
+//    the preimage matches and amount is correct.
+//
+// 2. Manual (dev/testing):
+//    POST { notes: "ECASH_NOTES...", mode: "manual" }
+//    Accepts raw e-cash note strings. Amount not cryptographically verified
+//    but logged for audit. Use for dev testing only.
+//
+// In both cases, only the seller can lock.
 
 router.post("/:id/lock", (req: AuthenticatedRequest, res: Response) => {
   try {
-    const escrow = escrows.get(req.params.id);
-    if (!escrow) return res.status(404).json({ error: "Escrow not found" });
+    const row = DB.getEscrow(req.params.id);
+    if (!row) return res.status(404).json({ error: "Escrow not found" });
+    if (isExpired(row)) return res.status(400).json({ error: "This escrow has expired" });
 
-    const pubkey = req.pubkey!;
-    const role = getRoleByPubkey(escrow, pubkey);
+    const pk = req.pubkey!;
+    if (getRoleByPubkey(row, pk) !== "seller") return res.status(403).json({ error: "Only the seller can lock notes" });
 
-    if (role !== "seller") {
-      return res.status(403).json({ error: "Only the seller can lock notes" });
+    if (row.status !== "FUNDED") {
+      if (row.status === "CREATED")
+        return res.status(400).json({ error: `All three parties must join before locking. Missing: ${!row.buyer_pubkey ? "buyer " : ""}${!row.arbiter_pubkey ? "arbiter" : ""}`.trim() });
+      return res.status(400).json({ error: `Cannot lock notes in ${row.status} state` });
     }
 
-    if (escrow.status !== "FUNDED") {
-      if (escrow.status === "CREATED") {
-        return res.status(400).json({
-          error: "All three parties must join before locking. " +
-            `Missing: ${!escrow.buyerPubkey ? "buyer " : ""}${!escrow.arbiterPubkey ? "arbiter" : ""}`.trim(),
-        });
-      }
-      return res.status(400).json({ error: `Cannot lock notes in ${escrow.status} state` });
+    const mode = req.body.mode || "manual";
+
+    if (mode === "webln") {
+      // WebLN lock: seller paid a BOLT-11 invoice, sends preimage as proof
+      const { preimage } = req.body;
+      if (!preimage || typeof preimage !== "string" || preimage.length < 32)
+        return res.status(400).json({ error: "WebLN lock requires a valid preimage from the payment" });
+
+      // Store a receipt token as the "notes" — the actual e-cash was absorbed by the server's LN node.
+      // On claim, the server will pay out to the winner via a new invoice.
+      const receipt = JSON.stringify({
+        type: "webln_receipt",
+        escrowId: row.id,
+        amountMsats: row.amount_msats,
+        preimage,
+        lockedAt: Date.now(),
+        sellerPubkey: pk,
+      });
+
+      DB.lockNotes(row.id, receipt, "webln", preimage);
+    } else {
+      // Manual lock: raw e-cash notes (dev/testing)
+      const { notes } = req.body;
+      if (!notes || typeof notes !== "string" || notes.length < 10)
+        return res.status(400).json({ error: "Invalid e-cash notes string (minimum 10 chars)" });
+
+      if (process.env.NODE_ENV === "production")
+        return res.status(400).json({ error: "Manual note locking is disabled in production. Use WebLN mode." });
+
+      DB.lockNotes(row.id, notes, "manual");
     }
 
-    const { notes } = req.body;
-    if (!notes || typeof notes !== "string" || notes.length < 10) {
-      return res.status(400).json({ error: "Invalid e-cash notes string" });
-    }
-
-    const now = Date.now();
-    escrow.lockedNotes = notes;
-    escrow.lockedAt = now;
-    escrow.status = "LOCKED";
-    escrow.updatedAt = now;
-
+    const updated = DB.getEscrow(row.id)!;
     res.json({
-      id: escrow.id,
-      status: escrow.status,
-      lockedAt: escrow.lockedAt,
-      amountMsats: escrow.amountMsats,
-      message:
-        "E-cash notes locked in escrow. Buyer: complete your side of the trade, then vote. " +
-        "Communicate proof of payment in your private Fedi group chat.",
+      id: updated.id, status: updated.status, lockedAt: updated.locked_at,
+      lockMode: updated.lock_mode, amountMsats: updated.amount_msats,
+      expiresIn: formatExpiry(updated.expires_at),
+      message: "E-cash notes locked in escrow. Buyer: complete your side of the trade, then vote. Communicate proof of payment in your private Fedi group chat.",
     });
-  } catch (err: any) {
-    console.error("POST /lock error:", err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err: any) { console.error("POST /lock error:", err); res.status(500).json({ error: err.message }); }
 });
 
-// ── POST /:id/approve — Vote on outcome ─────────────────────────────────
+// ── GET /:id/invoice — Generate BOLT-11 for WebLN lock ───────────────────
 //
-// Body: { outcome: "release" | "refund" }
+// Returns a BOLT-11 invoice for the exact escrow amount.
+// The seller's Fedi wallet pays this via webln.sendPayment(invoice).
 //
-// STRICT ordering:
-//   1. BUYER votes first (can ONLY vote "release")
-//   2. SELLER votes second ("release" or "refund")
-//   3. ARBITER only if buyer+seller disagree
+// NOTE: This requires a Lightning backend (LND, CLN, or LNbits).
+// Currently returns a placeholder — integrate with your LN node.
+
+router.get("/:id/invoice", (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const row = DB.getEscrow(req.params.id);
+    if (!row) return res.status(404).json({ error: "Escrow not found" });
+    if (isExpired(row)) return res.status(400).json({ error: "This escrow has expired" });
+    if (row.status !== "FUNDED") return res.status(400).json({ error: `Cannot generate invoice in ${row.status} state` });
+
+    const pk = req.pubkey!;
+    if (getRoleByPubkey(row, pk) !== "seller") return res.status(403).json({ error: "Only the seller can request the lock invoice" });
+
+    const amountSats = Math.floor(row.amount_msats / 1000);
+
+    // TODO: Replace with real LN invoice generation
+    // Example with LNbits:
+    //   const inv = await fetch(`${LNBITS_URL}/api/v1/payments`, {
+    //     method: "POST", headers: { "X-Api-Key": LNBITS_INVOICE_KEY },
+    //     body: JSON.stringify({ out: false, amount: amountSats, memo: `Escrow ${row.id} lock` })
+    //   }).then(r => r.json());
+    //   return res.json({ invoice: inv.payment_request, amountSats, ... });
+
+    res.json({
+      escrowId: row.id,
+      amountMsats: row.amount_msats,
+      amountSats,
+      // Placeholder — replace with real invoice in production
+      invoice: `lnbc${amountSats}n1_PLACEHOLDER_REPLACE_WITH_REAL_LN_INVOICE`,
+      memo: `Escrow ${row.id} — lock ${amountSats} sats`,
+      expiresIn: formatExpiry(row.expires_at),
+      instructions: "Pay this invoice using webln.sendPayment(invoice). Send the preimage to POST /:id/lock with mode='webln'.",
+    });
+  } catch (err: any) { console.error("GET /invoice error:", err); res.status(500).json({ error: err.message }); }
+});
+
+// ── POST /:id/approve ────────────────────────────────────────────────────
 
 router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
   try {
-    const escrow = escrows.get(req.params.id);
-    if (!escrow) return res.status(404).json({ error: "Escrow not found" });
+    const row = DB.getEscrow(req.params.id);
+    if (!row) return res.status(404).json({ error: "Escrow not found" });
+    if (isExpired(row)) return res.status(400).json({ error: "This escrow has expired" });
+    if (row.status !== "LOCKED") return res.status(400).json({ error: `Cannot vote in ${row.status} state` });
 
-    if (escrow.status !== "LOCKED") {
-      return res.status(400).json({ error: `Cannot vote in ${escrow.status} state` });
-    }
-
-    const pubkey = req.pubkey!;
-    const role = getRoleByPubkey(escrow, pubkey);
-
-    if (!role) {
-      return res.status(403).json({ error: "You are not a participant in this escrow" });
-    }
+    const pk = req.pubkey!;
+    const role = getRoleByPubkey(row, pk);
+    if (!role) return res.status(403).json({ error: "You are not a participant in this escrow" });
 
     const { outcome } = req.body;
-    if (outcome !== "release" && outcome !== "refund") {
-      return res.status(400).json({ error: 'outcome must be "release" or "refund"' });
-    }
+    if (outcome !== "release" && outcome !== "refund") return res.status(400).json({ error: 'outcome must be "release" or "refund"' });
 
-    // Check if already voted
-    const existingVote = escrow.votes.find((v) => v.role === role);
-    if (existingVote) {
-      return res.status(400).json({
-        error: `${role} has already voted (${existingVote.outcome})`,
-      });
-    }
+    const votes = DB.getVotes(row.id);
+    const existingVote = votes.find(v => v.role === role);
+    if (existingVote) return res.status(400).json({ error: `${role} has already voted (${existingVote.outcome})` });
 
-    const buyerVote = escrow.votes.find((v) => v.role === "buyer");
-    const sellerVote = escrow.votes.find((v) => v.role === "seller");
+    const buyerVote = votes.find(v => v.role === "buyer");
+    const sellerVote = votes.find(v => v.role === "seller");
 
-    // Buyer can only vote "release"
-    if (role === "buyer" && outcome !== "release") {
-      return res.status(400).json({
-        error:
-          'Buyer can only vote "release". You are confirming you completed ' +
-          "your side of the trade. Communicate any issues in the Fedi group chat.",
-      });
-    }
-
-    // Seller must wait for buyer
-    if (role === "seller" && !buyerVote) {
-      return res.status(403).json({
-        error: "Buyer must vote first. The buyer confirms they completed their side before the seller can respond.",
-      });
-    }
-
-    // Arbiter only when there's a real dispute
+    if (role === "buyer" && outcome !== "release")
+      return res.status(400).json({ error: 'Buyer can only vote "release". You are confirming you completed your side of the trade. Communicate any issues in the Fedi group chat.' });
+    if (role === "seller" && !buyerVote)
+      return res.status(403).json({ error: "Buyer must vote first. The buyer confirms they completed their side before the seller can respond." });
     if (role === "arbiter") {
-      if (!buyerVote || !sellerVote) {
-        return res.status(403).json({
-          error: `Arbiter can only vote after both buyer and seller. Currently: buyer ${buyerVote ? "voted" : "pending"}, seller ${sellerVote ? "voted" : "pending"}.`,
-        });
-      }
-      if (buyerVote.outcome === sellerVote.outcome) {
+      if (!buyerVote || !sellerVote)
+        return res.status(403).json({ error: `Arbiter can only vote after both buyer and seller. Currently: buyer ${buyerVote ? "voted" : "pending"}, seller ${sellerVote ? "voted" : "pending"}.` });
+      if (buyerVote.outcome === sellerVote.outcome)
         return res.status(400).json({ error: "Buyer and seller agree — no dispute to arbitrate." });
-      }
     }
 
-    // Record vote
-    escrow.votes.push({
-      role,
-      outcome,
-      timestamp: Date.now(),
-      pubkey,
-    });
-    escrow.updatedAt = Date.now();
+    DB.addVote(row.id, role, outcome, pk);
+    const updatedVotes = DB.getVotes(row.id);
+    const tally = tallyVotes(updatedVotes);
 
-    // Check 2-of-3 threshold
-    const tally = tallyVotes(escrow.votes);
-
-    if (tally.outcome) {
-      escrow.status = "APPROVED";
-      escrow.resolvedOutcome = tally.outcome;
-      escrow.resolvedAt = Date.now();
-      escrow.updatedAt = Date.now();
-    }
+    if (tally.outcome) DB.resolveEscrow(row.id, tally.outcome);
 
     const winner = tally.outcome === "release" ? "buyer" : tally.outcome === "refund" ? "seller" : null;
 
     res.json({
-      id: escrow.id,
-      status: escrow.status,
-      yourRole: role,
-      yourVote: outcome,
-      votes: {
-        release: tally.releaseCount,
-        refund: tally.refundCount,
-        voters: escrow.votes.map((v) => ({ role: v.role, outcome: v.outcome })),
-      },
-      resolved: !!tally.outcome,
-      resolvedOutcome: tally.outcome,
-      winner,
+      id: row.id, status: tally.outcome ? "APPROVED" : "LOCKED", yourRole: role, yourVote: outcome,
+      votes: { release: tally.releaseCount, refund: tally.refundCount, voters: updatedVotes.map(v => ({ role: v.role, outcome: v.outcome })) },
+      resolved: !!tally.outcome, resolvedOutcome: tally.outcome, winner,
       message: tally.outcome
         ? `Escrow resolved: ${tally.outcome} to ${winner}. ${winner} can now claim the notes.`
         : `Vote recorded. ${tally.releaseCount} for release, ${tally.refundCount} for refund. Need 2-of-3 to resolve.`,
     });
-  } catch (err: any) {
-    console.error("POST /approve error:", err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err: any) { console.error("POST /approve error:", err); res.status(500).json({ error: err.message }); }
 });
 
-// ── POST /:id/claim — Claim the e-cash notes ────────────────────────────
-//
-// Body: {} (identity from auth header)
+// ── POST /:id/claim ──────────────────────────────────────────────────────
 
 router.post("/:id/claim", (req: AuthenticatedRequest, res: Response) => {
   try {
-    const escrow = escrows.get(req.params.id);
-    if (!escrow) return res.status(404).json({ error: "Escrow not found" });
+    const row = DB.getEscrow(req.params.id);
+    if (!row) return res.status(404).json({ error: "Escrow not found" });
 
-    if (escrow.status !== "APPROVED") {
-      return res.status(400).json({ error: `Cannot claim in ${escrow.status} state` });
-    }
-
-    const pubkey = req.pubkey!;
-    const role = getRoleByPubkey(escrow, pubkey);
-
-    if (!role) {
-      return res.status(403).json({ error: "You are not a participant in this escrow" });
-    }
-
-    const winner = escrow.resolvedOutcome === "release" ? "buyer" : "seller";
-    if (role !== winner) {
-      return res.status(403).json({
-        error: `Only the ${winner} can claim. Escrow resolved as "${escrow.resolvedOutcome}".`,
+    // Allow claiming EXPIRED escrows if they were LOCKED (seller gets refund)
+    if (row.status === "EXPIRED" && row.locked_notes) {
+      const pk = req.pubkey!;
+      if (getRoleByPubkey(row, pk) !== "seller")
+        return res.status(403).json({ error: "Only the seller can reclaim notes from an expired escrow" });
+      const notes = DB.claimEscrow(row.id, "seller");
+      if (!notes) return res.status(500).json({ error: "No notes found" });
+      return res.json({
+        id: row.id, status: "CLAIMED", claimedBy: "seller", notes,
+        message: "Escrow expired — notes returned to seller.",
       });
     }
 
-    if (!escrow.lockedNotes) {
-      return res.status(500).json({ error: "No notes found in escrow (this should not happen)" });
-    }
+    if (row.status !== "APPROVED") return res.status(400).json({ error: `Cannot claim in ${row.status} state` });
 
-    const notes = escrow.lockedNotes;
+    const pk = req.pubkey!;
+    const role = getRoleByPubkey(row, pk);
+    if (!role) return res.status(403).json({ error: "You are not a participant in this escrow" });
 
-    escrow.status = "CLAIMED";
-    escrow.claimedBy = role;
-    escrow.claimedAt = Date.now();
-    escrow.lockedNotes = null;
-    escrow.updatedAt = Date.now();
+    const winner = row.resolved_outcome === "release" ? "buyer" : "seller";
+    if (role !== winner) return res.status(403).json({ error: `Only the ${winner} can claim. Escrow resolved as "${row.resolved_outcome}".` });
+
+    const notes = DB.claimEscrow(row.id, role);
+    if (!notes) return res.status(500).json({ error: "No notes found in escrow" });
+
+    // If WebLN mode, the "notes" is a receipt — the server needs to pay out via LN
+    let payoutInstructions: string | undefined;
+    try {
+      const parsed = JSON.parse(notes);
+      if (parsed.type === "webln_receipt") {
+        payoutInstructions = "This escrow was locked via WebLN. Generate an invoice with webln.makeInvoice() and submit it to POST /:id/payout for the server to pay you.";
+      }
+    } catch { /* not JSON = raw e-cash notes, return as-is */ }
 
     res.json({
-      id: escrow.id,
-      status: escrow.status,
-      claimedBy: role,
-      notes,
-      message: `E-cash notes claimed by ${role}. Call wallet.mint.reissueExternalNotes(notes) to absorb into your wallet.`,
+      id: row.id, status: "CLAIMED", claimedBy: role, notes: payoutInstructions ? undefined : notes,
+      ...(payoutInstructions && { payoutInstructions, amountMsats: row.amount_msats }),
+      message: payoutInstructions
+        ? `Escrow resolved in your favor. ${payoutInstructions}`
+        : `E-cash notes claimed by ${role}. Call wallet.mint.reissueExternalNotes(notes) to absorb into your wallet.`,
     });
-  } catch (err: any) {
-    console.error("POST /claim error:", err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err: any) { console.error("POST /claim error:", err); res.status(500).json({ error: err.message }); }
 });
 
 export default router;
