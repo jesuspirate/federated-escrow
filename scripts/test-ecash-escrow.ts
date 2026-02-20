@@ -1,7 +1,10 @@
 #!/usr/bin/env tsx
-// scripts/test-ecash-escrow.ts — v4.0 production hardening tests
+// scripts/test-ecash-escrow.ts — v5.0 fedimint-clientd integration tests
 //
-// Tests: Schnorr auth, WebLN lock, manual lock, expiry, rate limit, encryption
+// Tests in two modes:
+//   1. Manual mode (always runs) — dev testing without fedimint-clientd
+//   2. WebLN mode (runs if fedimint-clientd is available) — full lock/payout flow
+//
 // Usage: npx tsx scripts/test-ecash-escrow.ts
 
 import { generateSecretKey, getPublicKey, finalizeEvent } from "nostr-tools/pure";
@@ -40,17 +43,24 @@ function ok(cond: boolean, label: string, d?: any) {
 
 async function main() {
 
-console.log("===========================================");
-console.log("  E-Cash Escrow v4.0 — Production Tests   ");
-console.log("  Schnorr + SQLite + Encryption + Expiry  ");
-console.log("===========================================\n");
+console.log("==============================================");
+console.log("  E-Cash Escrow v5.0 — Fedimint Integration  ");
+console.log("  Schnorr + SQLite + fedimint-clientd + WebLN");
+console.log("==============================================\n");
+
+// ── Check fedimint-clientd availability ───────────────────────────────────
+const health = await nip98(`${API}/health`, sellerSk);
+const fmConnected = health.fedimintClientd === "connected";
+console.log(`  Fedimint-clientd: ${fmConnected ? "✅ connected" : "⚠️  unavailable (manual mode only)"}`);
+if (fmConnected) console.log(`  Server wallet balance: ${health.walletBalance} msats`);
+console.log("");
 
 // ═══ TEST 1: Happy Path (manual lock) ═══
-console.log("═══ TEST 1: Happy Path ═══");
+console.log("═══ TEST 1: Happy Path (manual lock) ═══");
 
 const e1 = await nip98(API, sellerSk, { method: "POST", body: JSON.stringify({ amountMsats: 100000000, description: "Widget purchase", terms: "Buyer sends $50 via Zelle. Seller ships within 3 days.", communityLink: COMMUNITY }) });
 ok(e1.id && e1.status === "CREATED", "Seller creates escrow", e1);
-ok(!!e1.expiresIn, "Escrow has expiry timer: " + e1.expiresIn, e1);
+ok(!!e1.expiresIn, "Escrow has expiry: " + e1.expiresIn, e1);
 const id1 = e1.id;
 
 await nip98(`${API}/${id1}/join`, buyerSk, { method: "POST", body: JSON.stringify({ role: "buyer" }) });
@@ -108,35 +118,72 @@ ok(c3.claimedBy === "buyer", "Buyer claims", c3);
 
 console.log("");
 
-// ═══ TEST 4: WebLN Lock Mode ═══
-console.log("═══ TEST 4: WebLN Lock Mode ═══");
+// ═══ TEST 4: Invoice & WebLN Flow ═══
+console.log("═══ TEST 4: Invoice & WebLN Lock Flow ═══");
 
-const e4w = await nip98(API, sellerSk, { method: "POST", body: JSON.stringify({ amountMsats: 25000000, description: "WebLN test", terms: "Testing WebLN lock flow.", communityLink: COMMUNITY }) });
-const id4w = e4w.id;
-await nip98(`${API}/${id4w}/join`, buyerSk, { method: "POST", body: JSON.stringify({ role: "buyer" }) });
-await nip98(`${API}/${id4w}/join`, arbiterSk, { method: "POST", body: JSON.stringify({ role: "arbiter" }) });
+const e4 = await nip98(API, sellerSk, { method: "POST", body: JSON.stringify({ amountMsats: 25000000, description: "WebLN test", terms: "Testing WebLN lock flow.", communityLink: COMMUNITY }) });
+const id4 = e4.id;
+await nip98(`${API}/${id4}/join`, buyerSk, { method: "POST", body: JSON.stringify({ role: "buyer" }) });
+await nip98(`${API}/${id4}/join`, arbiterSk, { method: "POST", body: JSON.stringify({ role: "arbiter" }) });
 
-// Get invoice
-const inv = await nip98(`${API}/${id4w}/invoice`, sellerSk);
-ok(!!inv.invoice && inv.amountSats === 25000, "Invoice generated for exact amount", inv);
+const inv = await nip98(`${API}/${id4}/invoice`, sellerSk);
+ok(inv.amountSats === 25000, "Invoice for exact amount: 25,000 sats", inv);
 
-// Lock with preimage (simulating WebLN payment)
-const fakePreimage = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2";
-const l4w = await nip98(`${API}/${id4w}/lock`, sellerSk, { method: "POST", body: JSON.stringify({ mode: "webln", preimage: fakePreimage }) });
-ok(l4w.status === "LOCKED" && l4w.lockMode === "webln", "WebLN lock accepted", l4w);
+if (fmConnected && inv.mode === "webln") {
+  ok(typeof inv.invoice === "string" && inv.invoice.startsWith("ln"), "Real BOLT-11 invoice from fedimint-clientd", inv);
 
-// Complete trade
-await nip98(`${API}/${id4w}/approve`, buyerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) });
-await nip98(`${API}/${id4w}/approve`, sellerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) });
-const c4w = await nip98(`${API}/${id4w}/claim`, buyerSk, { method: "POST", body: "{}" });
-ok(!!c4w.payoutInstructions, "WebLN claim returns payout instructions (not raw notes)", c4w);
+  // In a real Fedi app, the seller would call webln.sendPayment(inv.invoice) here.
+  // The test can't simulate that without a funded wallet, so we verify the flow exists.
+  console.log("  ℹ️  WebLN payment requires Fedi wallet — skipping actual payment in test");
+
+  // Verify lock without payment fails correctly
+  const lockFail = await nip98(`${API}/${id4}/lock`, sellerSk, { method: "POST", body: JSON.stringify({ mode: "webln" }) });
+  ok(lockFail.error && (lockFail.error.includes("not yet paid") || lockFail.error.includes("not running")), "WebLN lock before payment → rejected", lockFail);
+} else {
+  ok(inv.mode === "manual" || inv.invoice === null, "No fedimint-clientd → manual mode fallback", inv);
+  // Lock manually for remaining tests
+  const l4 = await nip98(`${API}/${id4}/lock`, sellerSk, { method: "POST", body: JSON.stringify({ notes: "ECASH_WEBLN_FALLBACK_TEST", mode: "manual" }) });
+  ok(l4.status === "LOCKED", "Manual lock fallback works", l4);
+
+  // Complete the trade to test claim flow
+  await nip98(`${API}/${id4}/approve`, buyerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) });
+  await nip98(`${API}/${id4}/approve`, sellerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) });
+  const c4 = await nip98(`${API}/${id4}/claim`, buyerSk, { method: "POST", body: "{}" });
+  ok(c4.status === "CLAIMED" && c4.notes === "ECASH_WEBLN_FALLBACK_TEST", "Manual claim returns raw notes", c4);
+}
+
+// Buyer can't get lock invoice
+ok(!!(await nip98(`${API}/${id4}/invoice`, buyerSk)).error, "Buyer can't get lock invoice", {});
 
 console.log("");
 
-// ═══ TEST 5: Edge Cases ═══
-console.log("═══ TEST 5: Edge Cases ═══");
+// ═══ TEST 5: Payout endpoint ═══
+console.log("═══ TEST 5: Payout Endpoint ═══");
 
-// Validation
+const e5p = await nip98(API, sellerSk, { method: "POST", body: JSON.stringify({ amountMsats: 10000000, description: "Payout test", terms: "Test payout flow.", communityLink: COMMUNITY }) });
+const id5p = e5p.id;
+await nip98(`${API}/${id5p}/join`, buyerSk, { method: "POST", body: JSON.stringify({ role: "buyer" }) });
+await nip98(`${API}/${id5p}/join`, arbiterSk, { method: "POST", body: JSON.stringify({ role: "arbiter" }) });
+await nip98(`${API}/${id5p}/lock`, sellerSk, { method: "POST", body: JSON.stringify({ notes: "ECASH_PAYOUT_TEST", mode: "manual" }) });
+await nip98(`${API}/${id5p}/approve`, buyerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) });
+await nip98(`${API}/${id5p}/approve`, sellerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) });
+await nip98(`${API}/${id5p}/claim`, buyerSk, { method: "POST", body: "{}" });
+
+// Payout requires CLAIMED status — our manual lock claim already returned notes directly
+// so payout is only for webln-locked escrows. Verify the endpoint rejects bad state.
+const payoutBadInvoice = await nip98(`${API}/${id5p}/payout`, buyerSk, { method: "POST", body: JSON.stringify({ invoice: "not-a-bolt11" }) });
+// Status is already past CLAIMED for manual lock, but check the endpoint exists and validates
+ok(!!payoutBadInvoice.error, "Payout validates invoice format or state", payoutBadInvoice);
+
+// Payout on non-claimed escrow
+const payoutWrongState = await nip98(`${API}/${id1}/payout`, buyerSk, { method: "POST", body: JSON.stringify({ invoice: "lnbc1000n1test" }) });
+ok(!!payoutWrongState.error, "Payout on wrong state → rejected", payoutWrongState);
+
+console.log("");
+
+// ═══ TEST 6: Edge Cases ═══
+console.log("═══ TEST 6: Edge Cases ═══");
+
 const noCom = await nip98(API, sellerSk, { method: "POST", body: JSON.stringify({ amountMsats: 10000, terms: "some terms" }) });
 ok(!!noCom.error, "No community link → rejected", noCom);
 
@@ -146,57 +193,54 @@ ok(!!noTerms.error, "No terms → rejected", noTerms);
 const noAuth = await (await fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })).json();
 ok(!!noAuth.error, "No auth → rejected", noAuth);
 
-// Create edge-case escrow
-const e5 = await nip98(API, sellerSk, { method: "POST", body: JSON.stringify({ amountMsats: 10000000, description: "Edge test", terms: "Edge case terms here", communityLink: COMMUNITY }) });
-const id5 = e5.id;
+const e6 = await nip98(API, sellerSk, { method: "POST", body: JSON.stringify({ amountMsats: 10000000, description: "Edge test", terms: "Edge case terms here", communityLink: COMMUNITY }) });
+const id6 = e6.id;
 
-ok(!!(await nip98(`${API}/${id5}/join`, sellerSk, { method: "POST", body: JSON.stringify({ role: "buyer" }) })).error, "Seller can't self-join", {});
-ok(!!(await nip98(`${API}/${id5}/lock`, sellerSk, { method: "POST", body: JSON.stringify({ notes: "TEST123456", mode: "manual" }) })).error, "Lock before all join → rejected", {});
+ok(!!(await nip98(`${API}/${id6}/join`, sellerSk, { method: "POST", body: JSON.stringify({ role: "buyer" }) })).error, "Seller can't self-join", {});
+ok(!!(await nip98(`${API}/${id6}/lock`, sellerSk, { method: "POST", body: JSON.stringify({ notes: "TEST123456", mode: "manual" }) })).error, "Lock before all join → rejected", {});
 
-await nip98(`${API}/${id5}/join`, buyerSk, { method: "POST", body: JSON.stringify({ role: "buyer" }) });
-await nip98(`${API}/${id5}/join`, arbiterSk, { method: "POST", body: JSON.stringify({ role: "arbiter" }) });
+await nip98(`${API}/${id6}/join`, buyerSk, { method: "POST", body: JSON.stringify({ role: "buyer" }) });
+await nip98(`${API}/${id6}/join`, arbiterSk, { method: "POST", body: JSON.stringify({ role: "arbiter" }) });
 
-ok(!!(await nip98(`${API}/${id5}/lock`, buyerSk, { method: "POST", body: JSON.stringify({ notes: "STOLEN12345", mode: "manual" }) })).error, "Buyer can't lock", {});
+ok(!!(await nip98(`${API}/${id6}/lock`, buyerSk, { method: "POST", body: JSON.stringify({ notes: "STOLEN12345", mode: "manual" }) })).error, "Buyer can't lock", {});
 
-await nip98(`${API}/${id5}/lock`, sellerSk, { method: "POST", body: JSON.stringify({ notes: "ECASH_EDGE_12345", mode: "manual" }) });
+await nip98(`${API}/${id6}/lock`, sellerSk, { method: "POST", body: JSON.stringify({ notes: "ECASH_EDGE_12345", mode: "manual" }) });
 
-ok(!!(await nip98(`${API}/${id5}/approve`, sellerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) })).error, "Seller blocked before buyer", {});
-ok(!!(await nip98(`${API}/${id5}/approve`, arbiterSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) })).error, "Arbiter blocked before both", {});
-ok(!!(await nip98(`${API}/${id5}/approve`, buyerSk, { method: "POST", body: JSON.stringify({ outcome: "refund" }) })).error, "Buyer can't vote refund", {});
-ok(!!(await nip98(`${API}/${id5}/approve`, randoSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) })).error, "Rando can't vote", {});
+ok(!!(await nip98(`${API}/${id6}/approve`, sellerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) })).error, "Seller blocked before buyer", {});
+ok(!!(await nip98(`${API}/${id6}/approve`, arbiterSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) })).error, "Arbiter blocked before both", {});
+ok(!!(await nip98(`${API}/${id6}/approve`, buyerSk, { method: "POST", body: JSON.stringify({ outcome: "refund" }) })).error, "Buyer can't vote refund", {});
+ok(!!(await nip98(`${API}/${id6}/approve`, randoSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) })).error, "Rando can't vote", {});
 
-await nip98(`${API}/${id5}/approve`, buyerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) });
-ok(!!(await nip98(`${API}/${id5}/approve`, buyerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) })).error, "Double vote rejected", {});
-ok(!!(await nip98(`${API}/${id5}/approve`, arbiterSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) })).error, "Arbiter blocked (only buyer voted)", {});
+await nip98(`${API}/${id6}/approve`, buyerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) });
+ok(!!(await nip98(`${API}/${id6}/approve`, buyerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) })).error, "Double vote rejected", {});
+ok(!!(await nip98(`${API}/${id6}/approve`, arbiterSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) })).error, "Arbiter blocked (only buyer voted)", {});
 
-const v5s = await nip98(`${API}/${id5}/approve`, sellerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) });
-ok(v5s.resolved && v5s.winner === "buyer", "Seller agrees → resolved", v5s);
+const v6s = await nip98(`${API}/${id6}/approve`, sellerSk, { method: "POST", body: JSON.stringify({ outcome: "release" }) });
+ok(v6s.resolved && v6s.winner === "buyer", "Seller agrees → resolved", v6s);
 
-ok(!!(await nip98(`${API}/${id5}/claim`, sellerSk, { method: "POST", body: "{}" })).error, "Wrong party can't claim", {});
+ok(!!(await nip98(`${API}/${id6}/claim`, sellerSk, { method: "POST", body: "{}" })).error, "Wrong party can't claim", {});
 
 const list = await nip98(API, sellerSk);
 ok(Array.isArray(list) && list.length >= 5, `List returns ${list.length} escrows`, {});
 
-// WebLN lock without preimage
-const e5w = await nip98(API, sellerSk, { method: "POST", body: JSON.stringify({ amountMsats: 5000000, description: "bad webln", terms: "test test test", communityLink: COMMUNITY }) });
-await nip98(`${API}/${e5w.id}/join`, buyerSk, { method: "POST", body: JSON.stringify({ role: "buyer" }) });
-await nip98(`${API}/${e5w.id}/join`, arbiterSk, { method: "POST", body: JSON.stringify({ role: "arbiter" }) });
-ok(!!(await nip98(`${API}/${e5w.id}/lock`, sellerSk, { method: "POST", body: JSON.stringify({ mode: "webln" }) })).error, "WebLN lock without preimage → rejected", {});
-
-// Invoice only for seller
-ok(!!(await nip98(`${API}/${e5w.id}/invoice`, buyerSk)).error, "Buyer can't get lock invoice", {});
+// WebLN lock without pending invoice
+const e6w = await nip98(API, sellerSk, { method: "POST", body: JSON.stringify({ amountMsats: 5000000, description: "no invoice", terms: "test test test", communityLink: COMMUNITY }) });
+await nip98(`${API}/${e6w.id}/join`, buyerSk, { method: "POST", body: JSON.stringify({ role: "buyer" }) });
+await nip98(`${API}/${e6w.id}/join`, arbiterSk, { method: "POST", body: JSON.stringify({ role: "arbiter" }) });
+ok(!!(await nip98(`${API}/${e6w.id}/lock`, sellerSk, { method: "POST", body: JSON.stringify({ mode: "webln" }) })).error, "WebLN lock without invoice → rejected", {});
 
 console.log("");
 
 // ═══ Summary ═══
-console.log("===========================================");
+console.log("==============================================");
 console.log(`  ${passed + failed} tests: ${passed} passed, ${failed} failed`);
-console.log("===========================================");
-console.log("  AUTH: NIP-98 Schnorr (real signatures)");
-console.log("  STORAGE: SQLite + AES-256-GCM encryption");
-console.log("  LOCK MODES: manual + webln");
-console.log("  HARDENING: rate limit, expiry, CORS-ready");
-console.log("===========================================\n");
+console.log("==============================================");
+console.log(`  AUTH: NIP-98 Schnorr (real secp256k1)`);
+console.log(`  DB:   SQLite + AES-256-GCM encryption`);
+console.log(`  LOCK: ${fmConnected ? "fedimint-clientd (WebLN)" : "manual (fedimint-clientd offline)"}`);
+console.log(`  PAY:  ${fmConnected ? "fedimint-clientd LN payout" : "direct notes (dev)"}`);
+console.log(`  HARDENING: rate limit, expiry, CORS-ready`);
+console.log("==============================================\n");
 
 if (failed > 0) process.exit(1);
 

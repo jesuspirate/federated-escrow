@@ -1,15 +1,13 @@
-// src/routes/ecash-escrow.ts — Production-hardened API routes
+// src/routes/ecash-escrow.ts — v5.0 with fedimint-clientd integration
 //
-// v4.0 changes:
-//   - WebLN lock flow: server generates BOLT-11 invoice, seller pays via WebLN
-//   - Manual lock fallback (dev/testing): paste notes but amount is still checked
-//   - Rate limiting per pubkey
-//   - Expiry sweep on every request cycle
-//   - EXPIRED status handling
+// Lock flow:  GET /invoice → seller pays via WebLN → POST /lock (confirms)
+// Claim flow: POST /claim → POST /payout (winner submits invoice, server pays)
+// Manual fallback for dev testing (NODE_ENV !== 'production')
 
 import { Router, Request, Response, NextFunction } from "express";
 import { verifyEvent } from "nostr-tools/pure";
 import * as DB from "../db";
+import * as FM from "../fedimint";
 
 type Role = "buyer" | "seller" | "arbiter";
 type Outcome = "release" | "refund";
@@ -42,7 +40,6 @@ function rateLimit(req: AuthenticatedRequest, res: Response, next: NextFunction)
 // ── NIP-98 Auth Middleware ────────────────────────────────────────────────
 
 function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  // Sweep expired escrows on each request cycle (cheap, SQLite is fast)
   DB.processExpiredEscrows();
 
   const authHeader = req.headers.authorization;
@@ -132,11 +129,27 @@ function formatExpiry(ms: number | null): string | null {
   return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
 }
 
+// ── In-memory invoice tracking ────────────────────────────────────────────
+const pendingInvoices = new Map<string, { invoice: string; operationId: string; createdAt: number }>();
+
 // ── Router ────────────────────────────────────────────────────────────────
 
 const router = Router();
 router.use(extractPubkey);
 router.use(rateLimit);
+
+// ── GET /health — Fedimint connectivity check ────────────────────────────
+
+router.get("/health", async (_req: AuthenticatedRequest, res: Response) => {
+  const fmAvailable = await FM.isClientdAvailable();
+  const walletInfo = fmAvailable ? await FM.getWalletInfo() : null;
+  res.json({
+    server: "ok",
+    fedimintClientd: fmAvailable ? "connected" : "unavailable",
+    walletBalance: walletInfo?.totalAmountMsat || null,
+    lockMode: fmAvailable ? "webln (fedimint-clientd)" : "manual (dev only)",
+  });
+});
 
 // ── POST / — Create ──────────────────────────────────────────────────────
 
@@ -148,9 +161,9 @@ router.post("/", (req: AuthenticatedRequest, res: Response) => {
     if (!amountMsats || typeof amountMsats !== "number" || amountMsats <= 0)
       return res.status(400).json({ error: "amountMsats is required (positive integer)" });
     if (!terms || typeof terms !== "string" || terms.trim().length < 5)
-      return res.status(400).json({ error: "Trade terms are required (minimum 5 characters). Describe what you expect from the buyer." });
+      return res.status(400).json({ error: "Trade terms are required (minimum 5 characters)." });
     if (!communityLink || !isValidCommunityLink(communityLink))
-      return res.status(400).json({ error: 'communityLink is required and must be a valid Fedi community link (format: "fedi:room:!roomId:federation.domain:::"). This is the public group where trade parties can find each other.' });
+      return res.status(400).json({ error: 'communityLink is required (format: "fedi:room:!roomId:federation.domain:::").' });
 
     const federationId = extractFederationId(communityLink);
     if (!federationId) return res.status(400).json({ error: "Could not extract federation ID from community link" });
@@ -164,7 +177,6 @@ router.post("/", (req: AuthenticatedRequest, res: Response) => {
       seller: { pubkey: truncPk(pk), npub: hexToNpub(pk) },
       createdAt: row.created_at, expiresIn: formatExpiry(row.expires_at), yourRole: "seller",
       nextStep: "Share the escrow ID in your Fedi community chat. Buyer and arbiter need to join.",
-      disclaimer: "⚠️ This escrow holds real e-cash (backed by Bitcoin). All parties should join the community chat and communicate evidence there. Trades are irreversible once claimed. Act carefully and honestly.",
     });
   } catch (err: any) { console.error("POST / error:", err); res.status(500).json({ error: err.message }); }
 });
@@ -200,7 +212,7 @@ router.post("/:id/join", (req: AuthenticatedRequest, res: Response) => {
       participants: { seller: truncPk(updated.seller_pubkey), buyer: updated.buyer_pubkey ? truncPk(updated.buyer_pubkey) : null, arbiter: updated.arbiter_pubkey ? truncPk(updated.arbiter_pubkey) : null },
       allJoined: updated.status === "FUNDED",
       message: updated.status === "FUNDED"
-        ? "All parties have joined! Seller can now lock e-cash notes. Arbiter: create a private Fedi group and pull in the buyer and seller."
+        ? "All parties have joined! Seller: tap Lock to pay the escrow invoice."
         : `Joined as ${role}. Waiting for ${!updated.buyer_pubkey ? "buyer" : ""}${!updated.buyer_pubkey && !updated.arbiter_pubkey ? " and " : ""}${!updated.arbiter_pubkey ? "arbiter" : ""} to join.`,
     });
   } catch (err: any) { console.error("POST /join error:", err); res.status(500).json({ error: err.message }); }
@@ -245,24 +257,44 @@ router.get("/:id", (req: AuthenticatedRequest, res: Response) => {
   });
 });
 
-// ── POST /:id/lock — WebLN or manual lock ────────────────────────────────
-//
-// Two lock modes:
-//
-// 1. WebLN (production in Fedi):
-//    POST { mode: "webln", preimage: "..." }
-//    Frontend calls webln.sendPayment(invoice) → gets preimage → sends here.
-//    Server generated the invoice earlier (GET /:id/invoice), so it can verify
-//    the preimage matches and amount is correct.
-//
-// 2. Manual (dev/testing):
-//    POST { notes: "ECASH_NOTES...", mode: "manual" }
-//    Accepts raw e-cash note strings. Amount not cryptographically verified
-//    but logged for audit. Use for dev testing only.
-//
-// In both cases, only the seller can lock.
+// ── GET /:id/invoice — Generate BOLT-11 via fedimint-clientd ─────────────
 
-router.post("/:id/lock", (req: AuthenticatedRequest, res: Response) => {
+router.get("/:id/invoice", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const row = DB.getEscrow(req.params.id);
+    if (!row) return res.status(404).json({ error: "Escrow not found" });
+    if (isExpired(row)) return res.status(400).json({ error: "This escrow has expired" });
+    if (row.status !== "FUNDED") return res.status(400).json({ error: `Cannot generate invoice in ${row.status} state` });
+
+    const pk = req.pubkey!;
+    if (getRoleByPubkey(row, pk) !== "seller") return res.status(403).json({ error: "Only the seller can request the lock invoice" });
+
+    const fmAvailable = await FM.isClientdAvailable();
+    if (!fmAvailable) {
+      if (process.env.NODE_ENV === "production") {
+        return res.status(503).json({ error: "Fedimint payment service unavailable. Try again later." });
+      }
+      return res.json({
+        escrowId: row.id, amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
+        invoice: null, mode: "manual",
+        message: "fedimint-clientd not available. Use manual lock (POST /lock with notes).",
+      });
+    }
+
+    const { invoice, operationId } = await FM.createLockInvoice(row.id, row.amount_msats);
+    pendingInvoices.set(row.id, { invoice, operationId, createdAt: Date.now() });
+
+    res.json({
+      escrowId: row.id, amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
+      invoice, mode: "webln", expiresIn: formatExpiry(row.expires_at),
+      instructions: "Pay this invoice in Fedi. The app will handle it automatically via WebLN.",
+    });
+  } catch (err: any) { console.error("GET /invoice error:", err); res.status(500).json({ error: err.message }); }
+});
+
+// ── POST /:id/lock ───────────────────────────────────────────────────────
+
+router.post("/:id/lock", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const row = DB.getEscrow(req.params.id);
     if (!row) return res.status(404).json({ error: "Escrow not found" });
@@ -280,25 +312,29 @@ router.post("/:id/lock", (req: AuthenticatedRequest, res: Response) => {
     const mode = req.body.mode || "manual";
 
     if (mode === "webln") {
-      // WebLN lock: seller paid a BOLT-11 invoice, sends preimage as proof
-      const { preimage } = req.body;
-      if (!preimage || typeof preimage !== "string" || preimage.length < 32)
-        return res.status(400).json({ error: "WebLN lock requires a valid preimage from the payment" });
+      const pending = pendingInvoices.get(row.id);
+      if (!pending) {
+        return res.status(400).json({ error: "No pending invoice. Call GET /:id/invoice first, then pay it via WebLN." });
+      }
 
-      // Store a receipt token as the "notes" — the actual e-cash was absorbed by the server's LN node.
-      // On claim, the server will pay out to the winner via a new invoice.
+      const { paid } = await FM.awaitLockPayment(pending.operationId);
+      if (!paid) {
+        return res.status(402).json({ error: "Invoice not yet paid. Complete the payment in Fedi first." });
+      }
+
       const receipt = JSON.stringify({
         type: "webln_receipt",
         escrowId: row.id,
         amountMsats: row.amount_msats,
-        preimage,
+        operationId: pending.operationId,
         lockedAt: Date.now(),
         sellerPubkey: pk,
       });
 
-      DB.lockNotes(row.id, receipt, "webln", preimage);
+      DB.lockNotes(row.id, receipt, "webln", pending.operationId);
+      pendingInvoices.delete(row.id);
+
     } else {
-      // Manual lock: raw e-cash notes (dev/testing)
       const { notes } = req.body;
       if (!notes || typeof notes !== "string" || notes.length < 10)
         return res.status(400).json({ error: "Invalid e-cash notes string (minimum 10 chars)" });
@@ -314,50 +350,9 @@ router.post("/:id/lock", (req: AuthenticatedRequest, res: Response) => {
       id: updated.id, status: updated.status, lockedAt: updated.locked_at,
       lockMode: updated.lock_mode, amountMsats: updated.amount_msats,
       expiresIn: formatExpiry(updated.expires_at),
-      message: "E-cash notes locked in escrow. Buyer: complete your side of the trade, then vote. Communicate proof of payment in your private Fedi group chat.",
+      message: "E-cash locked in escrow. Buyer: complete your side of the trade, then vote to release.",
     });
   } catch (err: any) { console.error("POST /lock error:", err); res.status(500).json({ error: err.message }); }
-});
-
-// ── GET /:id/invoice — Generate BOLT-11 for WebLN lock ───────────────────
-//
-// Returns a BOLT-11 invoice for the exact escrow amount.
-// The seller's Fedi wallet pays this via webln.sendPayment(invoice).
-//
-// NOTE: This requires a Lightning backend (LND, CLN, or LNbits).
-// Currently returns a placeholder — integrate with your LN node.
-
-router.get("/:id/invoice", (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const row = DB.getEscrow(req.params.id);
-    if (!row) return res.status(404).json({ error: "Escrow not found" });
-    if (isExpired(row)) return res.status(400).json({ error: "This escrow has expired" });
-    if (row.status !== "FUNDED") return res.status(400).json({ error: `Cannot generate invoice in ${row.status} state` });
-
-    const pk = req.pubkey!;
-    if (getRoleByPubkey(row, pk) !== "seller") return res.status(403).json({ error: "Only the seller can request the lock invoice" });
-
-    const amountSats = Math.floor(row.amount_msats / 1000);
-
-    // TODO: Replace with real LN invoice generation
-    // Example with LNbits:
-    //   const inv = await fetch(`${LNBITS_URL}/api/v1/payments`, {
-    //     method: "POST", headers: { "X-Api-Key": LNBITS_INVOICE_KEY },
-    //     body: JSON.stringify({ out: false, amount: amountSats, memo: `Escrow ${row.id} lock` })
-    //   }).then(r => r.json());
-    //   return res.json({ invoice: inv.payment_request, amountSats, ... });
-
-    res.json({
-      escrowId: row.id,
-      amountMsats: row.amount_msats,
-      amountSats,
-      // Placeholder — replace with real invoice in production
-      invoice: `lnbc${amountSats}n1_PLACEHOLDER_REPLACE_WITH_REAL_LN_INVOICE`,
-      memo: `Escrow ${row.id} — lock ${amountSats} sats`,
-      expiresIn: formatExpiry(row.expires_at),
-      instructions: "Pay this invoice using webln.sendPayment(invoice). Send the preimage to POST /:id/lock with mode='webln'.",
-    });
-  } catch (err: any) { console.error("GET /invoice error:", err); res.status(500).json({ error: err.message }); }
 });
 
 // ── POST /:id/approve ────────────────────────────────────────────────────
@@ -384,12 +379,12 @@ router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
     const sellerVote = votes.find(v => v.role === "seller");
 
     if (role === "buyer" && outcome !== "release")
-      return res.status(400).json({ error: 'Buyer can only vote "release". You are confirming you completed your side of the trade. Communicate any issues in the Fedi group chat.' });
+      return res.status(400).json({ error: 'Buyer can only vote "release".' });
     if (role === "seller" && !buyerVote)
-      return res.status(403).json({ error: "Buyer must vote first. The buyer confirms they completed their side before the seller can respond." });
+      return res.status(403).json({ error: "Buyer must vote first." });
     if (role === "arbiter") {
       if (!buyerVote || !sellerVote)
-        return res.status(403).json({ error: `Arbiter can only vote after both buyer and seller. Currently: buyer ${buyerVote ? "voted" : "pending"}, seller ${sellerVote ? "voted" : "pending"}.` });
+        return res.status(403).json({ error: `Arbiter can only vote after both buyer and seller. Buyer ${buyerVote ? "voted" : "pending"}, seller ${sellerVote ? "voted" : "pending"}.` });
       if (buyerVote.outcome === sellerVote.outcome)
         return res.status(400).json({ error: "Buyer and seller agree — no dispute to arbitrate." });
     }
@@ -407,8 +402,8 @@ router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
       votes: { release: tally.releaseCount, refund: tally.refundCount, voters: updatedVotes.map(v => ({ role: v.role, outcome: v.outcome })) },
       resolved: !!tally.outcome, resolvedOutcome: tally.outcome, winner,
       message: tally.outcome
-        ? `Escrow resolved: ${tally.outcome} to ${winner}. ${winner} can now claim the notes.`
-        : `Vote recorded. ${tally.releaseCount} for release, ${tally.refundCount} for refund. Need 2-of-3 to resolve.`,
+        ? `Escrow resolved: ${tally.outcome} to ${winner}. ${winner} can now claim.`
+        : `Vote recorded. ${tally.releaseCount} for release, ${tally.refundCount} for refund. Need 2-of-3.`,
     });
   } catch (err: any) { console.error("POST /approve error:", err); res.status(500).json({ error: err.message }); }
 });
@@ -420,17 +415,27 @@ router.post("/:id/claim", (req: AuthenticatedRequest, res: Response) => {
     const row = DB.getEscrow(req.params.id);
     if (!row) return res.status(404).json({ error: "Escrow not found" });
 
-    // Allow claiming EXPIRED escrows if they were LOCKED (seller gets refund)
+    // Expired + locked → seller reclaims
     if (row.status === "EXPIRED" && row.locked_notes) {
       const pk = req.pubkey!;
       if (getRoleByPubkey(row, pk) !== "seller")
-        return res.status(403).json({ error: "Only the seller can reclaim notes from an expired escrow" });
+        return res.status(403).json({ error: "Only the seller can reclaim from an expired escrow" });
+
       const notes = DB.claimEscrow(row.id, "seller");
       if (!notes) return res.status(500).json({ error: "No notes found" });
-      return res.json({
-        id: row.id, status: "CLAIMED", claimedBy: "seller", notes,
-        message: "Escrow expired — notes returned to seller.",
-      });
+
+      let isWebln = false;
+      try { isWebln = JSON.parse(notes).type === "webln_receipt"; } catch {}
+
+      if (isWebln) {
+        return res.json({
+          id: row.id, status: "CLAIMED", claimedBy: "seller",
+          payoutReady: true, amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
+          message: "Escrow expired. Tap Receive to get your sats back.",
+          nextStep: "POST /:id/payout with your invoice",
+        });
+      }
+      return res.json({ id: row.id, status: "CLAIMED", claimedBy: "seller", notes, message: "Escrow expired — notes returned." });
     }
 
     if (row.status !== "APPROVED") return res.status(400).json({ error: `Cannot claim in ${row.status} state` });
@@ -445,23 +450,68 @@ router.post("/:id/claim", (req: AuthenticatedRequest, res: Response) => {
     const notes = DB.claimEscrow(row.id, role);
     if (!notes) return res.status(500).json({ error: "No notes found in escrow" });
 
-    // If WebLN mode, the "notes" is a receipt — the server needs to pay out via LN
-    let payoutInstructions: string | undefined;
-    try {
-      const parsed = JSON.parse(notes);
-      if (parsed.type === "webln_receipt") {
-        payoutInstructions = "This escrow was locked via WebLN. Generate an invoice with webln.makeInvoice() and submit it to POST /:id/payout for the server to pay you.";
-      }
-    } catch { /* not JSON = raw e-cash notes, return as-is */ }
+    let isWebln = false;
+    try { isWebln = JSON.parse(notes).type === "webln_receipt"; } catch {}
+
+    if (isWebln) {
+      return res.json({
+        id: row.id, status: "CLAIMED", claimedBy: role,
+        payoutReady: true, amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
+        message: "Escrow resolved in your favor! Tap Receive to generate an invoice — server pays you immediately.",
+        nextStep: "POST /:id/payout with { invoice: '<BOLT-11>' }",
+      });
+    }
+
+    res.json({ id: row.id, status: "CLAIMED", claimedBy: role, notes, message: "E-cash notes claimed." });
+  } catch (err: any) { console.error("POST /claim error:", err); res.status(500).json({ error: err.message }); }
+});
+
+// ── POST /:id/payout — Pay the winner via LN ────────────────────────────
+//
+// Winner calls webln.makeInvoice({ amount }) in Fedi to generate a receive
+// invoice, then the app submits it here. Server pays via fedimint-clientd.
+
+router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const row = DB.getEscrow(req.params.id);
+    if (!row) return res.status(404).json({ error: "Escrow not found" });
+    if (row.status !== "CLAIMED") return res.status(400).json({ error: `Cannot payout in ${row.status} state` });
+
+    const pk = req.pubkey!;
+    const role = getRoleByPubkey(row, pk);
+    const expectedWinner = row.resolved_outcome === "release" ? "buyer" : "seller";
+    // Also allow seller on expired escrows
+    if (role !== expectedWinner && !(row.resolved_outcome === "refund" && role === "seller")) {
+      return res.status(403).json({ error: "Only the winning party can request payout" });
+    }
+
+    const { invoice } = req.body;
+    if (!invoice || typeof invoice !== "string" || !invoice.startsWith("ln")) {
+      return res.status(400).json({ error: "A valid BOLT-11 invoice is required. In Fedi, the app generates this automatically." });
+    }
+
+    const fmAvailable = await FM.isClientdAvailable();
+    if (!fmAvailable) {
+      return res.status(503).json({ error: "Fedimint payment service unavailable. Try again later." });
+    }
+
+    const payment = await FM.payoutToWinner(invoice);
+    if (!payment.success) {
+      return res.status(500).json({ error: `Payout failed: ${payment.error}` });
+    }
+
+    const result = await FM.awaitPayout(payment.operationId!);
+    if (!result.success) {
+      return res.status(500).json({ error: "Payout initiated but confirmation timed out. Check your Fedi wallet." });
+    }
 
     res.json({
-      id: row.id, status: "CLAIMED", claimedBy: role, notes: payoutInstructions ? undefined : notes,
-      ...(payoutInstructions && { payoutInstructions, amountMsats: row.amount_msats }),
-      message: payoutInstructions
-        ? `Escrow resolved in your favor. ${payoutInstructions}`
-        : `E-cash notes claimed by ${role}. Call wallet.mint.reissueExternalNotes(notes) to absorb into your wallet.`,
+      id: row.id, status: "PAID_OUT",
+      amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
+      preimage: result.preimage,
+      message: "Payout complete! Sats sent to your Fedi wallet.",
     });
-  } catch (err: any) { console.error("POST /claim error:", err); res.status(500).json({ error: err.message }); }
+  } catch (err: any) { console.error("POST /payout error:", err); res.status(500).json({ error: err.message }); }
 });
 
 export default router;
