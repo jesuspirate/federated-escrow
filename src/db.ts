@@ -245,5 +245,9 @@ export function claimEscrow(id: string, claimedBy: string): string | null {
   return notes;
 }
 
+export function completeEscrow(id: string): void {
+  stmts.updateStatus.run({ id, status: "COMPLETED", updated_at: Date.now() });
+}
+
 export function closeDb(): void { db.close(); }
 export default db;

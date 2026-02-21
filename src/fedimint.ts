@@ -147,8 +147,8 @@ export async function awaitLockPayment(operationId: string): Promise<{
   paid: boolean;
 }> {
   try {
-    // fedimint-cli module ln await-invoice <operation_id>
-    await fmLong("module", "ln", "await-invoice", operationId);
+    // fedimint-cli await-invoice <operation_id> (top-level, not under module ln)
+    await fmLong("await-invoice", operationId);
     return { paid: true };
   } catch (err: any) {
     console.error("awaitLockPayment failed:", err.message);
@@ -187,8 +187,8 @@ export async function awaitPayout(operationId: string): Promise<{
   preimage?: string;
 }> {
   try {
-    // fedimint-cli module ln await-pay <operation_id>
-    const result = await fmLong("module", "ln", "await-pay", operationId);
+    // fedimint-cli await-ln-pay <operation_id> (top-level, not under module ln)
+    const result = await fmLong("await-ln-pay", operationId);
     return { success: true, preimage: result?.preimage };
   } catch (err: any) {
     console.error("awaitPayout failed:", err.message);

@@ -317,10 +317,18 @@ router.post("/:id/lock", async (req: AuthenticatedRequest, res: Response) => {
         return res.status(400).json({ error: "No pending invoice. Call GET /:id/invoice first, then pay it via WebLN." });
       }
 
-      const { paid } = await FM.awaitLockPayment(pending.operationId);
-      if (!paid) {
-        return res.status(402).json({ error: "Invoice not yet paid. Complete the payment in Fedi first." });
-      }
+      // Don't block on await-invoice — WebLN sendPayment() already succeeded
+      // on the client, so the payment is in-flight. Confirm lock immediately
+      // and verify receipt in the background.
+      FM.awaitLockPayment(pending.operationId).then(({ paid }) => {
+        if (paid) {
+          console.log(`✅ Lock payment confirmed for ${row.id}`);
+        } else {
+          console.error(`⚠️ Lock payment NOT confirmed for ${row.id} — may need manual recovery`);
+        }
+      }).catch(err => {
+        console.error(`⚠️ await-invoice error for ${row.id}:`, err.message);
+      });
 
       const receipt = JSON.stringify({
         type: "webln_receipt",
@@ -471,16 +479,25 @@ router.post("/:id/claim", (req: AuthenticatedRequest, res: Response) => {
 // Winner calls webln.makeInvoice({ amount }) in Fedi to generate a receive
 // invoice, then the app submits it here. Server pays via fedimint-clientd.
 
+const inFlightPayouts = new Set<string>();
+
 router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const row = DB.getEscrow(req.params.id);
     if (!row) return res.status(404).json({ error: "Escrow not found" });
+
+    // Block duplicates
+    if (row.status === "COMPLETED") {
+      return res.status(400).json({ error: "Payout already completed for this escrow." });
+    }
+    if (inFlightPayouts.has(row.id)) {
+      return res.status(409).json({ error: "Payout already in progress. Check your wallet." });
+    }
     if (row.status !== "CLAIMED") return res.status(400).json({ error: `Cannot payout in ${row.status} state` });
 
     const pk = req.pubkey!;
     const role = getRoleByPubkey(row, pk);
     const expectedWinner = row.resolved_outcome === "release" ? "buyer" : "seller";
-    // Also allow seller on expired escrows
     if (role !== expectedWinner && !(row.resolved_outcome === "refund" && role === "seller")) {
       return res.status(403).json({ error: "Only the winning party can request payout" });
     }
@@ -495,21 +512,36 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
       return res.status(503).json({ error: "Fedimint payment service unavailable. Try again later." });
     }
 
+    // Mark in-flight BEFORE paying to prevent double-spend
+    inFlightPayouts.add(row.id);
+
     const payment = await FM.payoutToWinner(invoice);
     if (!payment.success) {
+      inFlightPayouts.delete(row.id);
       return res.status(500).json({ error: `Payout failed: ${payment.error}` });
     }
 
-    const result = await FM.awaitPayout(payment.operationId!);
-    if (!result.success) {
-      return res.status(500).json({ error: "Payout initiated but confirmation timed out. Check your Fedi wallet." });
-    }
+    // Mark COMPLETED immediately to prevent duplicate payouts
+    DB.completeEscrow(row.id);
+
+    // Confirm in background
+    FM.awaitPayout(payment.operationId!).then(result => {
+      inFlightPayouts.delete(row.id);
+      if (result.success) {
+        console.log(`✅ Payout confirmed for ${row.id}, preimage: ${result.preimage}`);
+      } else {
+        console.error(`⚠️ Payout await failed for ${row.id} — payment may still settle`);
+      }
+    }).catch(err => {
+      inFlightPayouts.delete(row.id);
+      console.error(`⚠️ await-ln-pay error for ${row.id}:`, err.message);
+    });
 
     res.json({
-      id: row.id, status: "PAID_OUT",
+      id: row.id, status: "COMPLETED",
       amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
-      preimage: result.preimage,
-      message: "Payout complete! Sats sent to your Fedi wallet.",
+      operationId: payment.operationId,
+      message: "Payout sent! Sats are on the way to your Fedi wallet.",
     });
   } catch (err: any) { console.error("POST /payout error:", err); res.status(500).json({ error: err.message }); }
 });

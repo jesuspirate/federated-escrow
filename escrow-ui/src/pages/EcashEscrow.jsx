@@ -107,6 +107,7 @@ const STATUS = {
   LOCKED:   { color: "#f59e0b", bg: "rgba(245,158,11,0.12)", label: "Funds locked" },
   APPROVED: { color: "#3b82f6", bg: "rgba(59,130,246,0.12)", label: "Resolved" },
   CLAIMED:  { color: "#10b981", bg: "rgba(16,185,129,0.12)", label: "Claimed" },
+  COMPLETED:{ color: "#059669", bg: "rgba(5,150,105,0.12)", label: "Complete ✓" },
   EXPIRED:  { color: "#ef4444", bg: "rgba(239,68,68,0.12)", label: "Expired" },
 };
 
@@ -490,9 +491,15 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         if (inv.error) throw new Error(inv.error);
 
         if (inv.mode === "webln" && inv.invoice) {
-          await window.webln.enable();
-          showToast("Confirm payment in Fedi\u2026");
-          await window.webln.sendPayment(inv.invoice);
+          try {
+            await window.webln.enable();
+            showToast("Confirm payment in Fedi\u2026");
+            await window.webln.sendPayment(inv.invoice);
+          } catch (wlnErr) {
+            showToast("Payment cancelled — tap Lock to try again", "error");
+            setLoading(false);
+            return;
+          }
 
           const lock = await api(`/${e.id}/lock`, { method: "POST", body: JSON.stringify({ mode: "webln" }) });
           if (lock.error) throw new Error(lock.error);
@@ -526,25 +533,44 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const handleClaim = async () => {
     setLoading(true);
     try {
-      const claim = await api(`/${e.id}/claim`, { method: "POST" });
-      if (claim.error) throw new Error(claim.error);
+      let amountSats = Math.floor((e.amountMsats || 0) / 1000);
+      let payoutReady = false;
+      let notes = null;
 
-      if (claim.payoutReady) {
+      // If already CLAIMED, skip the claim call — go straight to payout
+      if (status === "CLAIMED") {
+        payoutReady = true;
+        amountSats = Math.floor((e.amountMsats || 0) / 1000);
+      } else {
+        const claim = await api(`/${e.id}/claim`, { method: "POST" });
+        if (claim.error) throw new Error(claim.error);
+        payoutReady = claim.payoutReady;
+        amountSats = claim.amountSats || amountSats;
+        notes = claim.notes;
+      }
+
+      if (payoutReady) {
         let invoice;
         if (window.webln) {
-          await window.webln.enable();
-          const result = await window.webln.makeInvoice({ amount: claim.amountSats });
-          invoice = result.paymentRequest;
+          try {
+            await window.webln.enable();
+            const result = await window.webln.makeInvoice({ amount: amountSats });
+            invoice = result.paymentRequest;
+          } catch (wlnErr) {
+            showToast("Invoice cancelled — tap Claim to try again", "error");
+            setLoading(false);
+            return;
+          }
         } else {
-          invoice = prompt(`Paste a BOLT-11 invoice for ${claim.amountSats} sats:`);
+          invoice = prompt(`Paste a BOLT-11 invoice for ${amountSats} sats:`);
           if (!invoice) { setLoading(false); return; }
         }
         showToast("Sending payout\u2026");
         const payout = await api(`/${e.id}/payout`, { method: "POST", body: JSON.stringify({ invoice }) });
         if (payout.error) throw new Error(payout.error);
         showToast("Sats received!");
-      } else if (claim.notes) {
-        copy(claim.notes, "E-cash notes");
+      } else if (notes) {
+        copy(notes, "E-cash notes");
         showToast("Notes copied to clipboard");
       } else {
         showToast("Claimed!");
@@ -571,9 +597,11 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const canArbiterVote = status === "LOCKED" && role === "arbiter" && !hasVoted
     && buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome;
 
-  const canClaim = status === "APPROVED" && (
-    (e.resolvedOutcome === "release" && role === "buyer") ||
-    (e.resolvedOutcome === "refund" && role === "seller")
+  const canClaim = (
+    (status === "APPROVED" || status === "CLAIMED") && (
+      (e.resolvedOutcome === "release" && role === "buyer") ||
+      (e.resolvedOutcome === "refund" && role === "seller")
+    )
   );
   const canReclaimExpired = status === "EXPIRED" && role === "seller" && e.lockedAt;
 
@@ -741,6 +769,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         )}
         {status === "CREATED" && (
           <div style={S.waitBanner}><I.Clock /> Waiting for all parties to join\u2026</div>
+        )}
+        {status === "COMPLETED" && (
+          <div style={{ ...S.waitBanner, color: "#059669" }}><I.Check /> Trade complete — sats paid out!</div>
         )}
       </div>
     </div>
