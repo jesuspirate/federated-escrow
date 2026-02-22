@@ -26,7 +26,7 @@ const translations = {
     obFedLimit: "Federation limit: {limit} sats per trade",
 
     // ── List View ────────────────────────────────────────────────
-    escrow: "Escrow",
+    escrow: "Federated Escrow",
     newTrade: "New Trade",
     joinEscrow: "Join Escrow",
     maxPerTrade: "Max {limit} sats per trade",
@@ -150,7 +150,7 @@ const translations = {
     obSkip: "Passer",
     obFedLimit: "Limite de la fédération : {limit} sats par échange",
 
-    escrow: "Séquestre",
+    escrow: "Séquestre Fédéré",
     newTrade: "Nouvel échange",
     joinEscrow: "Rejoindre un séquestre",
     maxPerTrade: "Max {limit} sats par échange",
@@ -266,7 +266,7 @@ const translations = {
     obSkip: "Saltar",
     obFedLimit: "Límite de la federación: {limit} sats por intercambio",
 
-    escrow: "Fideicomiso",
+    escrow: "Fideicomiso Federado",
     newTrade: "Nuevo intercambio",
     joinEscrow: "Unirse a un fideicomiso",
     maxPerTrade: "Máx {limit} sats por intercambio",
