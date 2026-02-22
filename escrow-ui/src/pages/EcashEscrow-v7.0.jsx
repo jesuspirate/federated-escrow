@@ -8,20 +8,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 const API = "/api/ecash-escrows";
 
-// ── Federation Limits ───────────────────────────────────────────────
-// Fedi federation caps. Transactions exceeding these fail at WebLN layer.
-export const FED_LIMITS = {
-  MAX_BALANCE_SATS: 10_000_000,  // 10M sats wallet balance cap
-  MAX_TX_SATS:       2_000_000,  // 2M sats per transaction
-};
-
-function validateAmount(sats) {
-  if (!sats || sats <= 0) return "Enter a valid amount";
-  if (sats > FED_LIMITS.MAX_TX_SATS) return `Exceeds ${FED_LIMITS.MAX_TX_SATS.toLocaleString()} sats federation limit`;
-  if (sats < 100) return "Minimum 100 sats";
-  return null;
-}
-
 // ── Nostr / NIP-98 Auth ─────────────────────────────────────────────
 
 async function getNostrPubkey() {
@@ -208,7 +194,7 @@ function ParticleBurst({ active }) {
   return <canvas ref={ref} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 5 }} />;
 }
 
-function ParticipantNode({ label, IconComp, pkDisplay, joined, voted, voteOutcome, resolvedOutcome, isDispute, delay = 0 }) {
+function ParticipantNode({ label, IconComp, pkDisplay, joined, voted, voteOutcome, delay = 0 }) {
   // Track join transition for glow effect
   const [justJoined, setJustJoined] = useState(false);
   const prevJoined = useRef(joined);
@@ -221,58 +207,31 @@ function ParticipantNode({ label, IconComp, pkDisplay, joined, voted, voteOutcom
     prevJoined.current = joined;
   }, [joined]);
 
-  // ── Badge logic ──────────────────────────────────────────
-  // Badges only appear after resolution (resolvedOutcome is set).
-  //
-  // HAPPY PATH (buyer+seller agree, no arbiter):
-  //   Both buyer & seller get ✓. Arbiter never voted → no badge.
-  //
-  // DISPUTE PATH (buyer≠seller, arbiter breaks tie):
-  //   Arbiter gets ✓ (they resolved it).
-  //   The party whose vote matches resolvedOutcome gets ✓ (winner).
-  //   The party whose vote doesn't match gets ✗ (loser).
-  //   So the visible combo is always: Arbiter ✓ + Winner ✓ + Loser ✗
-  //   NEVER Buyer ✓ + Seller ✓ in a dispute (they disagreed by definition).
-
-  const isResolved = !!resolvedOutcome;
-  let badgeType = null; // null = no badge, "win" = ✓, "lose" = ✗
-
-  if (isResolved && voted) {
-    if (isDispute) {
-      // Dispute: arbiter always wins (they cast the deciding vote)
-      // Other participants: check if their vote matched the outcome
-      badgeType = (voteOutcome === resolvedOutcome) ? "win" : "lose";
-    } else {
-      // Happy path: buyer+seller agreed → both are winners
-      badgeType = "win";
-    }
-  }
-
-  const isWinner = badgeType === "win";
-  const isLoser = badgeType === "lose";
-
-  // ── Visual states ────────────────────────────────────────
-  const ringColor = isWinner ? "#10b981"
-    : isLoser ? "#4b2e14"
-    : voted && !isResolved ? (voteOutcome === "release" ? "#3b82f6" : "#d97706")
+  // Color logic: unjoined → dim | just joined → blue glow | joined → neutral | voted → green/amber
+  const ringColor = voted
+    ? (voteOutcome === "release" ? "#10b981" : "#f59e0b")
     : justJoined ? "#60a5fa"
     : joined ? "#475569"
     : "#1e293b";
 
-  const iconColor = isWinner ? "#6ee7b7"
-    : isLoser ? "#78350f"
+  const glowColor = voted
+    ? (voteOutcome === "release" ? "rgba(16,185,129,0.35)" : "rgba(245,158,11,0.35)")
+    : justJoined ? "rgba(96,165,250,0.4)"
+    : "none";
+
+  const iconColor = voted
+    ? (voteOutcome === "release" ? "#6ee7b7" : "#fcd34d")
     : joined ? "#cbd5e1"
     : "#1e293b";
 
-  const labelColor = isWinner ? "#6ee7b7"
-    : isLoser ? "#78350f"
-    : voted && !isResolved ? (voteOutcome === "release" ? "#93c5fd" : "#fcd34d")
+  const labelColor = voted
+    ? (voteOutcome === "release" ? "#6ee7b7" : "#fcd34d")
     : justJoined ? "#93c5fd"
     : joined ? "#94a3b8"
     : "#1e293b";
 
-  const shadowStyle = isWinner
-    ? "0 0 20px rgba(16,185,129,0.35), inset 0 0 10px rgba(16,185,129,0.15)"
+  const shadowStyle = voted
+    ? `0 0 20px ${glowColor}, inset 0 0 10px ${glowColor}`
     : justJoined
     ? "0 0 28px rgba(96,165,250,0.45), 0 0 8px rgba(96,165,250,0.25), inset 0 0 12px rgba(96,165,250,0.15)"
     : joined
@@ -282,7 +241,7 @@ function ParticipantNode({ label, IconComp, pkDisplay, joined, voted, voteOutcom
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-      opacity: isLoser ? 0.4 : joined ? 1 : 0.2,
+      opacity: joined ? 1 : 0.2,
       transform: joined ? "translateY(0) scale(1)" : "translateY(4px) scale(0.88)",
       transition: `all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) ${delay}ms`,
     }}>
@@ -296,6 +255,7 @@ function ParticipantNode({ label, IconComp, pkDisplay, joined, voted, voteOutcom
         position: "relative",
         animation: justJoined ? "joinGlow 1.8s ease-out" : "none",
       }}>
+        {/* Join pulse ring — visible only during the glow moment */}
         {justJoined && (
           <div style={{
             position: "absolute", inset: -6, borderRadius: "50%",
@@ -303,26 +263,18 @@ function ParticipantNode({ label, IconComp, pkDisplay, joined, voted, voteOutcom
             animation: "joinRingPulse 1.2s ease-out forwards",
           }} />
         )}
-        {/* Pending vote indicator ring (pre-resolution only) */}
-        {voted && !isResolved && (
-          <div style={{
-            position: "absolute", inset: -4, borderRadius: "50%",
-            border: `1.5px solid ${voteOutcome === "release" ? "rgba(59,130,246,0.25)" : "rgba(217,119,6,0.25)"}`,
-            animation: "vaultPulse 3s ease-out infinite",
-          }} />
-        )}
         <IconComp size={24} color={iconColor} style={{ transition: "all 0.5s ease" }} />
-        {badgeType && (
+        {voted && (
           <div style={{
             position: "absolute", bottom: -3, right: -3,
             width: 20, height: 20, borderRadius: "50%",
-            background: isWinner ? "#059669" : "#78350f",
+            background: voteOutcome === "release" ? "#059669" : "#b45309",
             border: "2px solid #0a0e17",
             display: "flex", alignItems: "center", justifyContent: "center",
             animation: "popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
             color: "#fff", fontSize: 10, fontWeight: 800,
           }}>
-            {isWinner ? "✓" : "✗"}
+            {voteOutcome === "release" ? "✓" : "✗"}
           </div>
         )}
       </div>
@@ -332,7 +284,7 @@ function ParticipantNode({ label, IconComp, pkDisplay, joined, voted, voteOutcom
       }}>{label}</span>
       <span style={{
         fontSize: 9, fontFamily: "monospace",
-        color: isLoser ? "#1a1e2a" : joined ? "#475569" : "#1a1e2a",
+        color: joined ? "#475569" : "#1a1e2a",
         transition: "color 0.5s ease",
       }}>{joined ? (pkDisplay || "joined") : "empty"}</span>
     </div>
@@ -394,81 +346,10 @@ function Toast({ msg, type, visible }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// ONBOARDING SPLASH
-// ═══════════════════════════════════════════════════════════════════════
-
-const ONBOARDING_KEY = "fedi-escrow-onboarded";
-
-function OnboardingSplash({ onComplete }) {
-  const [step, setStep] = useState(0);
-  const steps = [
-    { icon: <SvgArbiter size={44} color="#f59e0b" />, title: "Trustless P2P Trading", desc: "Trade anything for bitcoin without trusting the other side. Your sats are locked in federated e-cash escrow until both parties agree the deal is done." },
-    { icon: <SvgBuyer size={44} color="#8b5cf6" />, title: "3 Parties, 2-of-3 Vote", desc: "Every trade has a Seller, Buyer, and Arbiter. Two must agree to release or refund. If buyer and seller agree, the arbiter is never needed." },
-    { icon: <SvgZapIcon size={44} color="#10b981" />, title: "Instant Lightning Payout", desc: "Sats are locked via Lightning and paid out instantly. No on-chain fees, no waiting. All powered by your Fedi federation." },
-  ];
-  const s = steps[step];
-  const isLast = step === steps.length - 1;
-
-  const handleNext = () => {
-    if (isLast) { try { localStorage.setItem(ONBOARDING_KEY, "1"); } catch {} onComplete(); }
-    else setStep(step + 1);
-  };
-
-  return (
-    <div style={{ ...S.root, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "40px 24px", textAlign: "center", minHeight: "100vh" }}>
-      <style>{`
-        @keyframes obFadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes obPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
-      `}</style>
-
-      {/* Progress dots */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 48 }}>
-        {steps.map((_, i) => (
-          <div key={i} style={{ width: i === step ? 24 : 8, height: 8, borderRadius: 4, background: i <= step ? "#f59e0b" : "#1e293b", transition: "all 0.3s ease" }} />
-        ))}
-      </div>
-
-      {/* Icon */}
-      <div key={step} style={{ width: 96, height: 96, borderRadius: "50%", background: "linear-gradient(145deg, #1a2035, #111827)", border: "2px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 32, animation: "obFadeUp 0.4s ease-out", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
-        {s.icon}
-      </div>
-
-      {/* Content */}
-      <div key={`t-${step}`} style={{ animation: "obFadeUp 0.4s ease-out 0.1s both", maxWidth: 320 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", margin: "0 0 12px", letterSpacing: -0.5, lineHeight: 1.3 }}>{s.title}</h1>
-        <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7, margin: 0 }}>{s.desc}</p>
-      </div>
-
-      {/* Actions */}
-      <div style={{ marginTop: 48, width: "100%", maxWidth: 320 }}>
-        <button onClick={handleNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: isLast ? "#f59e0b" : "transparent", border: isLast ? "none" : "1.5px solid #334155", color: isLast ? "#0c0f17" : "#f8fafc", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          {isLast ? "Start Trading" : "Next"}
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </button>
-        {!isLast && (
-          <button onClick={() => { try { localStorage.setItem(ONBOARDING_KEY, "1"); } catch {} onComplete(); }}
-            style={{ width: "100%", padding: "12px 0", marginTop: 8, background: "transparent", border: "none", color: "#475569", fontSize: 13, cursor: "pointer" }}>
-            Skip
-          </button>
-        )}
-      </div>
-
-      {/* Federation limit footnote */}
-      <div style={{ position: "absolute", bottom: 24, left: 24, right: 24, textAlign: "center", fontSize: 11, color: "#334155", animation: "obPulse 4s ease infinite" }}>
-        Federation limit: {FED_LIMITS.MAX_TX_SATS.toLocaleString()} sats per trade
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════════════
 
 export default function EcashEscrow() {
-  const [onboarded, setOnboarded] = useState(() => {
-    try { return localStorage.getItem(ONBOARDING_KEY) === "1"; } catch { return false; }
-  });
   const [pubkey, setPubkey] = useState(null);
   const [devRole, setDevRole] = useState("seller");
   const [view, setView] = useState("list");
@@ -518,9 +399,6 @@ export default function EcashEscrow() {
   }, [showToast]);
 
   const openDetail = (id) => { setView("detail"); loadDetail(id); };
-
-  // ── Onboarding gate ─────────────────────────────────────────────
-  if (!onboarded) return <OnboardingSplash onComplete={() => setOnboarded(true)} />;
 
   if (!pubkey) {
     return (
@@ -581,13 +459,9 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
         <div><h1 style={S.title}>Escrow</h1><p style={S.subtitle}>{truncPk(pubkey)}</p></div>
         <button style={S.iconBtn} onClick={onRefresh}><I.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
       </div>
-      <div style={{ display: "flex", gap: 10, margin: "0 0 12px" }}>
+      <div style={{ display: "flex", gap: 10, margin: "0 0 16px" }}>
         <button style={S.primaryBtn} onClick={onCreate}><I.Plus /> New Trade</button>
         <button style={S.secondaryBtn} onClick={onJoin}>Join Escrow</button>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.1)", borderRadius: 8, marginBottom: 12, fontSize: 11, color: "#64748b" }}>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        Max {FED_LIMITS.MAX_TX_SATS.toLocaleString()} sats per trade
       </div>
       {escrows.length === 0 ? (
         <div style={S.emptyState}>
@@ -624,18 +498,9 @@ function CreateView({ pubkey, onBack, onCreated, showToast, setLoading, loading 
   const [desc, setDesc] = useState("");
   const [terms, setTerms] = useState("");
   const [community, setCommunity] = useState("");
-  const [amountError, setAmountError] = useState(null);
-
-  const onAmountChange = (val) => {
-    setAmount(val);
-    const sats = parseInt(val);
-    setAmountError(sats ? validateAmount(sats) : null);
-  };
-
   const handleCreate = async () => {
     const sats = parseInt(amount);
-    const err = validateAmount(sats);
-    if (err) return showToast(err, "error");
+    if (!sats || sats <= 0) return showToast("Enter a valid amount in sats", "error");
     if (!terms || terms.trim().length < 5) return showToast("Trade terms required (min 5 chars)", "error");
     if (!community) return showToast("Community link required", "error");
     setLoading(true);
@@ -649,21 +514,12 @@ function CreateView({ pubkey, onBack, onCreated, showToast, setLoading, loading 
   return (
     <div style={S.container}>
       <div style={S.viewHeader}><button style={S.iconBtn} onClick={onBack}><I.Back /></button><h2 style={S.viewTitle}>New Trade</h2><div style={{ width: 36 }} /></div>
-      <div style={S.formGroup}><label style={S.label}>Amount (sats)</label><input style={{ ...S.input, ...(amountError ? { borderColor: "#ef4444" } : {}) }} type="number" placeholder="25000" value={amount} onChange={e => onAmountChange(e.target.value)} />{amountError && <p style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>{amountError}</p>}<p style={S.hint}>Max {FED_LIMITS.MAX_TX_SATS.toLocaleString()} sats per trade (federation limit)</p></div>
+      <div style={S.formGroup}><label style={S.label}>Amount (sats)</label><input style={S.input} type="number" placeholder="25000" value={amount} onChange={e => setAmount(e.target.value)} /></div>
       <div style={S.formGroup}><label style={S.label}>Description</label><input style={S.input} placeholder="Selling 50 USD for sats" value={desc} onChange={e => setDesc(e.target.value)} /></div>
       <div style={S.formGroup}><label style={S.label}>Trade terms</label><textarea style={{ ...S.input, minHeight: 72, resize: "vertical" }} placeholder="Payment via Zelle. Send within 1 hour of lock." value={terms} onChange={e => setTerms(e.target.value)} /></div>
       <div style={S.formGroup}><label style={S.label}>Community link</label><input style={S.input} placeholder="fedi:room:!roomId:federation.domain:::" value={community} onChange={e => setCommunity(e.target.value)} /><p style={S.hint}>Paste the Fedi room link where this trade was arranged</p></div>
-      <button style={{ ...S.primaryBtn, width: "100%", marginTop: 8, padding: "14px 0" }} onClick={handleCreate} disabled={loading || !!amountError}>{loading ? "Creating\u2026" : "Create Escrow"}</button>
-      <div style={{ marginTop: 16, padding: "14px", background: "#111827", borderRadius: 10, border: "1px solid #1e293b", lineHeight: 1.7 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>How it works</div>
-        <div style={{ fontSize: 12, color: "#94a3b8" }}>
-          <strong style={{ color: "#cbd5e1" }}>1.</strong> You create the escrow as the <strong style={{ color: "#f59e0b" }}>Seller</strong>.<br/>
-          <strong style={{ color: "#cbd5e1" }}>2.</strong> Share the ID in chat. Buyer and Arbiter join.<br/>
-          <strong style={{ color: "#cbd5e1" }}>3.</strong> You lock sats via Lightning.<br/>
-          <strong style={{ color: "#cbd5e1" }}>4.</strong> Complete the trade. Both sides vote to release.<br/>
-          <strong style={{ color: "#cbd5e1" }}>5.</strong> Buyer claims sats instantly to their wallet.
-        </div>
-      </div>
+      <button style={{ ...S.primaryBtn, width: "100%", marginTop: 8, padding: "14px 0" }} onClick={handleCreate} disabled={loading}>{loading ? "Creating\u2026" : "Create Escrow"}</button>
+      <p style={S.disclaimer}>You are the <strong>seller</strong>. After buyer and arbiter join, you'll lock sats into escrow via Lightning.</p>
     </div>
   );
 }
@@ -691,12 +547,6 @@ function JoinView({ pubkey, onBack, onJoined, showToast, setLoading, loading }) 
       <div style={S.formGroup}><label style={S.label}>Escrow ID</label><input style={S.input} placeholder="Paste the escrow ID from chat" value={escrowId} onChange={e => setEscrowId(e.target.value)} /></div>
       <div style={S.formGroup}><label style={S.label}>Your role</label><div style={{ display: "flex", gap: 8 }}>{["buyer", "arbiter"].map(r => (<button key={r} onClick={() => setRole(r)} style={{ ...S.roleBtn, ...(role === r ? S.roleBtnActive : {}) }}>{r === "buyer" ? "Buyer" : "Arbiter"}</button>))}</div></div>
       <button style={{ ...S.primaryBtn, width: "100%", marginTop: 16, padding: "14px 0" }} onClick={handleJoin} disabled={loading}>{loading ? "Joining\u2026" : `Join as ${role}`}</button>
-      <div style={{ marginTop: 16, padding: "14px", background: "#111827", borderRadius: 10, border: "1px solid #1e293b" }}>
-        <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.7 }}>
-          <strong style={{ color: "#8b5cf6" }}>Buyer</strong> — You're buying something from the seller. After the trade, you vote to release sats to yourself.<br/>
-          <strong style={{ color: "#f59e0b" }}>Arbiter</strong> — You're the trusted mediator. You only vote if buyer and seller disagree.
-        </div>
-      </div>
     </div>
   );
 }
@@ -728,11 +578,6 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
   // ── WebLN Lock (seller) ─────────────────────────────────────────
   const handleLock = async () => {
-    // Pre-flight federation limit check
-    const amountSats = Math.floor((e.amountMsats || 0) / 1000);
-    if (amountSats > FED_LIMITS.MAX_TX_SATS) {
-      return showToast(`Exceeds ${FED_LIMITS.MAX_TX_SATS.toLocaleString()} sats federation limit`, "error");
-    }
     setLoading(true);
     try {
       if (window.webln) {
@@ -844,17 +689,17 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
         {/* ── Participants (animated SVG nodes) ──────────────────── */}
         <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 0, padding: "0 8px 16px" }}>
-          <ParticipantNode label="Seller" IconComp={SvgSeller} pkDisplay={getPkDisplay(e.participants?.seller)} joined={isParticipantJoined(e.participants?.seller)} voted={!!e.votes?.voters?.find(v => v.role === "seller")} voteOutcome={sellerOutcome} resolvedOutcome={e.resolvedOutcome} isDispute={buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome} delay={0} />
+          <ParticipantNode label="Seller" IconComp={SvgSeller} pkDisplay={getPkDisplay(e.participants?.seller)} joined={isParticipantJoined(e.participants?.seller)} voted={!!e.votes?.voters?.find(v => v.role === "seller")} voteOutcome={sellerOutcome} delay={0} />
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 20, opacity: isParticipantJoined(e.participants?.buyer) ? 0.6 : 0.08, transition: "opacity 0.8s ease" }}>
             <div style={{ width: 28, height: 1, background: status === "LOCKED" || status === "APPROVED" || status === "CLAIMED" ? `linear-gradient(90deg, ${status === "CLAIMED" || status === "COMPLETED" ? "#10b981" : "#f59e0b"}, transparent)` : isParticipantJoined(e.participants?.buyer) ? "#334155" : "#111827", transition: "background 0.5s ease" }} />
             <div style={{ fontSize: 8, color: isParticipantJoined(e.participants?.buyer) && isParticipantJoined(e.participants?.arbiter) ? "#475569" : "#1a1e2a", letterSpacing: 1, transition: "color 0.5s ease" }}>2-of-3</div>
             <div style={{ width: 28, height: 1, background: status === "LOCKED" || status === "APPROVED" || status === "CLAIMED" ? `linear-gradient(270deg, ${status === "CLAIMED" || status === "COMPLETED" ? "#10b981" : "#f59e0b"}, transparent)` : isParticipantJoined(e.participants?.buyer) ? "#334155" : "#111827", transition: "background 0.5s ease" }} />
           </div>
-          <ParticipantNode label="Buyer" IconComp={SvgBuyer} pkDisplay={getPkDisplay(e.participants?.buyer)} joined={isParticipantJoined(e.participants?.buyer)} voted={!!e.votes?.voters?.find(v => v.role === "buyer")} voteOutcome={buyerOutcome} resolvedOutcome={e.resolvedOutcome} isDispute={buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome} delay={150} />
+          <ParticipantNode label="Buyer" IconComp={SvgBuyer} pkDisplay={getPkDisplay(e.participants?.buyer)} joined={isParticipantJoined(e.participants?.buyer)} voted={!!e.votes?.voters?.find(v => v.role === "buyer")} voteOutcome={buyerOutcome} delay={150} />
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 20, opacity: isParticipantJoined(e.participants?.arbiter) ? 0.4 : 0.05, transition: "opacity 0.8s ease" }}>
             <div style={{ width: 16, height: 1, background: "#1e293b" }} />
           </div>
-          <ParticipantNode label="Arbiter" IconComp={SvgArbiter} pkDisplay={getPkDisplay(e.participants?.arbiter)} joined={isParticipantJoined(e.participants?.arbiter)} voted={!!e.votes?.voters?.find(v => v.role === "arbiter")} voteOutcome={e.votes?.voters?.find(v => v.role === "arbiter")?.outcome} resolvedOutcome={e.resolvedOutcome} isDispute={buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome} delay={300} />
+          <ParticipantNode label="Arbiter" IconComp={SvgArbiter} pkDisplay={getPkDisplay(e.participants?.arbiter)} joined={isParticipantJoined(e.participants?.arbiter)} voted={!!e.votes?.voters?.find(v => v.role === "arbiter")} voteOutcome={e.votes?.voters?.find(v => v.role === "arbiter")?.outcome} delay={300} />
         </div>
 
         {/* ── Vote tally ─────────────────────────────────────────── */}
@@ -989,7 +834,7 @@ const S = {
   actionBar: { position: "sticky", bottom: 0, left: 0, right: 0, padding: "12px 0 20px", background: "linear-gradient(transparent, #0c0f17 20%)" },
   actionBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "16px 0", borderRadius: 14, background: "#f59e0b", color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: -0.3 },
   waitBanner: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 0", color: "#64748b", fontSize: 13, fontWeight: 500 },
-  devBar: { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 16px", background: "#1a1625", borderBottom: "1px solid #2d2640", position: "sticky", top: 0, zIndex: 100 },
+  devBar: { display: "flex", alignItems: "center", gap: 6, padding: "8px 16px", background: "#1a1625", borderBottom: "1px solid #2d2640", position: "sticky", top: 0, zIndex: 100 },
   devLabel: { fontSize: 10, fontWeight: 700, color: "#7c3aed", letterSpacing: 1, marginRight: 4 },
   devBtn: { padding: "4px 12px", borderRadius: 6, background: "#111827", color: "#64748b", fontSize: 12, fontWeight: 500, border: "1px solid #1e293b", textTransform: "capitalize" },
   devBtnActive: { background: "#7c3aed", color: "#fff", borderColor: "#7c3aed" },

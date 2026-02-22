@@ -487,9 +487,14 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
     if (!row) return res.status(404).json({ error: "Escrow not found" });
 
     // Block duplicates
+    // REPLACE with:
     if (row.status === "COMPLETED") {
-      return res.status(400).json({ error: "Payout already completed for this escrow." });
-    }
+	  return res.json({
+	    id: row.id, status: "COMPLETED",
+	    amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
+	    message: "Already paid — check your Fedi wallet balance.",
+	  });
+	}
     if (inFlightPayouts.has(row.id)) {
       return res.status(409).json({ error: "Payout already in progress. Check your wallet." });
     }

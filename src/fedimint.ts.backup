@@ -64,21 +64,6 @@ async function fm(...args: string[]): Promise<any> {
   }
 }
 
-// Add this helper near the top, after the fm() function
-async function fmRetry(maxAttempts: number, ...args: string[]): Promise<any> {
-  let lastErr: Error | null = null;
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      return await fm(...args);
-    } catch (err: any) {
-      lastErr = err;
-      console.warn(`fedimint-cli attempt ${i + 1}/${maxAttempts} failed: ${err.message.slice(0, 100)}`);
-      if (i < maxAttempts - 1) await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-    }
-  }
-  throw lastErr;
-}
-
 // Long-running commands (await-invoice, await-pay) need longer timeouts
 async function fmLong(...args: string[]): Promise<any> {
   try {
@@ -141,7 +126,7 @@ export async function createLockInvoice(
   const description = `Escrow ${escrowId} lock ${amountSats} sats`;
 
   // fedimint-cli module ln invoice <amount_msat> --description <desc>
-  const result = await fmRetry(3, "module", "ln", "invoice", String(amountMsats), "--description", description);
+  const result = await fm("module", "ln", "invoice", String(amountMsats), "--description", description);
 
   // Result format: { "invoice": "lnbc...", "operation_id": "..." }
   if (!result || !result.invoice) {
@@ -185,7 +170,7 @@ export async function payoutToWinner(
 }> {
   try {
     // fedimint-cli module ln pay <invoice>
-    const result = await fmRetry(3, "module", "ln", "pay", invoice);
+    const result = await fm("module", "ln", "pay", invoice);
     return {
       success: true,
       operationId: result?.operation_id,

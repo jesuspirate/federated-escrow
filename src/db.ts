@@ -158,6 +158,7 @@ const stmts = {
   getVotes: db.prepare(`SELECT * FROM votes WHERE escrow_id = ? ORDER BY timestamp ASC`),
   countEscrows: db.prepare(`SELECT COUNT(*) as count FROM escrows`),
   getExpired: db.prepare(`SELECT * FROM escrows WHERE status IN ('CREATED', 'FUNDED', 'LOCKED') AND expires_at IS NOT NULL AND expires_at <= ?`),
+  updateStatus: db.prepare(`UPDATE escrows SET status = @status, updated_at = @updated_at WHERE id = @id`),
   expireEscrow: db.prepare(`UPDATE escrows SET status = 'EXPIRED', resolved_outcome = 'refund', resolved_at = @now, updated_at = @now WHERE id = @id AND status IN ('CREATED', 'FUNDED', 'LOCKED')`),
 };
 
