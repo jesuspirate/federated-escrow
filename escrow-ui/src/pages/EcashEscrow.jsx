@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { t, setLocale, getLocale, getAvailableLocales } from "./i18n";
 
 // ═══════════════════════════════════════════════════════════════════════
-// Fedi Mini-App: E-Cash Escrow v7.0
+// Fedi Mini-App: E-Cash Escrow v8.0
 // WebLN lock/claim • NIP-98 Nostr auth • Fedimint-powered
-// Now with animated vault visualization + motion design
+// Onboarding • Federation limit safeguards • Marketplace-ready
 // ═══════════════════════════════════════════════════════════════════════
 
 const API = "/api/ecash-escrows";
@@ -24,10 +25,19 @@ function validateAmount(sats) {
 
 // ── Nostr / NIP-98 Auth ─────────────────────────────────────────────
 
+// Custom error for Nostr rejections — caught and shown nicely in UI
+class NostrRejectedError extends Error {
+  constructor(action) { super(`Nostr permission denied — ${action}`); this.name = "NostrRejectedError"; }
+}
+
 async function getNostrPubkey() {
   if (!window.nostr) return null;
   try { return await window.nostr.getPublicKey(); }
-  catch { return null; }
+  catch {
+    // User pressed "No" on the pubkey prompt — not an error, just no Nostr
+    console.warn("[nostr] getPublicKey rejected by user");
+    return null;
+  }
 }
 
 async function makeNip98Header(url, method) {
@@ -42,7 +52,11 @@ async function makeNip98Header(url, method) {
   try {
     const signed = await window.nostr.signEvent(event);
     return "Nostr " + btoa(JSON.stringify(signed));
-  } catch { return null; }
+  } catch {
+    // User pressed "No" on signing — throw a friendly error
+    // so calling code can show a proper message
+    throw new NostrRejectedError("please approve the signing request to continue");
+  }
 }
 
 // ── Dev identity management ─────────────────────────────────────────
@@ -61,10 +75,15 @@ async function api(path, opts = {}) {
   const method = opts.method || "GET";
   const url = `${location.origin}${API}${path}`;
   const headers = { "Content-Type": "application/json" };
+  // makeNip98Header can throw NostrRejectedError if user presses No
   const nip98 = await makeNip98Header(url, method);
   if (nip98) headers["Authorization"] = nip98;
   else if (_devPubkey) headers["X-Dev-Pubkey"] = _devPubkey;
   const res = await fetch(url, { ...opts, headers });
+  if (res.status === 401 || res.status === 403) {
+    const text = await res.text();
+    throw new Error("Authentication required — please approve the Nostr signing request");
+  }
   const text = await res.text();
   try { return JSON.parse(text); }
   catch { return { error: text || `HTTP ${res.status} — no response body` }; }
@@ -131,13 +150,13 @@ const I = {
 // ── Status Config ────────────────────────────────────────────────────
 
 const STATUS = {
-  CREATED:  { color: "#64748b", bg: "rgba(100,116,139,0.12)", label: "Waiting for parties" },
-  FUNDED:   { color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", label: "Ready to lock" },
-  LOCKED:   { color: "#f59e0b", bg: "rgba(245,158,11,0.12)", label: "Funds locked" },
-  APPROVED: { color: "#10b981", bg: "rgba(16,185,129,0.12)", label: "Resolved" },
-  CLAIMED:  { color: "#10b981", bg: "rgba(16,185,129,0.12)", label: "Claimed" },
-  COMPLETED:{ color: "#059669", bg: "rgba(5,150,105,0.12)", label: "Complete" },
-  EXPIRED:  { color: "#ef4444", bg: "rgba(239,68,68,0.12)", label: "Expired" },
+  CREATED:  { color: "#64748b", bg: "rgba(100,116,139,0.12)", key: "statusCreated" },
+  FUNDED:   { color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", key: "statusFunded" },
+  LOCKED:   { color: "#f59e0b", bg: "rgba(245,158,11,0.12)", key: "statusLocked" },
+  APPROVED: { color: "#10b981", bg: "rgba(16,185,129,0.12)", key: "statusApproved" },
+  CLAIMED:  { color: "#10b981", bg: "rgba(16,185,129,0.12)", key: "statusClaimed" },
+  COMPLETED:{ color: "#059669", bg: "rgba(5,150,105,0.12)", key: "statusCompleted" },
+  EXPIRED:  { color: "#ef4444", bg: "rgba(239,68,68,0.12)", key: "statusExpired" },
 };
 
 function StatusBadge({ status }) {
@@ -149,7 +168,7 @@ function StatusBadge({ status }) {
       color: c.color, background: c.bg, letterSpacing: 0.3,
     }}>
       <span style={{ width: 6, height: 6, borderRadius: "50%", background: c.color }} />
-      {c.label}
+      {t(c.key)}
     </span>
   );
 }
@@ -374,7 +393,7 @@ function Vault({ status, amountMsats, showBurst, resolvedOutcome }) {
       </div>
       <div style={{ fontSize: 14, fontWeight: 500, color: isActive ? "#64748b" : "#1e293b", marginTop: 4, letterSpacing: 2, transition: "color 0.8s ease" }}>SATS</div>
       <div style={{ marginTop: 10, fontSize: 12, fontWeight: 500, color: isDone ? "#10b981" : isApproved ? "#10b981" : isLocked ? "#f59e0b" : status === "FUNDED" ? "#8b5cf6" : "#475569", transition: "color 0.5s ease", display: "flex", alignItems: "center", gap: 6 }}>
-        {isDone ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", animation: "pulseGreen 1.5s ease infinite" }} />{resolvedOutcome === "release" ? "Delivered to buyer" : "Refunded to seller"}</>) : isApproved ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981" }} />Ready to claim</>) : isLocked ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f59e0b", animation: "pulseAmber 2s ease infinite" }} />Secured in escrow vault</>) : status === "FUNDED" ? "Ready to lock" : status === "EXPIRED" ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ef4444" }} />Escrow expired</>) : "Waiting for all parties"}
+        {isDone ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", animation: "pulseGreen 1.5s ease infinite" }} />{resolvedOutcome === "release" ? t("deliveredToBuyer") : t("refundedToSeller")}</>) : isApproved ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981" }} />{t("readyToClaim")}</>) : isLocked ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f59e0b", animation: "pulseAmber 2s ease infinite" }} />{t("securedInVault")}</>) : status === "FUNDED" ? t("readyToLock") : status === "EXPIRED" ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ef4444" }} />{t("escrowExpired")}</>) : t("waitingAllParties")}
       </div>
     </div>
   );
@@ -402,9 +421,9 @@ const ONBOARDING_KEY = "fedi-escrow-onboarded";
 function OnboardingSplash({ onComplete }) {
   const [step, setStep] = useState(0);
   const steps = [
-    { icon: <SvgArbiter size={44} color="#f59e0b" />, title: "Trustless P2P Trading", desc: "Trade anything for bitcoin without trusting the other side. Your sats are locked in federated e-cash escrow until both parties agree the deal is done." },
-    { icon: <SvgBuyer size={44} color="#8b5cf6" />, title: "3 Parties, 2-of-3 Vote", desc: "Every trade has a Seller, Buyer, and Arbiter. Two must agree to release or refund. If buyer and seller agree, the arbiter is never needed." },
-    { icon: <SvgZapIcon size={44} color="#10b981" />, title: "Instant Lightning Payout", desc: "Sats are locked via Lightning and paid out instantly. No on-chain fees, no waiting. All powered by your Fedi federation." },
+    { icon: <SvgArbiter size={44} color="#f59e0b" />, titleKey: "ob1Title", descKey: "ob1Desc" },
+    { icon: <SvgBuyer size={44} color="#8b5cf6" />, titleKey: "ob2Title", descKey: "ob2Desc" },
+    { icon: <SvgZapIcon size={44} color="#10b981" />, titleKey: "ob3Title", descKey: "ob3Desc" },
   ];
   const s = steps[step];
   const isLast = step === steps.length - 1;
@@ -435,27 +454,27 @@ function OnboardingSplash({ onComplete }) {
 
       {/* Content */}
       <div key={`t-${step}`} style={{ animation: "obFadeUp 0.4s ease-out 0.1s both", maxWidth: 320 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", margin: "0 0 12px", letterSpacing: -0.5, lineHeight: 1.3 }}>{s.title}</h1>
-        <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7, margin: 0 }}>{s.desc}</p>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", margin: "0 0 12px", letterSpacing: -0.5, lineHeight: 1.3 }}>{t(s.titleKey)}</h1>
+        <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7, margin: 0 }}>{t(s.descKey)}</p>
       </div>
 
       {/* Actions */}
       <div style={{ marginTop: 48, width: "100%", maxWidth: 320 }}>
         <button onClick={handleNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: isLast ? "#f59e0b" : "transparent", border: isLast ? "none" : "1.5px solid #334155", color: isLast ? "#0c0f17" : "#f8fafc", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          {isLast ? "Start Trading" : "Next"}
+          {isLast ? t("obStartTrading") : t("obNext")}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </button>
         {!isLast && (
           <button onClick={() => { try { localStorage.setItem(ONBOARDING_KEY, "1"); } catch {} onComplete(); }}
             style={{ width: "100%", padding: "12px 0", marginTop: 8, background: "transparent", border: "none", color: "#475569", fontSize: 13, cursor: "pointer" }}>
-            Skip
+            {t("obSkip")}
           </button>
         )}
       </div>
 
       {/* Federation limit footnote */}
       <div style={{ position: "absolute", bottom: 24, left: 24, right: 24, textAlign: "center", fontSize: 11, color: "#334155", animation: "obPulse 4s ease infinite" }}>
-        Federation limit: {FED_LIMITS.MAX_TX_SATS.toLocaleString()} sats per trade
+        {t("obFedLimit", { limit: FED_LIMITS.MAX_TX_SATS.toLocaleString() })}
       </div>
     </div>
   );
@@ -469,6 +488,7 @@ export default function EcashEscrow() {
   const [onboarded, setOnboarded] = useState(() => {
     try { return localStorage.getItem(ONBOARDING_KEY) === "1"; } catch { return false; }
   });
+  const [locale, setLocaleState] = useState(getLocale);
   const [pubkey, setPubkey] = useState(null);
   const [devRole, setDevRole] = useState("seller");
   const [view, setView] = useState("list");
@@ -500,11 +520,16 @@ export default function EcashEscrow() {
     setView("list"); setSelected(null); setEscrows([]);
   }, []);
 
+  const switchLocale = useCallback((code) => {
+    setLocale(code);
+    setLocaleState(code);
+  }, []);
+
   const loadEscrows = useCallback(async () => {
     if (!pubkey) return;
     setLoading(true);
     try { const data = await api("/"); if (Array.isArray(data)) setEscrows(data); }
-    catch { showToast("Failed to load escrows", "error"); }
+    catch (err) { showToast(err.name === "NostrRejectedError" ? err.message : t("failedLoadEscrows"), "error"); }
     setLoading(false);
   }, [pubkey, showToast]);
 
@@ -527,7 +552,7 @@ export default function EcashEscrow() {
       <div style={S.root}>
         <div style={{ ...S.container, justifyContent: "center", alignItems: "center" }}>
           <SvgArbiter size={32} color="#f59e0b" />
-          <p style={{ color: "#94a3b8", marginTop: 12, fontSize: 14 }}>Connecting to Nostr identity\u2026</p>
+          <p style={{ color: "#94a3b8", marginTop: 12, fontSize: 14 }}>{t("connectingNostr")}</p>
         </div>
       </div>
     );
@@ -562,7 +587,7 @@ export default function EcashEscrow() {
           ))}
         </div>
       )}
-      {view === "list" && <ListView escrows={escrows} pubkey={pubkey} loading={loading} onOpen={openDetail} onCreate={() => setView("create")} onJoin={() => setView("join")} onRefresh={loadEscrows} />}
+      {view === "list" && <ListView escrows={escrows} pubkey={pubkey} loading={loading} onOpen={openDetail} onCreate={() => setView("create")} onJoin={() => setView("join")} onRefresh={loadEscrows} locale={locale} onSwitchLocale={switchLocale} />}
       {view === "create" && <CreateView pubkey={pubkey} onBack={() => setView("list")} onCreated={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "join" && <JoinView pubkey={pubkey} onBack={() => setView("list")} onJoined={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "detail" && selected && <DetailView escrow={selected} pubkey={pubkey} onBack={() => { setView("list"); loadEscrows(); }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} />}
@@ -574,32 +599,40 @@ export default function EcashEscrow() {
 // LIST VIEW
 // ═══════════════════════════════════════════════════════════════════════
 
-function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefresh }) {
+function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefresh, locale, onSwitchLocale }) {
   return (
     <div style={S.container}>
       <div style={S.listHeader}>
-        <div><h1 style={S.title}>Escrow</h1><p style={S.subtitle}>{truncPk(pubkey)}</p></div>
-        <button style={S.iconBtn} onClick={onRefresh}><I.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
+        <div><h1 style={S.title}>{t("escrow")}</h1><p style={S.subtitle}>{truncPk(pubkey)}</p></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          {/* Language picker */}
+          <div style={{ display: "flex", gap: 2 }}>
+            {getAvailableLocales().map(l => (
+              <button key={l.code} onClick={() => onSwitchLocale(l.code)} style={{ padding: "4px 6px", borderRadius: 4, background: locale === l.code ? "#1e293b" : "transparent", color: locale === l.code ? "#f8fafc" : "#475569", fontSize: 12, border: "none", cursor: "pointer" }}>{l.flag}</button>
+            ))}
+          </div>
+          <button style={S.iconBtn} onClick={onRefresh}><I.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
+        </div>
       </div>
       <div style={{ display: "flex", gap: 10, margin: "0 0 12px" }}>
-        <button style={S.primaryBtn} onClick={onCreate}><I.Plus /> New Trade</button>
-        <button style={S.secondaryBtn} onClick={onJoin}>Join Escrow</button>
+        <button style={S.primaryBtn} onClick={onCreate}><I.Plus /> {t("newTrade")}</button>
+        <button style={S.secondaryBtn} onClick={onJoin}>{t("joinEscrow")}</button>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.1)", borderRadius: 8, marginBottom: 12, fontSize: 11, color: "#64748b" }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-        Max {FED_LIMITS.MAX_TX_SATS.toLocaleString()} sats per trade
+        {t("maxPerTrade", { limit: FED_LIMITS.MAX_TX_SATS.toLocaleString() })}
       </div>
       {escrows.length === 0 ? (
         <div style={S.emptyState}>
           <SvgArbiter size={40} color="#475569" />
-          <p style={{ color: "#64748b", marginTop: 12, fontSize: 14 }}>No escrows yet. Create a new trade or join an existing one.</p>
+          <p style={{ color: "#64748b", marginTop: 12, fontSize: 14 }}>{t("noEscrows")}</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {escrows.map(e => (
             <button key={e.id} style={S.escrowCard} onClick={() => onOpen(e.id)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={S.cardAmount}>{fmtSats(e.amountMsats)} <span style={{ color: "#64748b", fontWeight: 400 }}>sats</span></span>
+                <span style={S.cardAmount}>{fmtSats(e.amountMsats)} <span style={{ color: "#64748b", fontWeight: 400 }}>{t("sats")}</span></span>
                 <StatusBadge status={e.status} />
               </div>
               {e.description && <p style={S.cardDesc}>{e.description}</p>}
@@ -636,32 +669,32 @@ function CreateView({ pubkey, onBack, onCreated, showToast, setLoading, loading 
     const sats = parseInt(amount);
     const err = validateAmount(sats);
     if (err) return showToast(err, "error");
-    if (!terms || terms.trim().length < 5) return showToast("Trade terms required (min 5 chars)", "error");
-    if (!community) return showToast("Community link required", "error");
+    if (!terms || terms.trim().length < 5) return showToast(t("tradeTerms") + " (min 5)", "error");
+    if (!community) return showToast(t("communityLink") + " ✕", "error");
     setLoading(true);
     try {
       const res = await api("/", { method: "POST", body: JSON.stringify({ amountMsats: sats * 1000, description: desc, terms, communityLink: community }) });
       if (res.error) throw new Error(res.error);
-      showToast("Escrow created!"); onCreated(res.id);
+      showToast(t("escrowCreated")); onCreated(res.id);
     } catch (err) { showToast(err.message, "error"); }
     setLoading(false);
   };
   return (
     <div style={S.container}>
-      <div style={S.viewHeader}><button style={S.iconBtn} onClick={onBack}><I.Back /></button><h2 style={S.viewTitle}>New Trade</h2><div style={{ width: 36 }} /></div>
-      <div style={S.formGroup}><label style={S.label}>Amount (sats)</label><input style={{ ...S.input, ...(amountError ? { borderColor: "#ef4444" } : {}) }} type="number" placeholder="25000" value={amount} onChange={e => onAmountChange(e.target.value)} />{amountError && <p style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>{amountError}</p>}<p style={S.hint}>Max {FED_LIMITS.MAX_TX_SATS.toLocaleString()} sats per trade (federation limit)</p></div>
-      <div style={S.formGroup}><label style={S.label}>Description</label><input style={S.input} placeholder="Selling 50 USD for sats" value={desc} onChange={e => setDesc(e.target.value)} /></div>
-      <div style={S.formGroup}><label style={S.label}>Trade terms</label><textarea style={{ ...S.input, minHeight: 72, resize: "vertical" }} placeholder="Payment via Zelle. Send within 1 hour of lock." value={terms} onChange={e => setTerms(e.target.value)} /></div>
-      <div style={S.formGroup}><label style={S.label}>Community link</label><input style={S.input} placeholder="fedi:room:!roomId:federation.domain:::" value={community} onChange={e => setCommunity(e.target.value)} /><p style={S.hint}>Paste the Fedi room link where this trade was arranged</p></div>
-      <button style={{ ...S.primaryBtn, width: "100%", marginTop: 8, padding: "14px 0" }} onClick={handleCreate} disabled={loading || !!amountError}>{loading ? "Creating\u2026" : "Create Escrow"}</button>
+      <div style={S.viewHeader}><button style={S.iconBtn} onClick={onBack}><I.Back /></button><h2 style={S.viewTitle}>{t("newTrade")}</h2><div style={{ width: 36 }} /></div>
+      <div style={S.formGroup}><label style={S.label}>{t("amountSats")}</label><input style={{ ...S.input, ...(amountError ? { borderColor: "#ef4444" } : {}) }} type="number" placeholder="25000" value={amount} onChange={e => onAmountChange(e.target.value)} />{amountError && <p style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>{amountError}</p>}<p style={S.hint}>{t("maxFedLimit", { limit: FED_LIMITS.MAX_TX_SATS.toLocaleString() })}</p></div>
+      <div style={S.formGroup}><label style={S.label}>{t("description")}</label><input style={S.input} placeholder="Selling 50 USD for sats" value={desc} onChange={e => setDesc(e.target.value)} /></div>
+      <div style={S.formGroup}><label style={S.label}>{t("tradeTerms")}</label><textarea style={{ ...S.input, minHeight: 72, resize: "vertical" }} placeholder="Payment via Zelle. Send within 1 hour of lock." value={terms} onChange={e => setTerms(e.target.value)} /></div>
+      <div style={S.formGroup}><label style={S.label}>{t("communityLink")}</label><input style={S.input} placeholder="fedi:room:!roomId:federation.domain:::" value={community} onChange={e => setCommunity(e.target.value)} /><p style={S.hint}>{t("communityLinkHint")}</p></div>
+      <button style={{ ...S.primaryBtn, width: "100%", marginTop: 8, padding: "14px 0" }} onClick={handleCreate} disabled={loading || !!amountError}>{loading ? t("creating") : t("createEscrow")}</button>
       <div style={{ marginTop: 16, padding: "14px", background: "#111827", borderRadius: 10, border: "1px solid #1e293b", lineHeight: 1.7 }}>
-        <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>How it works</div>
+        <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>{t("howItWorks")}</div>
         <div style={{ fontSize: 12, color: "#94a3b8" }}>
-          <strong style={{ color: "#cbd5e1" }}>1.</strong> You create the escrow as the <strong style={{ color: "#f59e0b" }}>Seller</strong>.<br/>
-          <strong style={{ color: "#cbd5e1" }}>2.</strong> Share the ID in chat. Buyer and Arbiter join.<br/>
-          <strong style={{ color: "#cbd5e1" }}>3.</strong> You lock sats via Lightning.<br/>
-          <strong style={{ color: "#cbd5e1" }}>4.</strong> Complete the trade. Both sides vote to release.<br/>
-          <strong style={{ color: "#cbd5e1" }}>5.</strong> Buyer claims sats instantly to their wallet.
+          <strong style={{ color: "#cbd5e1" }}>1.</strong> {t("howStep1")} <strong style={{ color: "#f59e0b" }}>{t("howStep1Role")}</strong>.<br/>
+          <strong style={{ color: "#cbd5e1" }}>2.</strong> {t("howStep2")}<br/>
+          <strong style={{ color: "#cbd5e1" }}>3.</strong> {t("howStep3")}<br/>
+          <strong style={{ color: "#cbd5e1" }}>4.</strong> {t("howStep4")}<br/>
+          <strong style={{ color: "#cbd5e1" }}>5.</strong> {t("howStep5")}
         </div>
       </div>
     </div>
@@ -675,26 +708,50 @@ function CreateView({ pubkey, onBack, onCreated, showToast, setLoading, loading 
 function JoinView({ pubkey, onBack, onJoined, showToast, setLoading, loading }) {
   const [escrowId, setEscrowId] = useState("");
   const [role, setRole] = useState("buyer");
+  const [arbiterAllowed, setArbiterAllowed] = useState(null); // null=loading, true/false
+
+  // Check arbiter allowlist on mount
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await api("/arbiter-check");
+        if (res.mode === "open") setArbiterAllowed(true);
+        else setArbiterAllowed(!!res.allowed);
+      } catch { setArbiterAllowed(true); } // fallback to open if endpoint missing
+    })();
+  }, [pubkey]);
+
   const handleJoin = async () => {
-    if (!escrowId) return showToast("Enter the escrow ID", "error");
+    if (!escrowId) return showToast(t("escrowId") + " ✕", "error");
+    if (role === "arbiter" && arbiterAllowed === false) return showToast(t("arbiterRestricted"), "error");
     setLoading(true);
     try {
       const res = await api(`/${escrowId.trim()}/join`, { method: "POST", body: JSON.stringify({ role }) });
       if (res.error) throw new Error(res.error);
-      showToast(`Joined as ${role}!`); onJoined(escrowId.trim());
+      showToast(t("joinedAs", { role: t(role) })); onJoined(escrowId.trim());
     } catch (err) { showToast(err.message, "error"); }
     setLoading(false);
   };
+
+  const arbiterBlocked = role === "arbiter" && arbiterAllowed === false;
+
   return (
     <div style={S.container}>
-      <div style={S.viewHeader}><button style={S.iconBtn} onClick={onBack}><I.Back /></button><h2 style={S.viewTitle}>Join Escrow</h2><div style={{ width: 36 }} /></div>
-      <div style={S.formGroup}><label style={S.label}>Escrow ID</label><input style={S.input} placeholder="Paste the escrow ID from chat" value={escrowId} onChange={e => setEscrowId(e.target.value)} /></div>
-      <div style={S.formGroup}><label style={S.label}>Your role</label><div style={{ display: "flex", gap: 8 }}>{["buyer", "arbiter"].map(r => (<button key={r} onClick={() => setRole(r)} style={{ ...S.roleBtn, ...(role === r ? S.roleBtnActive : {}) }}>{r === "buyer" ? "Buyer" : "Arbiter"}</button>))}</div></div>
-      <button style={{ ...S.primaryBtn, width: "100%", marginTop: 16, padding: "14px 0" }} onClick={handleJoin} disabled={loading}>{loading ? "Joining\u2026" : `Join as ${role}`}</button>
+      <div style={S.viewHeader}><button style={S.iconBtn} onClick={onBack}><I.Back /></button><h2 style={S.viewTitle}>{t("joinEscrow")}</h2><div style={{ width: 36 }} /></div>
+      <div style={S.formGroup}><label style={S.label}>{t("escrowId")}</label><input style={S.input} placeholder={t("escrowIdPlaceholder")} value={escrowId} onChange={e => setEscrowId(e.target.value)} /></div>
+      <div style={S.formGroup}><label style={S.label}>{t("yourRole")}</label><div style={{ display: "flex", gap: 8 }}>{["buyer", "arbiter"].map(r => (<button key={r} onClick={() => setRole(r)} style={{ ...S.roleBtn, ...(role === r ? S.roleBtnActive : {}), ...(r === "arbiter" && arbiterAllowed === false ? { opacity: 0.4 } : {}) }}>{r === "buyer" ? `\ud83d\uded2 ${t("buyer")}` : `\u2696\ufe0f ${t("arbiter")}`}</button>))}</div></div>
+
+      {arbiterBlocked && (
+        <div style={{ padding: "10px 14px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10, marginTop: 8, fontSize: 12, color: "#f87171", lineHeight: 1.6 }}>
+          <strong>{t("arbiterRestricted")}</strong> {t("arbiterRestrictedDesc")}
+        </div>
+      )}
+
+      <button style={{ ...S.primaryBtn, width: "100%", marginTop: 16, padding: "14px 0", ...(arbiterBlocked ? { opacity: 0.4, cursor: "not-allowed" } : {}) }} onClick={handleJoin} disabled={loading || arbiterBlocked}>{loading ? t("joining") : t("joinAs", { role: t(role) })}</button>
       <div style={{ marginTop: 16, padding: "14px", background: "#111827", borderRadius: 10, border: "1px solid #1e293b" }}>
         <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.7 }}>
-          <strong style={{ color: "#8b5cf6" }}>Buyer</strong> — You're buying something from the seller. After the trade, you vote to release sats to yourself.<br/>
-          <strong style={{ color: "#f59e0b" }}>Arbiter</strong> — You're the trusted mediator. You only vote if buyer and seller disagree.
+          <strong style={{ color: "#8b5cf6" }}>{t("buyer")}</strong> — {t("buyerDesc")}<br/>
+          <strong style={{ color: "#f59e0b" }}>{t("arbiter")}</strong> — {t("arbiterDesc")}
         </div>
       </div>
     </div>
@@ -721,8 +778,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
   const copy = (text, label) => {
     navigator.clipboard.writeText(text).then(
-      () => showToast(`${label} copied`),
-      () => showToast("Copy failed", "error")
+      () => showToast(t("copied", { label })),
+      () => showToast(t("copyFailed"), "error")
     );
   };
 
@@ -739,17 +796,17 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         const inv = await api(`/${e.id}/invoice`);
         if (inv.error) throw new Error(inv.error);
         if (inv.mode === "webln" && inv.invoice) {
-          try { await window.webln.enable(); showToast("Confirm payment in Fedi\u2026"); await window.webln.sendPayment(inv.invoice); }
-          catch { showToast("Payment cancelled — tap Lock to try again", "error"); setLoading(false); return; }
+          try { await window.webln.enable(); showToast(t("confirmInFedi")); await window.webln.sendPayment(inv.invoice); }
+          catch { showToast(t("paymentCancelled"), "error"); setLoading(false); return; }
           const lock = await api(`/${e.id}/lock`, { method: "POST", body: JSON.stringify({ mode: "webln" }) });
           if (lock.error) throw new Error(lock.error);
-          showToast("Sats locked in escrow!");
+          showToast(t("satsLocked"));
         }
       } else {
         const notes = `ECASH_DEV_${Date.now()}`;
         const lock = await api(`/${e.id}/lock`, { method: "POST", body: JSON.stringify({ mode: "manual", notes }) });
         if (lock.error) throw new Error(lock.error);
-        showToast("Locked (dev mode)");
+        showToast(t("lockedDevMode"));
       }
       onRefresh();
     } catch (err) { showToast(err.message, "error"); }
@@ -761,7 +818,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     try {
       const res = await api(`/${e.id}/approve`, { method: "POST", body: JSON.stringify({ outcome }) });
       if (res.error) throw new Error(res.error);
-      showToast(outcome === "release" ? "Voted to release" : "Voted to refund");
+      showToast(outcome === "release" ? t("votedRelease") : t("votedRefund"));
       onRefresh();
     } catch (err) { showToast(err.message, "error"); }
     setLoading(false);
@@ -783,20 +840,20 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         let invoice;
         if (window.webln) {
           try { await window.webln.enable(); const result = await window.webln.makeInvoice({ amount: amountSats }); invoice = result.paymentRequest; }
-          catch { showToast("Invoice cancelled — tap Claim to try again", "error"); setLoading(false); return; }
+          catch { showToast(t("invoiceCancelled"), "error"); setLoading(false); return; }
         } else {
           invoice = prompt(`Paste a BOLT-11 invoice for ${amountSats} sats:`);
           if (!invoice) { setLoading(false); return; }
         }
-        showToast("Sending payout\u2026");
+        showToast(t("sendingPayout"));
         const payout = await api(`/${e.id}/payout`, { method: "POST", body: JSON.stringify({ invoice }) });
         if (payout.error) throw new Error(payout.error);
-        showToast("Sats received!");
+        showToast(t("satsReceived"));
       } else if (notes) {
         copy(notes, "E-cash notes");
-        showToast("Notes copied to clipboard");
+        showToast(t("notesCopied"));
       } else {
-        showToast("Claimed!");
+        showToast(t("claimed"));
       }
       onRefresh();
     } catch (err) { showToast(err.message, "error"); }
@@ -874,8 +931,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
                 <>
                   <div style={{ width: 1, height: 36, background: "#1e293b" }} />
                   <div style={{ flex: 1.5, textAlign: "center", animation: "popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: e.resolvedOutcome === "release" ? "#10b981" : "#f59e0b" }}>{e.resolvedOutcome === "release" ? "RELEASE ✓" : "REFUND ↩"}</div>
-                    <div style={{ fontSize: 9, color: "#64748b", marginTop: 2 }}>{e.resolvedOutcome === "release" ? "→ Buyer wins" : "→ Seller refunded"}</div>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: e.resolvedOutcome === "release" ? "#10b981" : "#f59e0b" }}>{e.resolvedOutcome === "release" ? `${t("release").toUpperCase()} ✓` : `${t("refund").toUpperCase()} ↩`}</div>
+                    <div style={{ fontSize: 9, color: "#64748b", marginTop: 2 }}>{e.resolvedOutcome === "release" ? t("resolvedRelease") : t("resolvedRefund")}</div>
                   </div>
                 </>
               )}
@@ -886,16 +943,16 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {role && (
           <div style={S.roleBanner}>
             <SvgArbiter size={16} color="#f59e0b" />
-            <span>You are the <strong style={{ textTransform: "capitalize" }}>{role}</strong></span>
+            <span>{t("youAreThe")} <strong style={{ textTransform: "capitalize" }}>{t(role)}</strong></span>
           </div>
         )}
 
-        {e.terms && (<div style={S.section}><div style={S.sectionLabel}>Trade Terms</div><div style={S.sectionValue}>{e.terms}</div></div>)}
-        {e.description && (<div style={S.section}><div style={S.sectionLabel}>Description</div><div style={S.sectionValue}>{e.description}</div></div>)}
+        {e.terms && (<div style={S.section}><div style={S.sectionLabel}>{t("tradeTerms")}</div><div style={S.sectionValue}>{e.terms}</div></div>)}
+        {e.description && (<div style={S.section}><div style={S.sectionLabel}>{t("description")}</div><div style={S.sectionValue}>{e.description}</div></div>)}
 
         <div style={S.section}>
-          <div style={S.sectionLabel}>Escrow ID</div>
-          <button style={S.copyRow} onClick={() => copy(e.id, "Escrow ID")}>
+          <div style={S.sectionLabel}>{t("escrowId")}</div>
+          <button style={S.copyRow} onClick={() => copy(e.id, t("escrowId"))}>
             <span style={S.mono}>{e.id}</span><I.Copy />
           </button>
         </div>
@@ -903,8 +960,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {/* Completion celebration */}
         {(status === "COMPLETED" || (status === "CLAIMED" && e.resolvedOutcome)) && (
           <div style={{ textAlign: "center", padding: "12px 0", animation: "celebrateBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "#10b981" }}>Trade Complete</div>
-            <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>{fmtSats(e.amountMsats)} sats delivered trustlessly</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: "#10b981" }}>{t("tradeComplete")}</div>
+            <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>{t("satsDelivered", { amount: fmtSats(e.amountMsats) })}</div>
           </div>
         )}
       </div>
@@ -913,39 +970,39 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       <div style={S.actionBar}>
         {canLock && (
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)" }} onClick={handleLock} disabled={loading}>
-            {loading ? "Locking\u2026" : `Lock ${fmtSats(e.amountMsats)} sats into escrow`}
+            {loading ? t("locking") : t("lockSats", { amount: fmtSats(e.amountMsats) })}
           </button>
         )}
         {canBuyerVote && (
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)" }} onClick={() => handleVote("release")} disabled={loading}>
-            {loading ? "Voting\u2026" : "Confirm trade completed — Release"}
+            {loading ? t("voting") : t("confirmRelease")}
           </button>
         )}
         {canSellerVote && (
           <div style={{ display: "flex", gap: 8, width: "100%" }}>
-            <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>Confirm</button>
-            <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote("refund")} disabled={loading}>Dispute</button>
+            <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>{t("confirm")}</button>
+            <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote("refund")} disabled={loading}>{t("dispute")}</button>
           </div>
         )}
         {canArbiterVote && (
           <div style={{ display: "flex", gap: 8, width: "100%" }}>
-            <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>Release</button>
-            <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote("refund")} disabled={loading}>Refund</button>
+            <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>{t("release")}</button>
+            <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote("refund")} disabled={loading}>{t("refund")}</button>
           </div>
         )}
         {(canClaim || canReclaimExpired) && (
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)" }} onClick={handleClaim} disabled={loading}>
-            {loading ? "Claiming\u2026" : `Claim your ${fmtSats(e.amountMsats)} sats`}
+            {loading ? t("claiming") : t("claimSats", { amount: fmtSats(e.amountMsats) })}
           </button>
         )}
-        {status === "LOCKED" && role === "buyer" && hasVoted && <div style={S.waitBanner}><I.Clock /> Waiting for seller to respond\u2026</div>}
-        {status === "LOCKED" && role === "seller" && !buyerVoted && <div style={S.waitBanner}><I.Clock /> Waiting for buyer to vote first\u2026</div>}
-        {status === "LOCKED" && role === "seller" && hasVoted && <div style={S.waitBanner}><I.Clock /> Waiting for resolution\u2026</div>}
-        {status === "LOCKED" && role === "arbiter" && (!buyerVoted || !sellerVoted) && <div style={S.waitBanner}><I.Clock /> Waiting for buyer and seller to vote\u2026</div>}
-        {status === "LOCKED" && role === "arbiter" && buyerVoted && sellerVoted && buyerOutcome === sellerOutcome && <div style={S.waitBanner}><I.Check /> Buyer and seller agree — no dispute</div>}
-        {status === "FUNDED" && role !== "seller" && <div style={S.waitBanner}>Waiting for seller to lock funds\u2026</div>}
-        {status === "CREATED" && <div style={S.waitBanner}><I.Clock /> Waiting for all parties to join\u2026</div>}
-        {status === "COMPLETED" && <div style={{ ...S.waitBanner, color: "#059669" }}><I.Check /> Trade complete — sats paid out!</div>}
+        {status === "LOCKED" && role === "buyer" && hasVoted && <div style={S.waitBanner}><I.Clock /> {t("waitSeller")}</div>}
+        {status === "LOCKED" && role === "seller" && !buyerVoted && <div style={S.waitBanner}><I.Clock /> {t("waitBuyerVote")}</div>}
+        {status === "LOCKED" && role === "seller" && hasVoted && <div style={S.waitBanner}><I.Clock /> {t("waitResolution")}</div>}
+        {status === "LOCKED" && role === "arbiter" && (!buyerVoted || !sellerVoted) && <div style={S.waitBanner}><I.Clock /> {t("waitBothVote")}</div>}
+        {status === "LOCKED" && role === "arbiter" && buyerVoted && sellerVoted && buyerOutcome === sellerOutcome && <div style={S.waitBanner}><I.Check /> {t("noDispute")}</div>}
+        {status === "FUNDED" && role !== "seller" && <div style={S.waitBanner}>{t("waitSellerLock")}</div>}
+        {status === "CREATED" && <div style={S.waitBanner}><I.Clock /> {t("waitParties")}</div>}
+        {status === "COMPLETED" && <div style={{ ...S.waitBanner, color: "#059669" }}><I.Check /> {t("tradeCompleteBanner")}</div>}
       </div>
     </div>
   );

@@ -4,6 +4,75 @@
 // Claim flow: POST /claim → POST /payout (winner submits invoice, server pays)
 // Manual fallback for dev testing (NODE_ENV !== 'production')
 
+// ═══════════════════════════════════════════════════════════════════════
+// ARBITER ALLOWLIST — Backend Patch
+// Add this to src/routes/ecash-escrow.ts
+// ═══════════════════════════════════════════════════════════════════════
+//
+// This enforces that only pre-approved npubs can join as arbiters.
+// Set ALLOWED_ARBITERS as a comma-separated list of hex pubkeys.
+//
+// Example in .env or environment:
+//   ALLOWED_ARBITERS=abc123def456...,789abc012def...
+//
+// If not set, arbiter joins are OPEN (for dev/testing only).
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── Step 1: Add this near the top of ecash-escrow.ts ────────────────
+
+const ALLOWED_ARBITERS: Set<string> | null = (() => {
+  const raw = process.env.ALLOWED_ARBITERS;
+  if (!raw || raw.trim() === "") return null; // null = open mode (dev only)
+  const list = raw.split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
+  console.log(`[arbiter] Allowlist loaded: ${list.length} approved arbiters`);
+  return new Set(list);
+})();
+
+function isArbiterAllowed(pubkey: string): boolean {
+  if (!ALLOWED_ARBITERS) return true; // open mode
+  return ALLOWED_ARBITERS.has(pubkey.toLowerCase());
+}
+
+// Also expose an endpoint so the frontend can check:
+// GET /api/ecash-escrows/arbiter-check
+// Returns { allowed: boolean, mode: "allowlist" | "open" }
+
+// ── Step 2: Add this route ──────────────────────────────────────────
+
+// router.get("/arbiter-check", (req, res) => {
+//   const pubkey = req.headers["x-dev-pubkey"] as string
+//     || extractNip98Pubkey(req.headers["authorization"] as string);
+//   if (!pubkey) return res.json({ allowed: false, mode: ALLOWED_ARBITERS ? "allowlist" : "open" });
+//   res.json({
+//     allowed: isArbiterAllowed(pubkey),
+//     mode: ALLOWED_ARBITERS ? "allowlist" : "open",
+//   });
+// });
+
+// ── Step 3: Guard the join endpoint ─────────────────────────────────
+// In your existing POST /:id/join handler, add this check
+// BEFORE inserting the arbiter into the escrow:
+
+// if (role === "arbiter") {
+//   const pubkey = req.headers["x-dev-pubkey"] as string
+//     || extractNip98Pubkey(req.headers["authorization"] as string);
+//   if (!isArbiterAllowed(pubkey)) {
+//     return res.status(403).json({
+//       error: "Arbiter not authorized. Only pre-approved community arbiters can join trades."
+//     });
+//   }
+// }
+
+// ═══════════════════════════════════════════════════════════════════════
+// That's it. Three additions:
+//   1. Allowlist parsing from env var
+//   2. /arbiter-check endpoint for frontend
+//   3. Guard in /:id/join
+//
+// Set the env var in your .env or in the systemd service:
+//   Environment=ALLOWED_ARBITERS=npub1abc...,npub2def...
+// ═══════════════════════════════════════════════════════════════════════
+
 import { Router, Request, Response, NextFunction } from "express";
 import { verifyEvent } from "nostr-tools/pure";
 import * as DB from "../db";

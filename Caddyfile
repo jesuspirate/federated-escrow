@@ -1,0 +1,47 @@
+# ═══════════════════════════════════════════════════════════════════════
+# Caddyfile — Fedi Escrow HTTPS Reverse Proxy
+# Automatic TLS via Let's Encrypt
+# ═══════════════════════════════════════════════════════════════════════
+#
+# SETUP:
+#   1. Point your domain's A record to this server's IP
+#   2. Replace YOUR_DOMAIN below with your actual domain
+#   3. sudo cp Caddyfile /etc/caddy/Caddyfile
+#   4. sudo systemctl reload caddy
+#
+# Caddy automatically provisions and renews HTTPS certificates.
+# No certbot, no cron jobs, no manual renewal.
+# ═══════════════════════════════════════════════════════════════════════
+
+YOUR_DOMAIN {
+    # ── Reverse proxy to Express server ──────────────────────────
+    reverse_proxy localhost:3000 {
+        # WebSocket support (needed for future real-time features)
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # ── Security headers ─────────────────────────────────────────
+    header {
+        # Prevent MIME sniffing
+        X-Content-Type-Options nosniff
+        # Clickjacking protection — allow framing by Fedi app
+        X-Frame-Options SAMEORIGIN
+        # XSS filter
+        X-XSS-Protection "1; mode=block"
+        # Referrer policy
+        Referrer-Policy strict-origin-when-cross-origin
+        # Remove server identification
+        -Server
+    }
+
+    # ── Compression ──────────────────────────────────────────────
+    encode zstd gzip
+
+    # ── Logging ──────────────────────────────────────────────────
+    log {
+        output file /var/log/caddy/escrow-access.log
+        format json
+    }
+}
