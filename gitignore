@@ -1,0 +1,56 @@
+# ═══════════════════════════════════════════════════════════════════
+# .gitignore — Federated Escrow
+# ═══════════════════════════════════════════════════════════════════
+
+# ── Environment & Secrets ─────────────────────────────────────────
+# CRITICAL: Never commit .env files — they contain encryption keys,
+# arbiter allowlists, and federation credentials
+.env
+.env.*
+!.env.example
+
+# ── Node ──────────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── Build artifacts ───────────────────────────────────────────────
+escrow-ui/dist/
+escrow-ui/.vite/
+dist/
+build/
+*.tsbuildinfo
+
+# ── Database ──────────────────────────────────────────────────────
+# SQLite database files contain user data and escrow records
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+
+# ── Fedimint ──────────────────────────────────────────────────────
+# Federation client data directory (keys, secrets, state)
+fm-data/
+.fedimint/
+
+# ── Backups & temp files ─────────────────────────────────────────
+*.backup
+*.bak
+*.tmp
+*.swp
+*~
+
+# ── OS files ──────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ───────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.code-workspace
+
+# ── Deployment scripts with hardcoded values ──────────────────────
+# Keep deploy-vps.sh but never commit versions with IPs/passwords
+# deploy-vps-local.sh

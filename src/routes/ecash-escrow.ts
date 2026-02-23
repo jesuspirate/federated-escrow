@@ -140,7 +140,7 @@ function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunct
   }
 
   const devPubkey = req.headers["x-dev-pubkey"] as string;
-  if (devPubkey && process.env.NODE_ENV !== "production") {
+  if (devPubkey && (process.env.NODE_ENV !== "production" || process.env.ALLOW_DEV_PUBKEY === "true")) {
     if (typeof devPubkey === "string" && devPubkey.length === 64) {
       req.pubkey = devPubkey;
       return next();
@@ -250,6 +250,14 @@ router.post("/", (req: AuthenticatedRequest, res: Response) => {
   } catch (err: any) { console.error("POST / error:", err); res.status(500).json({ error: err.message }); }
 });
 
+// ── GET /arbiter-check ───────────────────────────────────────────────────
+router.get("/arbiter-check", (req: AuthenticatedRequest, res: Response) => {
+  const pk = req.pubkey!;
+  res.json({
+    allowed: isArbiterAllowed(pk),
+    mode: ALLOWED_ARBITERS ? "allowlist" : "open",
+  });
+});
 // ── POST /:id/join ───────────────────────────────────────────────────────
 
 router.post("/:id/join", (req: AuthenticatedRequest, res: Response) => {
@@ -261,6 +269,9 @@ router.post("/:id/join", (req: AuthenticatedRequest, res: Response) => {
     const pk = req.pubkey!;
     const { role } = req.body;
     if (role !== "buyer" && role !== "arbiter") return res.status(400).json({ error: 'role must be "buyer" or "arbiter"' });
+    if (role === "arbiter" && !isArbiterAllowed(pk)) {
+      return res.status(403).json({ error: "Arbiter not authorized. Only pre-approved community arbiters can join trades." });
+    }
 
     const existing = getRoleByPubkey(row, pk);
     if (existing) return res.status(400).json({ error: `You are already the ${existing} in this escrow` });

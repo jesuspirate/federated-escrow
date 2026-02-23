@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { t, setLocale, getLocale, getAvailableLocales } from "./i18n";
 
 // ═══════════════════════════════════════════════════════════════════════
-// Fedi Mini-App: E-Cash Escrow v8.0
+// Fedi Mini-App: E-Cash Escrow v9.0
 // WebLN lock/claim • NIP-98 Nostr auth • Fedimint-powered
 // Onboarding • Federation limit safeguards • Marketplace-ready
 // ═══════════════════════════════════════════════════════════════════════
@@ -41,8 +41,9 @@ async function getNostrPubkey() {
 }
 
 async function makeNip98Header(url, method) {
-  if (!window.nostr && !_devPubkey) return null;
-  if (_devPubkey) return null;
+  // In dev mode, never attempt Nostr signing — even if extension exists
+  if (_devPubkey || _forceDevMode) return null;
+  if (!window.nostr) return null;
   const event = {
     kind: 27235,
     created_at: Math.floor(Date.now() / 1000),
@@ -67,7 +68,16 @@ const DEV_IDENTITIES = {
   arbiter: "cc".repeat(32),
 };
 
-function isDevMode() { return !!_devPubkey; }
+// Dev mode detection: If no WebLN (= not inside Fedi), always force dev mode.
+// Real trades should only happen inside Fedi where WebLN + federation identity
+// are native. Browser access is for dev/testing only.
+// Also force dev mode if ?dev is explicitly in URL (legacy behavior).
+const _isFediApp = typeof window !== "undefined" && !!window.webln;
+const _forceDevMode = typeof location !== "undefined"
+  && (!_isFediApp || new URLSearchParams(location.search).has("dev"));
+
+// isDevMode: true when running outside Fedi OR when ?dev param present
+function isDevMode() { return !!_devPubkey || _forceDevMode; }
 
 let _devPubkey = null;
 
@@ -504,18 +514,26 @@ export default function EcashEscrow() {
     toastTimer.current = setTimeout(() => setToast(t => ({ ...t, visible: false })), 3000);
   }, []);
 
+	// When outside Fedi (any browser), always use dev identities.
+  // Only authenticate via Nostr when inside the actual Fedi app.
   useEffect(() => {
     (async () => {
-      const forcedev = new URLSearchParams(location.search).get("dev");
-      if (forcedev) { _devPubkey = DEV_IDENTITIES[devRole]; setPubkey(_devPubkey); return; }
+      if (_forceDevMode) {
+        // Browser or ?dev → dev identity, skip Nostr entirely
+        _devPubkey = DEV_IDENTITIES[devRole];
+        setPubkey(_devPubkey);
+        return;
+      }
+      // Inside Fedi — use real Nostr identity
       const pk = await getNostrPubkey();
       if (pk) { _devPubkey = null; setPubkey(pk); }
       else { _devPubkey = DEV_IDENTITIES[devRole]; setPubkey(_devPubkey); }
     })();
   }, []);
 
+	// FIX: Removed `if (!isDevMode()) return;` guard — it prevented switching
+	// when Nostr auth succeeded on mount but ?dev is in the URL
   const switchDevIdentity = useCallback((role) => {
-    if (!isDevMode()) return;
     setDevRole(role); _devPubkey = DEV_IDENTITIES[role]; setPubkey(_devPubkey);
     setView("list"); setSelected(null); setEscrows([]);
   }, []);
@@ -635,6 +653,7 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
                 <span style={S.cardAmount}>{fmtSats(e.amountMsats)} <span style={{ color: "#64748b", fontWeight: 400 }}>{t("sats")}</span></span>
                 <StatusBadge status={e.status} />
               </div>
+              <div style={{ fontSize: 11, fontFamily: "monospace", color: "#475569", marginTop: 4, letterSpacing: 0.3 }}>ID: {e.id}</div>
               {e.description && <p style={S.cardDesc}>{e.description}</p>}
               <div style={S.cardMeta}>
                 <span style={S.cardRole}>{e.yourRole || "\u2014"}</span>
@@ -813,7 +832,18 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     setLoading(false);
   };
 
+  // ── 2-step confirmation for critical votes ──────────────────────
+  const [confirmVote, setConfirmVote] = useState(null); // null | "release" | "refund"
+
   const handleVote = async (outcome) => {
+    // Arbiter + Seller get a 2-step gate. Buyer votes directly.
+    if (role === "arbiter" || role === "seller") {
+      if (confirmVote !== outcome) {
+        setConfirmVote(outcome);
+        return; // First tap — show confirmation
+      }
+    }
+    setConfirmVote(null);
     setLoading(true);
     try {
       const res = await api(`/${e.id}/approve`, { method: "POST", body: JSON.stringify({ outcome }) });
@@ -823,6 +853,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     } catch (err) { showToast(err.message, "error"); }
     setLoading(false);
   };
+
+  const cancelConfirm = () => setConfirmVote(null);
 
   const handleClaim = async () => {
     setLoading(true);
@@ -914,27 +946,87 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           <ParticipantNode label="Arbiter" IconComp={SvgArbiter} pkDisplay={getPkDisplay(e.participants?.arbiter)} joined={isParticipantJoined(e.participants?.arbiter)} voted={!!e.votes?.voters?.find(v => v.role === "arbiter")} voteOutcome={e.votes?.voters?.find(v => v.role === "arbiter")?.outcome} resolvedOutcome={e.resolvedOutcome} isDispute={buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome} delay={300} />
         </div>
 
-        {/* ── Vote tally ─────────────────────────────────────────── */}
+        {/* ── Vote tally + inline seller/arbiter actions ──────────── */}
         {(status === "LOCKED" || status === "APPROVED" || status === "CLAIMED") && e.votes && (
           <div style={{ padding: "0 0 12px", animation: "slideUp 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
-            <div style={{ background: "#111827", border: "1px solid #1e293b", borderRadius: 14, padding: "14px", display: "flex", gap: 12, alignItems: "center" }}>
-              <div style={{ flex: 1, textAlign: "center" }}>
-                <div style={{ fontSize: 28, fontWeight: 900, color: "#10b981", lineHeight: 1 }}>{e.votes.release || 0}</div>
-                <div style={{ fontSize: 9, color: "#475569", marginTop: 4, letterSpacing: 1, textTransform: "uppercase" }}>Release</div>
+            <div style={{ background: "#111827", border: "1px solid #1e293b", borderRadius: 14, padding: "14px", display: "flex", flexDirection: "column", gap: 0 }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                <div style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: "#10b981", lineHeight: 1 }}>{e.votes.release || 0}</div>
+                  <div style={{ fontSize: 9, color: "#475569", marginTop: 4, letterSpacing: 1, textTransform: "uppercase" }}>Release</div>
+                </div>
+                <div style={{ width: 1, height: 36, background: "#1e293b" }} />
+                <div style={{ flex: 1, textAlign: "center" }}>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: "#f59e0b", lineHeight: 1 }}>{e.votes.refund || 0}</div>
+                  <div style={{ fontSize: 9, color: "#475569", marginTop: 4, letterSpacing: 1, textTransform: "uppercase" }}>Refund</div>
+                </div>
+                {e.resolvedOutcome && (
+                  <>
+                    <div style={{ width: 1, height: 36, background: "#1e293b" }} />
+                    <div style={{ flex: 1.5, textAlign: "center", animation: "popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: e.resolvedOutcome === "release" ? "#10b981" : "#f59e0b" }}>{e.resolvedOutcome === "release" ? `${t("release").toUpperCase()} ✓` : `${t("refund").toUpperCase()} ↩`}</div>
+                      <div style={{ fontSize: 9, color: "#64748b", marginTop: 2 }}>{e.resolvedOutcome === "release" ? t("resolvedRelease") : t("resolvedRefund")}</div>
+                    </div>
+                  </>
+                )}
               </div>
-              <div style={{ width: 1, height: 36, background: "#1e293b" }} />
-              <div style={{ flex: 1, textAlign: "center" }}>
-                <div style={{ fontSize: 28, fontWeight: 900, color: "#f59e0b", lineHeight: 1 }}>{e.votes.refund || 0}</div>
-                <div style={{ fontSize: 9, color: "#475569", marginTop: 4, letterSpacing: 1, textTransform: "uppercase" }}>Refund</div>
-              </div>
-              {e.resolvedOutcome && (
-                <>
-                  <div style={{ width: 1, height: 36, background: "#1e293b" }} />
-                  <div style={{ flex: 1.5, textAlign: "center", animation: "popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
-                    <div style={{ fontSize: 12, fontWeight: 800, color: e.resolvedOutcome === "release" ? "#10b981" : "#f59e0b" }}>{e.resolvedOutcome === "release" ? `${t("release").toUpperCase()} ✓` : `${t("refund").toUpperCase()} ↩`}</div>
-                    <div style={{ fontSize: 9, color: "#64748b", marginTop: 2 }}>{e.resolvedOutcome === "release" ? t("resolvedRelease") : t("resolvedRefund")}</div>
-                  </div>
-                </>
+
+              {/* ── Seller vote (inline under tally) ──────────────── */}
+              {canSellerVote && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b" }}>
+                  {confirmVote ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ textAlign: "center", padding: "8px 12px", background: confirmVote === "release" ? "rgba(5,150,105,0.1)" : "rgba(180,83,9,0.1)", border: `1px solid ${confirmVote === "release" ? "rgba(5,150,105,0.3)" : "rgba(180,83,9,0.3)"}`, borderRadius: 10, fontSize: 13, fontWeight: 700, color: confirmVote === "release" ? "#10b981" : "#f59e0b" }}>
+                        {confirmVote === "release" ? "Confirm: Release sats to buyer?" : "Confirm: Dispute — request refund?"}
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8" }} onClick={cancelConfirm}>Cancel</button>
+                        <button style={{ ...S.actionBtn, flex: 1, background: confirmVote === "release" ? "linear-gradient(135deg, #059669, #047857)" : "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote(confirmVote)} disabled={loading}>{loading ? t("voting") : "Yes, I'm sure"}</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>{t("confirm")}</button>
+                      <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote("refund")} disabled={loading}>{t("dispute")}</button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Arbiter vote (inline under tally) ─────────────── */}
+              {canArbiterVote && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b" }}>
+                  {confirmVote ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ textAlign: "center", padding: "10px 12px", background: confirmVote === "release" ? "rgba(5,150,105,0.1)" : "rgba(180,83,9,0.1)", border: `1px solid ${confirmVote === "release" ? "rgba(5,150,105,0.3)" : "rgba(180,83,9,0.3)"}`, borderRadius: 10, fontSize: 13, fontWeight: 700, color: confirmVote === "release" ? "#10b981" : "#f59e0b", lineHeight: 1.5 }}>
+                        {confirmVote === "release" ? "⚖️ As arbiter, you are releasing sats to the BUYER. This is final." : "⚖️ As arbiter, you are refunding sats to the SELLER. This is final."}
+                      </div>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8" }} onClick={cancelConfirm}>Cancel</button>
+                        <button style={{ ...S.actionBtn, flex: 1, background: confirmVote === "release" ? "linear-gradient(135deg, #059669, #047857)" : "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote(confirmVote)} disabled={loading}>{loading ? t("voting") : "Confirm vote"}</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>{t("release")}</button>
+                      <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote("refund")} disabled={loading}>{t("refund")}</button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Seller/arbiter wait banners (inline under tally) ─ */}
+              {status === "LOCKED" && role === "seller" && !buyerVoted && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#64748b" }}><I.Clock /> {t("waitBuyerVote")}</div>
+              )}
+              {status === "LOCKED" && role === "seller" && hasVoted && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#64748b" }}><I.Clock /> {t("waitResolution")}</div>
+              )}
+              {status === "LOCKED" && role === "arbiter" && (!buyerVoted || !sellerVoted) && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#64748b" }}><I.Clock /> {t("waitBothVote")}</div>
+              )}
+              {status === "LOCKED" && role === "arbiter" && buyerVoted && sellerVoted && buyerOutcome === sellerOutcome && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#10b981" }}><I.Check /> {t("noDispute")}</div>
               )}
             </div>
           </div>
@@ -978,28 +1070,12 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             {loading ? t("voting") : t("confirmRelease")}
           </button>
         )}
-        {canSellerVote && (
-          <div style={{ display: "flex", gap: 8, width: "100%" }}>
-            <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>{t("confirm")}</button>
-            <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote("refund")} disabled={loading}>{t("dispute")}</button>
-          </div>
-        )}
-        {canArbiterVote && (
-          <div style={{ display: "flex", gap: 8, width: "100%" }}>
-            <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>{t("release")}</button>
-            <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote("refund")} disabled={loading}>{t("refund")}</button>
-          </div>
-        )}
         {(canClaim || canReclaimExpired) && (
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)" }} onClick={handleClaim} disabled={loading}>
             {loading ? t("claiming") : t("claimSats", { amount: fmtSats(e.amountMsats) })}
           </button>
         )}
         {status === "LOCKED" && role === "buyer" && hasVoted && <div style={S.waitBanner}><I.Clock /> {t("waitSeller")}</div>}
-        {status === "LOCKED" && role === "seller" && !buyerVoted && <div style={S.waitBanner}><I.Clock /> {t("waitBuyerVote")}</div>}
-        {status === "LOCKED" && role === "seller" && hasVoted && <div style={S.waitBanner}><I.Clock /> {t("waitResolution")}</div>}
-        {status === "LOCKED" && role === "arbiter" && (!buyerVoted || !sellerVoted) && <div style={S.waitBanner}><I.Clock /> {t("waitBothVote")}</div>}
-        {status === "LOCKED" && role === "arbiter" && buyerVoted && sellerVoted && buyerOutcome === sellerOutcome && <div style={S.waitBanner}><I.Check /> {t("noDispute")}</div>}
         {status === "FUNDED" && role !== "seller" && <div style={S.waitBanner}>{t("waitSellerLock")}</div>}
         {status === "CREATED" && <div style={S.waitBanner}><I.Clock /> {t("waitParties")}</div>}
         {status === "COMPLETED" && <div style={{ ...S.waitBanner, color: "#059669" }}><I.Check /> {t("tradeCompleteBanner")}</div>}
