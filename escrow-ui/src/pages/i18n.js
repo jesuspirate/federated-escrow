@@ -13,6 +13,38 @@
 
 const translations = {
   en: {
+
+// ── EN: Sandbox onboarding (browser visitors) ────────────────────
+
+    obSandboxTitle: "Welcome to the Escrow Sandbox",
+    obSandboxDesc: "This is a live demo of our 2-of-3 multisig escrow — powered by Fedimint and Lightning. Try every role: create escrows, fund them, vote, and claim. No real sats, no risk.",
+    obRolesTitle: "Play Every Role",
+    obRolesDesc: "Switch between Seller, Buyer, and Arbiter using the role bar at the top. Each role sees a different view — just like a real trade. Walk through a full escrow lifecycle in minutes.",
+    obCommunityTitle: "Ready for Real Trades?",
+    obCommunityDesc: "When you're ready to trade real sats, join our community on Fedi. Chat with traders, learn the rules, and start your first escrow — all inside the federation.",
+    sandboxBadge: "SANDBOX MODE",
+    sandboxFooter: "No real sats. Explore freely.",
+    tryDemo: "Try the Demo",
+    joinChat: "Join the Community Chat",
+    sandbox: "Sandbox",
+    playAs: "Play as:",
+
+// ── EN: Share escrow prompt ──────────────────────────────────────
+
+    shareEscrowTitle: "Share this Escrow ID",
+    shareEscrowDesc: "Copy the escrow ID above and send it to the buyer and arbiter so they can join. Share it in your community chat or directly with the other participants.",
+    copyId: "Copy ID",
+    openCommunity: "Open Chat",
+
+// ── EN: Learn more / resources ───────────────────────────────────
+
+    learnMoreTitle: "New to Bitcoin or Fedi?",
+    learnMoreDesc: "Get started with these resources",
+    learnFedi: "What is Fedi?",
+    learnBitcoin: "What is Bitcoin?",
+    scanToDownload: "Scan to download Fedi",
+    sandboxPayout: "🧪 Sandbox: sats claimed!",
+
     // ── Onboarding ───────────────────────────────────────────────
     ob1Title: "Trustless P2P Trading",
     ob1Desc: "Trade anything for bitcoin without trusting the other side. Your sats are locked in federated e-cash escrow until both parties agree the deal is done.",
@@ -24,6 +56,30 @@ const translations = {
     obNext: "Next",
     obSkip: "Skip",
     obFedLimit: "Federation limit: {limit} sats per trade",
+    obSandboxTitle: "Welcome to the Escrow Sandbox",
+    obSandboxDesc: "This is a live demo of our 2-of-3 multisig escrow — powered by Fedimint and Lightning. Try every role: create escrows, fund them, vote, and claim. No real sats, no risk.",
+    obRolesTitle: "Play Every Role",
+    obRolesDesc: "Switch between Seller, Buyer, and Arbiter using the role bar at the top. Each role sees a different view — just like a real trade. Walk through a full escrow lifecycle in minutes.",
+    obCommunityTitle: "Ready for Real Trades?",
+    obCommunityDesc: "When you're ready to trade real sats, join our community on Fedi. Chat with traders, learn the rules, and start your first escrow — all inside the federation.",
+    sandboxBadge: "SANDBOX MODE",
+    sandboxFooter: "No real sats. Explore freely.",
+    tryDemo: "Try the Demo",
+    joinChat: "Join the Community Chat",
+    sandbox: "Sandbox",
+    playAs: "Play as:",
+    obSandboxTitle: "Welcome to the Escrow Sandbox",
+    obSandboxDesc: "This is a live demo of our 2-of-3 multisig escrow — powered by Fedimint and Lightning. Try every role: create escrows, fund them, vote, and claim. No real sats, no risk.",
+    obRolesTitle: "Play Every Role",
+    obRolesDesc: "Switch between Seller, Buyer, and Arbiter using the role bar at the top. Each role sees a different view — just like a real trade. Walk through a full escrow lifecycle in minutes.",
+    obCommunityTitle: "Ready for Real Trades?",
+    obCommunityDesc: "When you're ready to trade real sats, join our community on Fedi. Chat with traders, learn the rules, and start your first escrow — all inside the federation.",
+    sandboxBadge: "SANDBOX MODE",
+    sandboxFooter: "No real sats. Explore freely.",
+    tryDemo: "Try the Demo",
+    joinChat: "Join the Community Chat",
+    sandbox: "Sandbox",
+    playAs: "Play as:",
 
     // ── List View ────────────────────────────────────────────────
     escrow: "Federated Escrow",
@@ -49,6 +105,12 @@ const translations = {
     howStep3: "You lock sats via Lightning.",
     howStep4: "Complete the trade. Both sides vote to release.",
     howStep5: "Buyer claims sats instantly to their wallet.",
+
+// ── EN: Share escrow prompt ──────────────────────────────────────
+    shareEscrowTitle: "Share this Escrow ID",
+    shareEscrowDesc: "Copy the escrow ID above and send it to the buyer and arbiter so they can join. Share it in your community chat or directly with the other participants.",
+    copyId: "Copy ID",
+    openCommunity: "Open Chat",
 
     // ── Join View ────────────────────────────────────────────────
     escrowId: "Escrow ID",
@@ -139,6 +201,49 @@ const translations = {
   },
 
   fr: {
+
+// ── FR: Sandbox onboarding ───────────────────────────────────────
+
+    obSandboxTitle: "Bienvenue dans le bac à sable",
+    obSandboxDesc: "Ceci est une démo en direct de notre escrow multisig 2-sur-3 — propulsé par Fedimint et Lightning. Essayez chaque rôle : créez des escrows, financez-les, votez et réclamez. Pas de vrais sats, aucun risque.",
+    obRolesTitle: "Jouez chaque rôle",
+    obRolesDesc: "Basculez entre Vendeur, Acheteur et Arbitre avec la barre de rôle en haut. Chaque rôle a une vue différente — comme dans un vrai échange. Parcourez un cycle complet en quelques minutes.",
+    obCommunityTitle: "Prêt pour de vrais échanges ?",
+    obCommunityDesc: "Quand vous êtes prêt à échanger de vrais sats, rejoignez notre communauté sur Fedi. Discutez avec des traders, apprenez les règles et lancez votre premier escrow — le tout dans la fédération.",
+    sandboxBadge: "MODE BAC À SABLE",
+    sandboxFooter: "Pas de vrais sats. Explorez librement.",
+    tryDemo: "Essayer la démo",
+    joinChat: "Rejoindre le chat communautaire",
+    sandbox: "Bac à sable",
+    playAs: "Jouer en tant que :",
+
+// ── FR: Share escrow prompt ──────────────────────────────────────
+
+    obSandboxTitle: "Bienvenue dans le bac à sable",
+    obSandboxDesc: "Ceci est une démo en direct de notre escrow multisig 2-sur-3 — propulsé par Fedimint et Lightning. Essayez chaque rôle : créez des escrows, financez-les, votez et réclamez. Pas de vrais sats, aucun risque.",
+    obRolesTitle: "Jouez chaque rôle",
+    obRolesDesc: "Basculez entre Vendeur, Acheteur et Arbitre avec la barre de rôle en haut. Chaque rôle a une vue différente — comme dans un vrai échange. Parcourez un cycle complet en quelques minutes.",
+    obCommunityTitle: "Prêt pour de vrais échanges ?",
+    obCommunityDesc: "Quand vous êtes prêt à échanger de vrais sats, rejoignez notre communauté sur Fedi. Discutez avec des traders, apprenez les règles et lancez votre premier escrow — le tout dans la fédération.",
+    sandboxBadge: "MODE BAC À SABLE",
+    sandboxFooter: "Pas de vrais sats. Explorez librement.",
+    tryDemo: "Essayer la démo",
+    joinChat: "Rejoindre le chat communautaire",
+    sandbox: "Bac à sable",
+    playAs: "Jouer en tant que :",
+
+// ── FR: Learn more / resources ───────────────────────────────────
+
+    learnMoreTitle: "Nouveau sur Bitcoin ou Fedi ?",
+    learnMoreDesc: "Commencez avec ces ressources",
+    learnFedi: "Qu'est-ce que Fedi ?",
+    learnBitcoin: "Qu'est-ce que Bitcoin ?",
+    scanToDownload: "Scannez pour télécharger Fedi",
+    sandboxPayout: "🧪 Bac à sable : sats réclamés !",
+    shareEscrowTitle: "Partagez cet identifiant d'escrow",
+    shareEscrowDesc: "Copiez l'identifiant ci-dessus et envoyez-le à l'acheteur et à l'arbitre pour qu'ils puissent rejoindre. Partagez-le dans votre chat communautaire ou directement avec les participants.",
+    copyId: "Copier l'ID",
+    openCommunity: "Ouvrir le chat",
     ob1Title: "Échanges P2P sans confiance",
     ob1Desc: "Échangez n'importe quoi contre du bitcoin sans faire confiance à l'autre partie. Vos sats sont verrouillés dans un séquestre fédéré d'e-cash jusqu'à ce que les deux parties acceptent.",
     ob2Title: "3 Parties, Vote 2-sur-3",
@@ -252,6 +357,18 @@ const translations = {
     notesCopied: "Notes copiées",
     claimed: "Réclamé !",
     dev: "DEV",
+    obSandboxTitle: "Bienvenue dans le bac à sable",
+    obSandboxDesc: "Ceci est une démo en direct de notre escrow multisig 2-sur-3 — propulsé par Fedimint et Lightning. Essayez chaque rôle : créez des escrows, financez-les, votez et réclamez. Pas de vrais sats, aucun risque.",
+    obRolesTitle: "Jouez chaque rôle",
+    obRolesDesc: "Basculez entre Vendeur, Acheteur et Arbitre avec la barre de rôle en haut. Chaque rôle a une vue différente — comme dans un vrai échange. Parcourez un cycle complet en quelques minutes.",
+    obCommunityTitle: "Prêt pour de vrais échanges ?",
+    obCommunityDesc: "Quand vous êtes prêt à échanger de vrais sats, rejoignez notre communauté sur Fedi. Discutez avec des traders, apprenez les règles et lancez votre premier escrow — le tout dans la fédération.",
+    sandboxBadge: "MODE BAC À SABLE",
+    sandboxFooter: "Pas de vrais sats. Explorez librement.",
+    tryDemo: "Essayer la démo",
+    joinChat: "Rejoindre le chat communautaire",
+    sandbox: "Bac à sable",
+    playAs: "Jouer en tant que :",
   },
 
   es: {

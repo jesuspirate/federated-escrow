@@ -5,6 +5,7 @@ import { t, setLocale, getLocale, getAvailableLocales } from "./i18n";
 // Fedi Mini-App: E-Cash Escrow v9.0
 // WebLN lock/claim • NIP-98 Nostr auth • Fedimint-powered
 // Onboarding • Federation limit safeguards • Marketplace-ready
+// Browser sandbox mode • Community-first onboarding
 // ═══════════════════════════════════════════════════════════════════════
 
 const API = "/api/ecash-escrows";
@@ -41,7 +42,6 @@ async function getNostrPubkey() {
 }
 
 async function makeNip98Header(url, method) {
-  // In dev mode, never attempt Nostr signing — even if extension exists
   if (_devPubkey || _forceDevMode) return null;
   if (!window.nostr) return null;
   const event = {
@@ -68,16 +68,22 @@ const DEV_IDENTITIES = {
   arbiter: "cc".repeat(32),
 };
 
-// Dev mode detection: If no WebLN (= not inside Fedi), always force dev mode.
-// Real trades should only happen inside Fedi where WebLN + federation identity
-// are native. Browser access is for dev/testing only.
-// Also force dev mode if ?dev is explicitly in URL (legacy behavior).
+// ── Demo / Sandbox mode ──────────────────────────────────────────────
+// No WebLN = not inside Fedi = browser sandbox. Real trades happen in Fedi only.
 const _isFediApp = typeof window !== "undefined" && !!window.webln;
 const _forceDevMode = typeof location !== "undefined"
   && (!_isFediApp || new URLSearchParams(location.search).has("dev"));
 
-// isDevMode: true when running outside Fedi OR when ?dev param present
 function isDevMode() { return !!_devPubkey || _forceDevMode; }
+
+// Fedi community chat rooms
+const FEDI_ROOMS = {
+  en: "fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::",
+  fr: "fedi:room:!qHlVxBJBCKqUbetBnA:m1.8fa.in:::",
+};
+function getFediRoomLink(locale) {
+  return FEDI_ROOMS[locale] || FEDI_ROOMS.en;
+}
 
 let _devPubkey = null;
 
@@ -423,18 +429,26 @@ function Toast({ msg, type, visible }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// ONBOARDING SPLASH
+// ONBOARDING — Community-first for browser, original for Fedi
 // ═══════════════════════════════════════════════════════════════════════
 
 const ONBOARDING_KEY = "fedi-escrow-onboarded";
 
-function OnboardingSplash({ onComplete }) {
+function OnboardingSplash({ onComplete, locale }) {
   const [step, setStep] = useState(0);
-  const steps = [
+  const isBrowser = !_isFediApp;
+  const roomLink = getFediRoomLink(locale);
+
+  const steps = isBrowser ? [
+    { icon: <SvgLockIcon size={44} color="#f59e0b" />, titleKey: "obSandboxTitle", descKey: "obSandboxDesc" },
+    { icon: <SvgArbiter size={44} color="#8b5cf6" />, titleKey: "obRolesTitle", descKey: "obRolesDesc" },
+    { icon: <SvgZapIcon size={44} color="#10b981" />, titleKey: "obCommunityTitle", descKey: "obCommunityDesc" },
+  ] : [
     { icon: <SvgArbiter size={44} color="#f59e0b" />, titleKey: "ob1Title", descKey: "ob1Desc" },
     { icon: <SvgBuyer size={44} color="#8b5cf6" />, titleKey: "ob2Title", descKey: "ob2Desc" },
     { icon: <SvgZapIcon size={44} color="#10b981" />, titleKey: "ob3Title", descKey: "ob3Desc" },
   ];
+
   const s = steps[step];
   const isLast = step === steps.length - 1;
 
@@ -449,6 +463,14 @@ function OnboardingSplash({ onComplete }) {
         @keyframes obFadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes obPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
       `}</style>
+
+      {/* Sandbox badge — browser only */}
+      {isBrowser && (
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: 99, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", marginBottom: 24, animation: "obFadeUp 0.3s ease-out" }}>
+          <span style={{ fontSize: 12 }}>🧪</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b", letterSpacing: 0.5 }}>{t("sandboxBadge")}</span>
+        </div>
+      )}
 
       {/* Progress dots */}
       <div style={{ display: "flex", gap: 8, marginBottom: 48 }}>
@@ -470,21 +492,35 @@ function OnboardingSplash({ onComplete }) {
 
       {/* Actions */}
       <div style={{ marginTop: 48, width: "100%", maxWidth: 320 }}>
-        <button onClick={handleNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: isLast ? "#f59e0b" : "transparent", border: isLast ? "none" : "1.5px solid #334155", color: isLast ? "#0c0f17" : "#f8fafc", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          {isLast ? t("obStartTrading") : t("obNext")}
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </button>
-        {!isLast && (
-          <button onClick={() => { try { localStorage.setItem(ONBOARDING_KEY, "1"); } catch {} onComplete(); }}
-            style={{ width: "100%", padding: "12px 0", marginTop: 8, background: "transparent", border: "none", color: "#475569", fontSize: 13, cursor: "pointer" }}>
-            {t("obSkip")}
-          </button>
+        {isLast && isBrowser ? (
+          <>
+            <button onClick={handleNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: "#f59e0b", border: "none", color: "#0c0f17", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              🧪 {t("tryDemo")}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+            <a href={roomLink} target="_blank" rel="noopener noreferrer" style={{ display: "flex", width: "100%", padding: "14px 0", marginTop: 10, borderRadius: 12, background: "transparent", border: "1.5px solid #334155", color: "#f8fafc", fontSize: 15, fontWeight: 600, cursor: "pointer", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none" }}>
+              💬 {t("joinChat")}
+            </a>
+          </>
+        ) : (
+          <>
+            <button onClick={handleNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: isLast ? "#f59e0b" : "transparent", border: isLast ? "none" : "1.5px solid #334155", color: isLast ? "#0c0f17" : "#f8fafc", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              {isLast ? t("obStartTrading") : t("obNext")}
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+            </button>
+            {!isLast && (
+              <button onClick={() => { try { localStorage.setItem(ONBOARDING_KEY, "1"); } catch {} onComplete(); }}
+                style={{ width: "100%", padding: "12px 0", marginTop: 8, background: "transparent", border: "none", color: "#475569", fontSize: 13, cursor: "pointer" }}>
+                {t("obSkip")}
+              </button>
+            )}
+          </>
         )}
       </div>
 
-      {/* Federation limit footnote */}
+      {/* Footer */}
       <div style={{ position: "absolute", bottom: 24, left: 24, right: 24, textAlign: "center", fontSize: 11, color: "#334155", animation: "obPulse 4s ease infinite" }}>
-        {t("obFedLimit", { limit: FED_LIMITS.MAX_TX_SATS.toLocaleString() })}
+        {isBrowser ? t("sandboxFooter") : t("obFedLimit", { limit: FED_LIMITS.MAX_TX_SATS.toLocaleString() })}
       </div>
     </div>
   );
@@ -514,17 +550,14 @@ export default function EcashEscrow() {
     toastTimer.current = setTimeout(() => setToast(t => ({ ...t, visible: false })), 3000);
   }, []);
 
-	// When outside Fedi (any browser), always use dev identities.
-  // Only authenticate via Nostr when inside the actual Fedi app.
+	// Browser = sandbox identities. Fedi = real Nostr auth.
   useEffect(() => {
     (async () => {
       if (_forceDevMode) {
-        // Browser or ?dev → dev identity, skip Nostr entirely
         _devPubkey = DEV_IDENTITIES[devRole];
         setPubkey(_devPubkey);
         return;
       }
-      // Inside Fedi — use real Nostr identity
       const pk = await getNostrPubkey();
       if (pk) { _devPubkey = null; setPubkey(pk); }
       else { _devPubkey = DEV_IDENTITIES[devRole]; setPubkey(_devPubkey); }
@@ -563,7 +596,7 @@ export default function EcashEscrow() {
   const openDetail = (id) => { setView("detail"); loadDetail(id); };
 
   // ── Onboarding gate ─────────────────────────────────────────────
-  if (!onboarded) return <OnboardingSplash onComplete={() => setOnboarded(true)} />;
+  if (!onboarded) return <OnboardingSplash onComplete={() => setOnboarded(true)} locale={locale} />;
 
   if (!pubkey) {
     return (
@@ -598,15 +631,26 @@ export default function EcashEscrow() {
       `}</style>
       <Toast {...toast} />
       {isDevMode() && (
-        <div style={S.devBar}>
-          <span style={S.devLabel}>DEV</span>
-          {["seller", "buyer", "arbiter"].map(r => (
-            <button key={r} onClick={() => switchDevIdentity(r)} style={{ ...S.devBtn, ...(devRole === r ? S.devBtnActive : {}) }}>{r}</button>
-          ))}
+        <div style={S.demoBar}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <span style={{ fontSize: 13 }}>🧪</span>
+            <span style={S.demoLabel}>{t("sandbox")}</span>
+            <span style={{ fontSize: 11, color: "#64748b" }}>{t("playAs")}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
+            {["seller", "buyer", "arbiter"].map(r => (
+              <button key={r} onClick={() => switchDevIdentity(r)} style={{ ...S.demoRoleBtn, ...(devRole === r ? S.demoRoleBtnActive : {}) }}>
+                {r === "seller" ? "🏠" : r === "buyer" ? "🛒" : "⚖️"} {t(r)}
+              </button>
+            ))}
+            <a href={getFediRoomLink(locale)} target="_blank" rel="noopener noreferrer" style={S.demoChatLink}>
+              💬 {t("joinChat")}
+            </a>
+          </div>
         </div>
       )}
       {view === "list" && <ListView escrows={escrows} pubkey={pubkey} loading={loading} onOpen={openDetail} onCreate={() => setView("create")} onJoin={() => setView("join")} onRefresh={loadEscrows} locale={locale} onSwitchLocale={switchLocale} />}
-      {view === "create" && <CreateView pubkey={pubkey} onBack={() => setView("list")} onCreated={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
+      {view === "create" && <CreateView pubkey={pubkey} locale={locale} onBack={() => setView("list")} onCreated={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "join" && <JoinView pubkey={pubkey} onBack={() => setView("list")} onJoined={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "detail" && selected && <DetailView escrow={selected} pubkey={pubkey} onBack={() => { setView("list"); loadEscrows(); }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} />}
     </div>
@@ -663,6 +707,31 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
           ))}
         </div>
       )}
+
+      {/* ── Learn More — browser sandbox only ──────────────────── */}
+      {isDevMode() && (
+        <div style={{ marginTop: 24, padding: "16px", background: "#111827", border: "1px solid #1e293b", borderRadius: 12, textAlign: "center" }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>{t("learnMoreTitle") || "New to Bitcoin or Fedi?"}</div>
+          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 14, lineHeight: 1.5 }}>{t("learnMoreDesc") || "Get started with these resources"}</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+            <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", color: "#f59e0b", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+              🛡️ {t("learnFedi") || "What is Fedi?"}
+            </a>
+            <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, background: "rgba(247,147,26,0.08)", border: "1px solid rgba(247,147,26,0.15)", color: "#f7931a", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+              ₿ {t("learnBitcoin") || "What is Bitcoin?"}
+            </a>
+          </div>
+          {/* QR code for laptop users — points to Fedi download */}
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #1e293b" }}>
+            <div style={{ fontSize: 11, color: "#475569", marginBottom: 8 }}>{t("scanToDownload") || "Scan to download Fedi"}</div>
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent("https://www.fedi.xyz/download")}&bgcolor=111827&color=f8fafc&format=svg`}
+              alt="Download Fedi"
+              style={{ width: 120, height: 120, borderRadius: 8, border: "1px solid #1e293b" }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -671,11 +740,11 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
 // CREATE VIEW
 // ═══════════════════════════════════════════════════════════════════════
 
-function CreateView({ pubkey, onBack, onCreated, showToast, setLoading, loading }) {
+function CreateView({ pubkey, locale, onBack, onCreated, showToast, setLoading, loading }) {
   const [amount, setAmount] = useState("");
   const [desc, setDesc] = useState("");
   const [terms, setTerms] = useState("");
-  const [community, setCommunity] = useState("");
+  const [community, setCommunity] = useState(() => isDevMode() ? getFediRoomLink(locale) : "");
   const [amountError, setAmountError] = useState(null);
 
   const onAmountChange = (val) => {
@@ -729,14 +798,15 @@ function JoinView({ pubkey, onBack, onJoined, showToast, setLoading, loading }) 
   const [role, setRole] = useState("buyer");
   const [arbiterAllowed, setArbiterAllowed] = useState(null); // null=loading, true/false
 
-  // Check arbiter allowlist on mount
+  // Check arbiter allowlist on mount — sandbox always allows arbiter
   useEffect(() => {
+    if (isDevMode()) { setArbiterAllowed(true); return; }
     (async () => {
       try {
         const res = await api("/arbiter-check");
         if (res.mode === "open") setArbiterAllowed(true);
         else setArbiterAllowed(!!res.allowed);
-      } catch { setArbiterAllowed(true); } // fallback to open if endpoint missing
+      } catch { setArbiterAllowed(true); }
     })();
   }, [pubkey]);
 
@@ -873,6 +943,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         if (window.webln) {
           try { await window.webln.enable(); const result = await window.webln.makeInvoice({ amount: amountSats }); invoice = result.paymentRequest; }
           catch { showToast(t("invoiceCancelled"), "error"); setLoading(false); return; }
+        } else if (isDevMode()) {
+          // Sandbox: skip real invoice, use a dev placeholder
+          invoice = `SANDBOX_INVOICE_${e.id}_${Date.now()}`;
         } else {
           invoice = prompt(`Paste a BOLT-11 invoice for ${amountSats} sats:`);
           if (!invoice) { setLoading(false); return; }
@@ -880,7 +953,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         showToast(t("sendingPayout"));
         const payout = await api(`/${e.id}/payout`, { method: "POST", body: JSON.stringify({ invoice }) });
         if (payout.error) throw new Error(payout.error);
-        showToast(t("satsReceived"));
+        showToast(isDevMode() ? (t("sandboxPayout") || `🧪 Sandbox: ${amountSats.toLocaleString()} sats claimed!`) : t("satsReceived"));
       } else if (notes) {
         copy(notes, "E-cash notes");
         showToast(t("notesCopied"));
@@ -1042,12 +1115,32 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {e.terms && (<div style={S.section}><div style={S.sectionLabel}>{t("tradeTerms")}</div><div style={S.sectionValue}>{e.terms}</div></div>)}
         {e.description && (<div style={S.section}><div style={S.sectionLabel}>{t("description")}</div><div style={S.sectionValue}>{e.description}</div></div>)}
 
-        <div style={S.section}>
-          <div style={S.sectionLabel}>{t("escrowId")}</div>
-          <button style={S.copyRow} onClick={() => copy(e.id, t("escrowId"))}>
-            <span style={S.mono}>{e.id}</span><I.Copy />
-          </button>
-        </div>
+        {/* Share prompt — visible until all 3 participants have joined */}
+        {(!isParticipantJoined(e.participants?.buyer) || !isParticipantJoined(e.participants?.arbiter)) ? (
+          <div style={{ padding: "14px 16px", background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.15)", borderRadius: 12, marginBottom: 14, animation: "obFadeUp 0.4s ease-out", textAlign: "center" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "#a78bfa", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              📤 {t("shareEscrowTitle")}
+            </div>
+            <button style={{ ...S.copyRow, width: "100%", marginBottom: 10, justifyContent: "center" }} onClick={() => copy(e.id, t("escrowId"))}>
+              <span style={S.mono}>{e.id}</span><I.Copy />
+            </button>
+            <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 10 }}>
+              {t("shareEscrowDesc")}
+            </div>
+            {e.communityLink && (
+              <a href={e.communityLink} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "8px 16px", borderRadius: 8, background: "rgba(139,92,246,0.12)", color: "#a78bfa", fontSize: 12, fontWeight: 600, border: "1px solid rgba(139,92,246,0.2)", textDecoration: "none" }}>
+                💬 {t("openCommunity")}
+              </a>
+            )}
+          </div>
+        ) : (
+          <div style={{ ...S.section, textAlign: "center" }}>
+            <div style={S.sectionLabel}>{t("escrowId")}</div>
+            <button style={{ ...S.copyRow, justifyContent: "center" }} onClick={() => copy(e.id, t("escrowId"))}>
+              <span style={S.mono}>{e.id}</span><I.Copy />
+            </button>
+          </div>
+        )}
 
         {/* Completion celebration */}
         {(status === "COMPLETED" || (status === "CLAIMED" && e.resolvedOutcome)) && (
@@ -1113,7 +1206,7 @@ const S = {
   input: { width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #1e293b", background: "#111827", color: "#f8fafc", fontSize: 14, outline: "none" },
   hint: { fontSize: 11, color: "#475569", marginTop: 4 },
   disclaimer: { fontSize: 12, color: "#64748b", marginTop: 16, padding: "12px", background: "#111827", borderRadius: 10, lineHeight: 1.6 },
-  roleBanner: { display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 10, fontSize: 13, marginBottom: 12 },
+  roleBanner: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 14px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 10, fontSize: 13, marginBottom: 12 },
   section: { marginBottom: 14 },
   sectionLabel: { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 },
   sectionValue: { fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 },
@@ -1122,8 +1215,9 @@ const S = {
   actionBar: { position: "sticky", bottom: 0, left: 0, right: 0, padding: "12px 0 20px", background: "linear-gradient(transparent, #0c0f17 20%)" },
   actionBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "16px 0", borderRadius: 14, background: "#f59e0b", color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: -0.3 },
   waitBanner: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 0", color: "#64748b", fontSize: 13, fontWeight: 500 },
-  devBar: { display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 16px", background: "#1a1625", borderBottom: "1px solid #2d2640", position: "sticky", top: 0, zIndex: 100 },
-  devLabel: { fontSize: 10, fontWeight: 700, color: "#7c3aed", letterSpacing: 1, marginRight: 4 },
-  devBtn: { padding: "4px 12px", borderRadius: 6, background: "#111827", color: "#64748b", fontSize: 12, fontWeight: 500, border: "1px solid #1e293b", textTransform: "capitalize" },
-  devBtnActive: { background: "#7c3aed", color: "#fff", borderColor: "#7c3aed" },
+  demoBar: { display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 12px", background: "linear-gradient(135deg, #1a1625, #111827)", borderBottom: "1px solid #2d2640", position: "sticky", top: 0, zIndex: 100 },
+  demoLabel: { fontSize: 11, fontWeight: 800, color: "#f59e0b", letterSpacing: 0.5 },
+  demoRoleBtn: { padding: "4px 10px", borderRadius: 6, background: "#111827", color: "#64748b", fontSize: 11, fontWeight: 500, border: "1px solid #1e293b", textTransform: "capitalize", display: "inline-flex", alignItems: "center", gap: 3 },
+  demoRoleBtnActive: { background: "rgba(245,158,11,0.15)", color: "#f59e0b", borderColor: "rgba(245,158,11,0.3)" },
+  demoChatLink: { display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 8, background: "rgba(139,92,246,0.12)", color: "#a78bfa", fontSize: 11, fontWeight: 600, border: "1px solid rgba(139,92,246,0.2)", textDecoration: "none", whiteSpace: "nowrap", cursor: "pointer" },
 };

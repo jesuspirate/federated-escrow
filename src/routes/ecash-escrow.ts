@@ -254,7 +254,7 @@ router.post("/", (req: AuthenticatedRequest, res: Response) => {
 router.get("/arbiter-check", (req: AuthenticatedRequest, res: Response) => {
   const pk = req.pubkey!;
   res.json({
-    allowed: isArbiterAllowed(pk),
+    allowed: isArbiterAllowed(pk) || process.env.ALLOW_DEV_PUBKEY === "true",
     mode: ALLOWED_ARBITERS ? "allowlist" : "open",
   });
 });
@@ -269,7 +269,7 @@ router.post("/:id/join", (req: AuthenticatedRequest, res: Response) => {
     const pk = req.pubkey!;
     const { role } = req.body;
     if (role !== "buyer" && role !== "arbiter") return res.status(400).json({ error: 'role must be "buyer" or "arbiter"' });
-    if (role === "arbiter" && !isArbiterAllowed(pk)) {
+    if (role === "arbiter" && !isArbiterAllowed(pk) && process.env.ALLOW_DEV_PUBKEY !== "true") {
       return res.status(403).json({ error: "Arbiter not authorized. Only pre-approved community arbiters can join trades." });
     }
 
@@ -351,7 +351,7 @@ router.get("/:id/invoice", async (req: AuthenticatedRequest, res: Response) => {
 
     const fmAvailable = await FM.isClientdAvailable();
     if (!fmAvailable) {
-      if (process.env.NODE_ENV === "production") {
+      if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEV_PUBKEY !== "true") {
         return res.status(503).json({ error: "Fedimint payment service unavailable. Try again later." });
       }
       return res.json({
@@ -427,7 +427,7 @@ router.post("/:id/lock", async (req: AuthenticatedRequest, res: Response) => {
       if (!notes || typeof notes !== "string" || notes.length < 10)
         return res.status(400).json({ error: "Invalid e-cash notes string (minimum 10 chars)" });
 
-      if (process.env.NODE_ENV === "production")
+      if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEV_PUBKEY !== "true")
         return res.status(400).json({ error: "Manual note locking is disabled in production. Use WebLN mode." });
 
       DB.lockNotes(row.id, notes, "manual");
@@ -587,7 +587,21 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
       return res.status(403).json({ error: "Only the winning party can request payout" });
     }
 
+    // Sandbox mode: skip real Lightning payout, just mark complete
+
     const { invoice } = req.body;
+    if (process.env.ALLOW_DEV_PUBKEY === "true" && invoice && !invoice.startsWith("ln")) {
+      DB.completeEscrow(row.id);
+      return res.json({
+        id: row.id, status: "COMPLETED",
+        amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
+        message: "🧪 Sandbox payout complete!",
+      });
+    }
+    if (!invoice || typeof invoice !== "string" || !invoice.startsWith("ln")) {
+      return res.status(400).json({ error: "A valid BOLT-11 invoice is required. In Fedi, the app generates this automatically." });
+    }
+
     if (!invoice || typeof invoice !== "string" || !invoice.startsWith("ln")) {
       return res.status(400).json({ error: "A valid BOLT-11 invoice is required. In Fedi, the app generates this automatically." });
     }
