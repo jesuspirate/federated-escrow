@@ -254,7 +254,7 @@ router.post("/", (req: AuthenticatedRequest, res: Response) => {
 router.get("/arbiter-check", (req: AuthenticatedRequest, res: Response) => {
   const pk = req.pubkey!;
   res.json({
-    allowed: isArbiterAllowed(pk) || process.env.ALLOW_DEV_PUBKEY === "true",
+    allowed: isArbiterAllowed(pk) || !!req.headers["x-dev-pubkey"],
     mode: ALLOWED_ARBITERS ? "allowlist" : "open",
   });
 });
@@ -269,7 +269,7 @@ router.post("/:id/join", (req: AuthenticatedRequest, res: Response) => {
     const pk = req.pubkey!;
     const { role } = req.body;
     if (role !== "buyer" && role !== "arbiter") return res.status(400).json({ error: 'role must be "buyer" or "arbiter"' });
-    if (role === "arbiter" && !isArbiterAllowed(pk) && process.env.ALLOW_DEV_PUBKEY !== "true") {
+    if (role === "arbiter" && !isArbiterAllowed(pk) && !isDevRequest) {
       return res.status(403).json({ error: "Arbiter not authorized. Only pre-approved community arbiters can join trades." });
     }
 
@@ -363,6 +363,36 @@ router.get("/:id/invoice", async (req: AuthenticatedRequest, res: Response) => {
 
     const { invoice, operationId } = await FM.createLockInvoice(row.id, row.amount_msats);
     pendingInvoices.set(row.id, { invoice, operationId, createdAt: Date.now() });
+
+    // ── AUTO-LOCK: Background listener ────────────────────────────────
+    // If the seller pays the invoice but the frontend never calls POST /lock
+    // (network glitch, app closed, etc.), this ensures the escrow still locks.
+    // The POST /lock endpoint also locks, so we check status to avoid double-lock.
+    FM.awaitLockPayment(operationId).then(({ paid }) => {
+      if (!paid) {
+        console.error(`⚠️ Auto-lock: payment NOT confirmed for ${row.id}`);
+        return;
+      }
+      // Re-fetch to check if POST /lock already handled it
+      const current = DB.getEscrow(row.id);
+      if (!current || current.status !== "FUNDED") {
+        console.log(`ℹ️ Auto-lock: ${row.id} already ${current?.status || "gone"}, skipping`);
+        return;
+      }
+      const receipt = JSON.stringify({
+        type: "webln_auto_receipt",
+        escrowId: row.id,
+        amountMsats: row.amount_msats,
+        operationId,
+        lockedAt: Date.now(),
+        sellerPubkey: pk,
+      });
+      DB.lockNotes(row.id, receipt, "webln", operationId);
+      pendingInvoices.delete(row.id);
+      console.log(`🔒 Auto-lock: ${row.id} locked via background listener (frontend missed POST /lock)`);
+    }).catch(err => {
+      console.error(`⚠️ Auto-lock error for ${row.id}:`, err.message);
+    });
 
     res.json({
       escrowId: row.id, amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),

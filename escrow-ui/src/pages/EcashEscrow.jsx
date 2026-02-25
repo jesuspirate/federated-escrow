@@ -69,8 +69,40 @@ const DEV_IDENTITIES = {
 };
 
 // ── Demo / Sandbox mode ──────────────────────────────────────────────
-// No WebLN = not inside Fedi = browser sandbox. Real trades happen in Fedi only.
-const _isFediApp = typeof window !== "undefined" && !!window.webln;
+// SECURITY: Only the real Fedi app should bypass sandbox mode.
+// Fedi runs mini-apps in a WebView and injects WebLN natively.
+// Browser extensions (Alby, Nos2x) also inject window.webln/window.nostr
+// but those are BROWSERS, not Fedi — they must stay in sandbox.
+//
+// Detection strategy: Fedi WebView is a mobile WebView (no "Chrome/" or
+// "Firefox/" or "Safari/" standalone in UA) + has WebLN + is not a
+// desktop browser. We check multiple signals to be sure.
+function _detectFediApp() {
+  if (typeof window === "undefined") return false;
+  if (!window.webln) return false;
+
+  const ua = navigator.userAgent || "";
+
+  // Fedi WebView on Android: contains "wv" (WebView marker)
+  // Fedi WebView on iOS: no "Safari" standalone (WebViews omit it)
+  const isAndroidWebView = /Android/.test(ua) && /wv\)/.test(ua);
+  const isIOSWebView = /iPhone|iPad|iPod/.test(ua) && !/Safari\//.test(ua);
+
+  // Desktop browsers with Alby: always sandbox
+  const isDesktop = !/Android|iPhone|iPad|iPod|Mobile/.test(ua);
+  if (isDesktop) return false;
+
+  // Mobile browser with Alby extension (not WebView): sandbox
+  // WebViews don't have extension APIs, so if window.nostr exists via
+  // NIP-07 extension (not Fedi's own injection), it's a browser
+  // Fedi injects nostr differently — via its bridge, not NIP-07 extension
+  if (isAndroidWebView || isIOSWebView) return true;
+
+  // Fallback: if mobile + webln but can't confirm WebView, be safe → sandbox
+  return false;
+}
+
+const _isFediApp = _detectFediApp();
 const _forceDevMode = typeof location !== "undefined"
   && (!_isFediApp || new URLSearchParams(location.search).has("dev"));
 
@@ -610,7 +642,7 @@ export default function EcashEscrow() {
   }
 
   return (
-    <div style={S.root}>
+    <div style={{ ...S.root, display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
       <style>{`
         @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -663,7 +695,7 @@ export default function EcashEscrow() {
 
 function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefresh, locale, onSwitchLocale }) {
   return (
-    <div style={S.container}>
+    <div style={{ ...S.container, flex: 1, minHeight: 0, overflow: "hidden" }}>
       <div style={S.listHeader}>
         <div><h1 style={S.title}>{t("escrow")}</h1><p style={S.subtitle}>{truncPk(pubkey)}</p></div>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -684,51 +716,57 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
         {t("maxPerTrade", { limit: FED_LIMITS.MAX_TX_SATS.toLocaleString() })}
       </div>
-      {escrows.length === 0 ? (
-        <div style={S.emptyState}>
-          <SvgArbiter size={40} color="#475569" />
-          <p style={{ color: "#64748b", marginTop: 12, fontSize: 14 }}>{t("noEscrows")}</p>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {escrows.map(e => (
-            <button key={e.id} style={S.escrowCard} onClick={() => onOpen(e.id)}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={S.cardAmount}>{fmtSats(e.amountMsats)} <span style={{ color: "#64748b", fontWeight: 400 }}>{t("sats")}</span></span>
-                <StatusBadge status={e.status} />
-              </div>
-              <div style={{ fontSize: 11, fontFamily: "monospace", color: "#475569", marginTop: 4, letterSpacing: 0.3 }}>ID: {e.id}</div>
-              {e.description && <p style={S.cardDesc}>{e.description}</p>}
-              <div style={S.cardMeta}>
-                <span style={S.cardRole}>{e.yourRole || "\u2014"}</span>
-                {e.expiresIn && <span style={S.cardExpiry}><I.Clock /> {e.expiresIn}</span>}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
 
-      {/* ── Learn More — browser sandbox only ──────────────────── */}
-      {isDevMode() && (
-        <div style={{ marginTop: 24, padding: "16px", background: "#111827", border: "1px solid #1e293b", borderRadius: 12, textAlign: "center" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>{t("learnMoreTitle") || "New to Bitcoin or Fedi?"}</div>
-          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 14, lineHeight: 1.5 }}>{t("learnMoreDesc") || "Get started with these resources"}</div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", color: "#f59e0b", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
-              🛡️ {t("learnFedi") || "What is Fedi?"}
-            </a>
-            <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, background: "rgba(247,147,26,0.08)", border: "1px solid rgba(247,147,26,0.15)", color: "#f7931a", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
-              ₿ {t("learnBitcoin") || "What is Bitcoin?"}
-            </a>
+      {/* ── Scrollable trade list ──────────────────────────────── */}
+      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, paddingBottom: isDevMode() ? 8 : 0 }}>
+        {escrows.length === 0 ? (
+          <div style={S.emptyState}>
+            <SvgArbiter size={40} color="#475569" />
+            <p style={{ color: "#64748b", marginTop: 12, fontSize: 14 }}>{t("noEscrows")}</p>
           </div>
-          {/* QR code for laptop users — points to Fedi download */}
-          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid #1e293b" }}>
-            <div style={{ fontSize: 11, color: "#475569", marginBottom: 8 }}>{t("scanToDownload") || "Scan to download Fedi"}</div>
-            <img
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent("https://www.fedi.xyz/download")}&bgcolor=111827&color=f8fafc&format=svg`}
-              alt="Download Fedi"
-              style={{ width: 120, height: 120, borderRadius: 8, border: "1px solid #1e293b" }}
-            />
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {escrows.map(e => (
+              <button key={e.id} style={S.escrowCard} onClick={() => onOpen(e.id)}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={S.cardAmount}>{fmtSats(e.amountMsats)} <span style={{ color: "#64748b", fontWeight: 400 }}>{t("sats")}</span></span>
+                  <StatusBadge status={e.status} />
+                </div>
+                <div style={{ fontSize: 11, fontFamily: "monospace", color: "#475569", marginTop: 4, letterSpacing: 0.3 }}>ID: {e.id}</div>
+                {e.description && <p style={S.cardDesc}>{e.description}</p>}
+                <div style={S.cardMeta}>
+                  <span style={S.cardRole}>{e.yourRole || "\u2014"}</span>
+                  {e.expiresIn && <span style={S.cardExpiry}><I.Clock /> {e.expiresIn}</span>}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Learn More — sticky bottom, browser sandbox only ── */}
+      {isDevMode() && (
+        <div style={{ flexShrink: 0, padding: "14px 0 8px", borderTop: "1px solid #1e293b", marginTop: 8 }}>
+          <div style={{ padding: "14px", background: "#111827", border: "1px solid #1e293b", borderRadius: 12, textAlign: "center" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>{t("learnMoreTitle") || "New to Bitcoin or Fedi?"}</div>
+            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 12, lineHeight: 1.5 }}>{t("learnMoreDesc") || "Get started with these resources"}</div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+              <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", color: "#f59e0b", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                🛡️ {t("learnFedi") || "What is Fedi?"}
+              </a>
+              <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, background: "rgba(247,147,26,0.08)", border: "1px solid rgba(247,147,26,0.15)", color: "#f7931a", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+                ₿ {t("learnBitcoin") || "What is Bitcoin?"}
+              </a>
+            </div>
+            {/* QR code for laptop users — points to Fedi website */}
+            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #1e293b" }}>
+              <div style={{ fontSize: 11, color: "#475569", marginBottom: 8 }}>{t("scanToDownload") || "Scan to download Fedi"}</div>
+              <img
+                src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https%3A%2F%2Ffedi.xyz%2Fproduct&bgcolor=111827&color=f8fafc&format=png"
+                alt="Download Fedi"
+                style={{ width: 120, height: 120, borderRadius: 8, border: "1px solid #1e293b" }}
+              />
+            </div>
           </div>
         </div>
       )}
