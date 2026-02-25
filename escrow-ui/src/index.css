@@ -3,10 +3,12 @@
   padding: 0;
   box-sizing: border-box;
 }
-
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
 body {
   background: #0A0E17;
-  overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

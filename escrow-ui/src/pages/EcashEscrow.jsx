@@ -627,7 +627,7 @@ export default function EcashEscrow() {
     setLoading(false);
   }, [showToast]);
 
-  const openDetail = (id) => { setView("detail"); loadDetail(id); };
+  const openDetail = (id) => { setSelected(null); setView("detail"); loadDetail(id); };
 
   // ── Onboarding gate ─────────────────────────────────────────────
   if (!onboarded) return <OnboardingSplash onComplete={() => setOnboarded(true)} locale={locale} />;
@@ -644,7 +644,7 @@ export default function EcashEscrow() {
   }
 
   return (
-    <div style={{ ...S.root, display: "flex", flexDirection: "column", height: "100vh", width: "100%", overflow: "hidden" }}>
+    <div style={{ ...S.root, display: "flex", flexDirection: "column", minHeight: "100vh", overflowX: "hidden" }}>
       <style>{`
         @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -659,7 +659,6 @@ export default function EcashEscrow() {
         @keyframes joinGlow { 0% { box-shadow: 0 0 0 rgba(96,165,250,0), inset 0 0 0 rgba(96,165,250,0); transform: scale(0.85); } 15% { box-shadow: 0 0 32px rgba(96,165,250,0.5), 0 0 12px rgba(96,165,250,0.3), inset 0 0 16px rgba(96,165,250,0.2); transform: scale(1.08); } 40% { box-shadow: 0 0 24px rgba(96,165,250,0.35), inset 0 0 10px rgba(96,165,250,0.12); transform: scale(1); } 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.3); transform: scale(1); } }
         @keyframes joinRingPulse { 0% { transform: scale(1); opacity: 0.6; border-color: rgba(96,165,250,0.5); } 100% { transform: scale(1.8); opacity: 0; border-color: rgba(96,165,250,0); } }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body, #root { margin: 0; padding: 0; width: 100%; overflow: hidden; }
         button { cursor: pointer; border: none; font-family: inherit; }
         input, textarea { font-family: inherit; }
         ::-webkit-scrollbar { width: 0; }
@@ -690,6 +689,7 @@ export default function EcashEscrow() {
       {view === "create" && <CreateView pubkey={pubkey} locale={locale} onBack={() => setView("list")} onCreated={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "join" && <JoinView pubkey={pubkey} onBack={() => setView("list")} onJoined={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "detail" && selected && <DetailView escrow={selected} pubkey={pubkey} onBack={() => { setView("list"); loadEscrows(); }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} />}
+      {view === "detail" && !selected && <div style={{ ...S.container, textAlign: "center", paddingTop: 80 }}><I.Refresh style={{ animation: "spin 1s linear infinite", width: 24, height: 24, color: "#475569" }} /></div>}
     </div>
   );
 }
@@ -700,7 +700,7 @@ export default function EcashEscrow() {
 
 function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefresh, locale, onSwitchLocale }) {
   return (
-    <div style={{ ...S.container, flex: 1, minHeight: 0, overflow: "hidden" }}>
+    <div style={S.container}>
       <div style={S.listHeader}>
         <div>
           <h1 style={S.title}>{t("escrow")}</h1>
@@ -715,6 +715,25 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
           <button style={S.iconBtn} onClick={onRefresh}><I.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
         </div>
       </div>
+
+      {/* ── Learn More — top of page, sandbox only ── */}
+      {isDevMode() && (
+        <div style={{ padding: "10px 14px", background: "linear-gradient(145deg, #111827, #0f1320)", border: "1px solid #1e293b", borderRadius: 12, textAlign: "center", marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", marginBottom: 8 }}>{t("learnMoreTitle")}</div>
+          <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" }}>
+            <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)", color: "#f59e0b", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
+              🛡️ {t("learnFedi")}
+            </a>
+            <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "rgba(247,147,26,0.06)", border: "1px solid rgba(247,147,26,0.12)", color: "#f7931a", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
+              ₿ {t("learnBitcoin")}
+            </a>
+            <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.12)", color: "#10b981", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
+              📲 {t("scanToDownload")}
+            </a>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: 10, margin: "0 0 12px" }}>
         <button style={S.primaryBtn} onClick={onCreate}><I.Plus /> {t("newTrade")}</button>
         <button style={S.secondaryBtn} onClick={onJoin}>{t("joinEscrow")}</button>
@@ -724,8 +743,8 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
         {t("maxPerTrade", { limit: FED_LIMITS.MAX_TX_SATS.toLocaleString() })}
       </div>
 
-      {/* ── Scrollable trade list ──────────────────────────────── */}
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, paddingBottom: isDevMode() ? 8 : 0 }}>
+      {/* ── Trade list ──────────────────────────────── */}
+      <div style={{ paddingBottom: 20 }}>
         {escrows.length === 0 ? (
           <div style={S.emptyState}>
             <SvgArbiter size={40} color="#475569" />
@@ -753,34 +772,6 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
           </div>
         )}
       </div>
-
-      {/* ── Learn More — sticky bottom, browser sandbox only ── */}
-      {isDevMode() && (
-        <div style={{ flexShrink: 0, paddingTop: 10, borderTop: "1px solid #1e293b" }}>
-          <div style={{ padding: "12px 14px", background: "linear-gradient(145deg, #111827, #0f1320)", border: "1px solid #1e293b", borderRadius: 12, textAlign: "center" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", marginBottom: 10 }}>{t("learnMoreTitle") || "New to Bitcoin or Fedi?"}</div>
-            <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap", marginBottom: 10 }}>
-              <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)", color: "#f59e0b", fontSize: 11, fontWeight: 600, textDecoration: "none", transition: "all 0.2s" }}>
-                🛡️ {t("learnFedi") || "What is Fedi?"}
-              </a>
-              <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "rgba(247,147,26,0.06)", border: "1px solid rgba(247,147,26,0.12)", color: "#f7931a", fontSize: 11, fontWeight: 600, textDecoration: "none", transition: "all 0.2s" }}>
-                ₿ {t("learnBitcoin") || "What is Bitcoin?"}
-              </a>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
-              <img
-                src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https%3A%2F%2Ffedi.xyz%2Fproduct&bgcolor=111827&color=f8fafc&format=png"
-                alt="Download Fedi"
-                style={{ width: 64, height: 64, borderRadius: 6, border: "1px solid #1e293b" }}
-              />
-              <div style={{ textAlign: "left" }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8" }}>{t("scanToDownload") || "Scan to download Fedi"}</div>
-                <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>fedi.xyz/product</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -817,7 +808,7 @@ function CreateView({ pubkey, locale, onBack, onCreated, showToast, setLoading, 
     setLoading(false);
   };
   return (
-    <div style={{ ...S.container, flex: 1, overflowY: "auto", minHeight: 0, paddingBottom: 20 }}>
+    <div style={{ ...S.container, paddingBottom: 20 }}>
       <div style={S.viewHeader}><button style={S.iconBtn} onClick={onBack}><I.Back /></button><h2 style={S.viewTitle}>{t("newTrade")}</h2><div style={{ width: 36 }} /></div>
       <div style={S.formGroup}><label style={S.label}>{t("amountSats")}</label><input style={{ ...S.input, ...(amountError ? { borderColor: "#ef4444" } : {}) }} type="number" placeholder="25000" value={amount} onChange={e => onAmountChange(e.target.value)} />{amountError && <p style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>{amountError}</p>}<p style={S.hint}>{t("maxFedLimit", { limit: FED_LIMITS.MAX_TX_SATS.toLocaleString() })}</p></div>
       <div style={S.formGroup}><label style={S.label}>{t("description")}</label><input style={S.input} placeholder="Selling 50 USD for sats" value={desc} onChange={e => setDesc(e.target.value)} /></div>
@@ -874,7 +865,7 @@ function JoinView({ pubkey, onBack, onJoined, showToast, setLoading, loading }) 
   const arbiterBlocked = role === "arbiter" && arbiterAllowed === false;
 
   return (
-    <div style={{ ...S.container, flex: 1, overflowY: "auto", minHeight: 0, paddingBottom: 20 }}>
+    <div style={{ ...S.container, paddingBottom: 20 }}>
       <div style={S.viewHeader}><button style={S.iconBtn} onClick={onBack}><I.Back /></button><h2 style={S.viewTitle}>{t("joinEscrow")}</h2><div style={{ width: 36 }} /></div>
       <div style={S.formGroup}><label style={S.label}>{t("escrowId")}</label><input style={S.input} placeholder={t("escrowIdPlaceholder")} value={escrowId} onChange={e => setEscrowId(e.target.value)} /></div>
       <div style={S.formGroup}><label style={S.label}>{t("yourRole")}</label><div style={{ display: "flex", gap: 8 }}>{["buyer", "arbiter"].map(r => (<button key={r} onClick={() => setRole(r)} style={{ ...S.roleBtn, ...(role === r ? S.roleBtnActive : {}), ...(r === "arbiter" && arbiterAllowed === false ? { opacity: 0.4 } : {}) }}>{r === "buyer" ? `\ud83d\uded2 ${t("buyer")}` : `\u2696\ufe0f ${t("arbiter")}`}</button>))}</div></div>
@@ -1051,14 +1042,14 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   };
 
   return (
-    <div style={{ ...S.container, flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+    <div style={S.container}>
       <div style={S.viewHeader}>
         <button style={S.iconBtn} onClick={onBack}><I.Back /></button>
         <h2 style={S.viewTitle}>Trade #{e.id}</h2>
         <button style={S.iconBtn} onClick={onRefresh}><I.Refresh /></button>
       </div>
 
-      <div style={{ overflowY: "auto", flex: 1, minHeight: 0, paddingBottom: 12 }}>
+      <div style={{ paddingBottom: 100 }}>
         {/* ═══ THE VAULT ═══ */}
         <Vault status={status} amountMsats={e.amountMsats} showBurst={showBurst} resolvedOutcome={e.resolvedOutcome} />
 
@@ -1244,7 +1235,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
 const S = {
   root: { background: "#0c0f17", color: "#e2e8f0", minHeight: "100vh", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 14, lineHeight: 1.5 },
-  container: { width: "100%", maxWidth: 480, margin: "0 auto", padding: "0 16px", minHeight: "100vh", display: "flex", flexDirection: "column", boxSizing: "border-box" },
+  container: { width: "100%", maxWidth: 480, margin: "0 auto", padding: "0 16px 20px", overflowX: "hidden" },
   listHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0 16px" },
   title: { fontSize: 24, fontWeight: 700, color: "#f8fafc", margin: 0, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: "#64748b", margin: "2px 0 0", fontFamily: "monospace" },
@@ -1273,7 +1264,7 @@ const S = {
   sectionValue: { fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 },
   copyRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", padding: "10px 14px", background: "#111827", border: "1px solid #1e293b", borderRadius: 8, color: "#94a3b8" },
   mono: { fontFamily: "monospace", fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 },
-  actionBar: { flexShrink: 0, padding: "12px 0 20px", background: "#0c0f17", borderTop: "1px solid #1e293b" },
+  actionBar: { position: "sticky", bottom: 0, left: 0, right: 0, padding: "12px 0 20px", background: "linear-gradient(transparent, #0c0f17 20%)" },
   actionBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "16px 0", borderRadius: 14, background: "#f59e0b", color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: -0.3 },
   waitBanner: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 0", color: "#64748b", fontSize: 13, fontWeight: 500 },
   demoBar: { display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "10px 14px 12px", background: "linear-gradient(180deg, #1a1428, #12101d)", borderBottom: "1px solid #2d264080", position: "sticky", top: 0, zIndex: 100, flexShrink: 0 },
