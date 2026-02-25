@@ -1183,16 +1183,16 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
               {/* ── Seller/arbiter wait banners (inline under tally) ─ */}
               {status === "LOCKED" && role === "seller" && !buyerVoted && (
-                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#64748b" }}><I.Clock /> {t("waitBuyerVote")}</div>
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 12, color: "#64748b" }}><I.Clock /> {t("waitBuyerVote")}</div>
               )}
               {status === "LOCKED" && role === "seller" && hasVoted && (
-                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#64748b" }}><I.Clock /> {t("waitResolution")}</div>
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 12, color: "#64748b" }}><I.Clock /> {t("waitResolution")}</div>
               )}
               {status === "LOCKED" && role === "arbiter" && (!buyerVoted || !sellerVoted) && (
-                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#64748b" }}><I.Clock /> {t("waitBothVote")}</div>
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 12, color: "#64748b" }}><I.Clock /> {t("waitBothVote")}</div>
               )}
               {status === "LOCKED" && role === "arbiter" && buyerVoted && sellerVoted && buyerOutcome === sellerOutcome && (
-                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#10b981" }}><I.Check /> {t("noDispute")}</div>
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 12, color: "#10b981" }}><I.Check /> {t("noDispute")}</div>
               )}
             </div>
           </div>
@@ -1272,7 +1272,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       </div>
 
       {/* ═══ STATUS BAR ═══ */}
-      <div style={{ padding: "12px 0 20px" }}>
+      <div style={{ padding: "12px 0 20px", textAlign: "center" }}>
         {status === "LOCKED" && role === "buyer" && hasVoted && !sellerVoted && <div style={S.waitBanner}><I.Clock /> {t("waitSeller")}</div>}
         {status === "LOCKED" && role === "buyer" && hasVoted && sellerVoted && buyerOutcome !== sellerOutcome && <div style={{ ...S.waitBanner, color: "#f59e0b" }}>⚖️ {t("waitArbiter")}</div>}
         {status === "LOCKED" && role === "seller" && hasVoted && !buyerVoted && <div style={S.waitBanner}><I.Clock /> {t("waitBuyerVote")}</div>}
