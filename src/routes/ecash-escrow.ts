@@ -140,7 +140,7 @@ function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunct
   }
 
   const devPubkey = req.headers["x-dev-pubkey"] as string;
-  if (devPubkey && (process.env.NODE_ENV !== "production" || process.env.ALLOW_DEV_PUBKEY === "true")) {
+  if (devPubkey && (process.env.ALLOW_DEV_PUBKEY === "true" || process.env.ALLOW_DEV_PUBKEY === "true")) {
     if (typeof devPubkey === "string" && devPubkey.length === 64) {
       req.pubkey = devPubkey;
       return next();

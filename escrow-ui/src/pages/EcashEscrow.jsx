@@ -203,7 +203,7 @@ const STATUS = {
   CREATED:  { color: "#64748b", bg: "rgba(100,116,139,0.12)", key: "statusCreated" },
   FUNDED:   { color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", key: "statusFunded" },
   LOCKED:   { color: "#f59e0b", bg: "rgba(245,158,11,0.12)", key: "statusLocked" },
-  APPROVED: { color: "#10b981", bg: "rgba(16,185,129,0.12)", key: "statusApproved" },
+  APPROVED: { color: "#38bdf8", bg: "rgba(56,189,248,0.12)", key: "statusApproved" },
   CLAIMED:  { color: "#10b981", bg: "rgba(16,185,129,0.12)", key: "statusClaimed" },
   COMPLETED:{ color: "#059669", bg: "rgba(5,150,105,0.12)", key: "statusCompleted" },
   EXPIRED:  { color: "#ef4444", bg: "rgba(239,68,68,0.12)", key: "statusExpired" },
@@ -618,30 +618,7 @@ export default function EcashEscrow() {
     setLoading(false);
   }, [pubkey, showToast]);
 
-  // Silent refresh — no loading spinner, no error toast (for auto-polling)
-  const silentRefreshList = useCallback(async () => {
-    if (!pubkey) return;
-    try { const data = await api("/"); if (Array.isArray(data)) setEscrows(data); } catch {}
-  }, [pubkey]);
-
-  const silentRefreshDetail = useCallback(async () => {
-    if (!selected) return;
-    try { const data = await api(`/${selected.id}`); if (!data.error) setSelected(data); } catch {}
-  }, [selected]);
-
   useEffect(() => { loadEscrows(); }, [loadEscrows, pubkey]);
-
-  // ── Auto-refresh polling ───────────────────────────────────────
-  useEffect(() => {
-    const interval = view === "detail" ? 5000 : 10000;
-    const poll = () => {
-      if (document.hidden) return; // Skip when tab/app is backgrounded
-      if (view === "detail") silentRefreshDetail();
-      else if (view === "list") silentRefreshList();
-    };
-    const id = setInterval(poll, interval);
-    return () => clearInterval(id);
-  }, [view, silentRefreshList, silentRefreshDetail]);
 
   const loadDetail = useCallback(async (id) => {
     setLoading(true);
@@ -1008,6 +985,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         const claim = await api(`/${e.id}/claim`, { method: "POST" });
         if (claim.error) throw new Error(claim.error);
         payoutReady = claim.payoutReady; amountSats = claim.amountSats || amountSats; notes = claim.notes;
+        // If backend says not ready but we're in WebLN/sandbox mode, force payout flow
+        if (!payoutReady && (window.webln || isDevMode())) payoutReady = true;
       }
       if (payoutReady) {
         let invoice;
@@ -1021,7 +1000,6 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           if (!invoice) { setLoading(false); return; }
         }
         showToast(t("sendingPayout"));
-        // Retry payout up to 2 times with short delay (handles race conditions)
         let payout, lastErr;
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
@@ -1034,8 +1012,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         if (payout?.error || !payout) throw new Error(lastErr || "Payout failed");
         showToast(isDevMode() ? (t("sandboxPayout") || `🧪 Sandbox: ${amountSats.toLocaleString()} sats claimed!`) : t("satsReceived"));
       } else if (notes) {
-        copy(notes, "E-cash notes");
-        showToast(t("notesCopied"));
+        try { await navigator.clipboard.writeText(notes); showToast(t("notesCopied")); }
+        catch { showToast(t("claimed")); }
       } else {
         showToast(t("claimed"));
       }
@@ -1072,14 +1050,14 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   };
 
   return (
-    <div style={{ ...S.container, flex: 1, overflowY: "auto" }}>
+    <div style={{ ...S.container, flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
       <div style={S.viewHeader}>
         <button style={S.iconBtn} onClick={onBack}><I.Back /></button>
         <h2 style={S.viewTitle}>Trade #{e.id}</h2>
         <button style={S.iconBtn} onClick={onRefresh}><I.Refresh /></button>
       </div>
 
-      <div style={{ overflowY: "auto", flex: 1, paddingBottom: 100 }}>
+      <div style={{ overflowY: "auto", flex: 1, minHeight: 0, paddingBottom: 12 }}>
         {/* ═══ THE VAULT ═══ */}
         <Vault status={status} amountMsats={e.amountMsats} showBurst={showBurst} resolvedOutcome={e.resolvedOutcome} />
 
@@ -1247,7 +1225,10 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             {loading ? t("claiming") : t("claimSats", { amount: fmtSats(e.amountMsats) })}
           </button>
         )}
-        {status === "LOCKED" && role === "buyer" && hasVoted && <div style={S.waitBanner}><I.Clock /> {t("waitSeller")}</div>}
+        {status === "LOCKED" && role === "buyer" && hasVoted && !sellerVoted && <div style={S.waitBanner}><I.Clock /> {t("waitSeller")}</div>}
+        {status === "LOCKED" && role === "buyer" && hasVoted && sellerVoted && buyerOutcome !== sellerOutcome && <div style={{ ...S.waitBanner, color: "#f59e0b" }}>⚖️ {t("waitArbiter")}</div>}
+        {status === "LOCKED" && role === "seller" && hasVoted && !buyerVoted && <div style={S.waitBanner}><I.Clock /> {t("waitBuyerVote")}</div>}
+        {status === "LOCKED" && role === "seller" && hasVoted && buyerVoted && buyerOutcome !== sellerOutcome && <div style={{ ...S.waitBanner, color: "#f59e0b" }}>⚖️ {t("waitArbiter")}</div>}
         {status === "FUNDED" && role !== "seller" && <div style={S.waitBanner}>{t("waitSellerLock")}</div>}
         {status === "CREATED" && <div style={S.waitBanner}><I.Clock /> {t("waitParties")}</div>}
         {status === "COMPLETED" && <div style={{ ...S.waitBanner, color: "#059669" }}><I.Check /> {t("tradeCompleteBanner")}</div>}
@@ -1289,9 +1270,9 @@ const S = {
   section: { marginBottom: 14 },
   sectionLabel: { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 },
   sectionValue: { fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 },
-  copyRow: { display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "8px 12px", background: "#111827", border: "1px solid #1e293b", borderRadius: 8, color: "#94a3b8" },
-  mono: { fontFamily: "monospace", fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "85%" },
-  actionBar: { position: "sticky", bottom: 0, left: 0, right: 0, padding: "12px 0 20px", background: "linear-gradient(transparent, #0c0f17 20%)" },
+  copyRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", padding: "10px 14px", background: "#111827", border: "1px solid #1e293b", borderRadius: 8, color: "#94a3b8" },
+  mono: { fontFamily: "monospace", fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 },
+  actionBar: { flexShrink: 0, padding: "12px 0 20px", background: "#0c0f17", borderTop: "1px solid #1e293b" },
   actionBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "16px 0", borderRadius: 14, background: "#f59e0b", color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: -0.3 },
   waitBanner: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 0", color: "#64748b", fontSize: 13, fontWeight: 500 },
   demoBar: { display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "10px 14px 12px", background: "linear-gradient(180deg, #1a1428, #12101d)", borderBottom: "1px solid #2d264080", position: "sticky", top: 0, zIndex: 100, flexShrink: 0 },
