@@ -172,8 +172,6 @@ CREATED → FUNDED → LOCKED → APPROVED → CLAIMED → COMPLETED
 
 ## Roadmap
 
-## Roadmap
-
 ### ✅ Completed
 - [x] Nostr NIP-98 authentication (Schnorr signatures, pubkey identity)
 - [x] SQLite persistence (better-sqlite3, durable across restarts)
