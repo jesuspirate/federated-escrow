@@ -172,12 +172,32 @@ CREATED → FUNDED → LOCKED → APPROVED → CLAIMED → COMPLETED
 
 ## Roadmap
 
-- [ ] Fedi Mini-App manifest + submission
-- [ ] Marketplace layer (listings, search, categories)
+## Roadmap
+
+### ✅ Completed
+- [x] Nostr NIP-98 authentication (Schnorr signatures, pubkey identity)
+- [x] SQLite persistence (better-sqlite3, durable across restarts)
+- [x] Real WebLN integration (fedimint-cli lock/payout via Lightning)
+- [x] Community chat links (Fedi room integration, EN/FR)
+- [x] Production hardening (rate limiting, arbiter allowlist, auto-lock on payment)
+- [x] Browser sandbox mode (safe onboarding, no real sats at risk)
+- [x] Cross-federation support (standard Lightning, any wallet can trade)
+- [x] Auto-refresh polling (5s detail, 10s list, visibility-aware)
+- [x] i18n (English + French)
+- [x] Deploy as Fedi Mini-App (live in production)
+
+### 🔜 Next
 - [ ] Nostr DM notifications between participants
-- [ ] Multi-federation support
+- [ ] Marketplace layer (listings, search, categories)
 - [ ] Reputation system (trade history on Nostr)
+- [ ] Multi-federation gateway discovery
 - [ ] Mobile-optimized PWA
+
+### 🔮 Future
+- [ ] E-cash direct transfers (skip Lightning for same-federation trades)
+- [ ] Encrypted dispute evidence (NIP-04 between parties)
+- [ ] Arbiter staking (skin in the game for fair resolution)
+- [ ] Multi-language expansion (Spanish, Portuguese, Swahili)
 
 ## Contributing
 

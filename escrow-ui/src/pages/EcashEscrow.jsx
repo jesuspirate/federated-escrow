@@ -616,7 +616,30 @@ export default function EcashEscrow() {
     setLoading(false);
   }, [pubkey, showToast]);
 
+  // Silent refresh — no loading spinner, no error toast (for auto-polling)
+  const silentRefreshList = useCallback(async () => {
+    if (!pubkey) return;
+    try { const data = await api("/"); if (Array.isArray(data)) setEscrows(data); } catch {}
+  }, [pubkey]);
+
+  const silentRefreshDetail = useCallback(async () => {
+    if (!selected) return;
+    try { const data = await api(`/${selected.id}`); if (!data.error) setSelected(data); } catch {}
+  }, [selected]);
+
   useEffect(() => { loadEscrows(); }, [loadEscrows, pubkey]);
+
+  // ── Auto-refresh polling ───────────────────────────────────────
+  useEffect(() => {
+    const interval = view === "detail" ? 5000 : 10000;
+    const poll = () => {
+      if (document.hidden) return; // Skip when tab/app is backgrounded
+      if (view === "detail") silentRefreshDetail();
+      else if (view === "list") silentRefreshList();
+    };
+    const id = setInterval(poll, interval);
+    return () => clearInterval(id);
+  }, [view, silentRefreshList, silentRefreshDetail]);
 
   const loadDetail = useCallback(async (id) => {
     setLoading(true);
