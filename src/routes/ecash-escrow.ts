@@ -269,6 +269,7 @@ router.post("/:id/join", (req: AuthenticatedRequest, res: Response) => {
     const pk = req.pubkey!;
     const { role } = req.body;
     if (role !== "buyer" && role !== "arbiter") return res.status(400).json({ error: 'role must be "buyer" or "arbiter"' });
+    const isDevRequest = !!req.headers["x-dev-pubkey"];
     if (role === "arbiter" && !isArbiterAllowed(pk) && !isDevRequest) {
       return res.status(403).json({ error: "Arbiter not authorized. Only pre-approved community arbiters can join trades." });
     }

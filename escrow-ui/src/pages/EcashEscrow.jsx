@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { t, setLocale, getLocale, getAvailableLocales } from "./i18n";
 
 // ═══════════════════════════════════════════════════════════════════════
-// Fedi Mini-App: E-Cash Escrow v9.0
+// Fedi Mini-App: E-Cash Escrow v9.2
 // WebLN lock/claim • NIP-98 Nostr auth • Fedimint-powered
 // Onboarding • Federation limit safeguards • Marketplace-ready
 // Browser sandbox mode • Community-first onboarding
@@ -664,10 +664,11 @@ export default function EcashEscrow() {
       <Toast {...toast} />
       {isDevMode() && (
         <div style={S.demoBar}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <span style={{ fontSize: 13 }}>🧪</span>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", animation: "pulseAmber 2s ease infinite", boxShadow: "0 0 8px rgba(245,158,11,0.4)" }} />
             <span style={S.demoLabel}>{t("sandbox")}</span>
-            <span style={{ fontSize: 11, color: "#64748b" }}>{t("playAs")}</span>
+            <div style={{ width: 1, height: 14, background: "#2d2640" }} />
+            <span style={{ fontSize: 11, color: "#64748b", fontWeight: 500 }}>{t("playAs")}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
             {["seller", "buyer", "arbiter"].map(r => (
@@ -675,6 +676,7 @@ export default function EcashEscrow() {
                 {r === "seller" ? "🏠" : r === "buyer" ? "🛒" : "⚖️"} {t(r)}
               </button>
             ))}
+            <div style={{ width: 1, height: 14, background: "#2d2640" }} />
             <a href={getFediRoomLink(locale)} target="_blank" rel="noopener noreferrer" style={S.demoChatLink}>
               💬 {t("joinChat")}
             </a>
@@ -697,16 +699,18 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
   return (
     <div style={{ ...S.container, flex: 1, minHeight: 0, overflow: "hidden" }}>
       <div style={S.listHeader}>
-        <div><h1 style={S.title}>{t("escrow")}</h1><p style={S.subtitle}>{truncPk(pubkey)}</p></div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          {/* Language picker */}
-          <div style={{ display: "flex", gap: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div>
+            <h1 style={S.title}>{isDevMode() ? "🧪 " + t("escrow") : t("escrow")}</h1>
+            <p style={S.subtitle}>{isDevMode() ? t("sandboxFooter") || "No real sats. Explore freely." : truncPk(pubkey)}</p>
+          </div>
+          <div style={{ display: "flex", gap: 2, alignSelf: "flex-start", marginTop: 4 }}>
             {getAvailableLocales().map(l => (
-              <button key={l.code} onClick={() => onSwitchLocale(l.code)} style={{ padding: "4px 6px", borderRadius: 4, background: locale === l.code ? "#1e293b" : "transparent", color: locale === l.code ? "#f8fafc" : "#475569", fontSize: 12, border: "none", cursor: "pointer" }}>{l.flag}</button>
+              <button key={l.code} onClick={() => onSwitchLocale(l.code)} style={{ padding: "4px 6px", borderRadius: 6, background: locale === l.code ? "#1e293b" : "transparent", color: locale === l.code ? "#f8fafc" : "#475569", fontSize: 14, border: locale === l.code ? "1px solid #334155" : "1px solid transparent", cursor: "pointer", lineHeight: 1, transition: "all 0.2s" }}>{l.flag}</button>
             ))}
           </div>
-          <button style={S.iconBtn} onClick={onRefresh}><I.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
         </div>
+        <button style={S.iconBtn} onClick={onRefresh}><I.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
       </div>
       <div style={{ display: "flex", gap: 10, margin: "0 0 12px" }}>
         <button style={S.primaryBtn} onClick={onCreate}><I.Plus /> {t("newTrade")}</button>
@@ -732,7 +736,10 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
                   <span style={S.cardAmount}>{fmtSats(e.amountMsats)} <span style={{ color: "#64748b", fontWeight: 400 }}>{t("sats")}</span></span>
                   <StatusBadge status={e.status} />
                 </div>
-                <div style={{ fontSize: 11, fontFamily: "monospace", color: "#475569", marginTop: 4, letterSpacing: 0.3 }}>ID: {e.id}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                  <span style={{ fontSize: 11, fontFamily: "monospace", color: "#475569", letterSpacing: 0.3 }}>ID: {e.id}</span>
+                  {isDevMode() && <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: "rgba(245,158,11,0.1)", color: "#f59e0b", fontWeight: 600, letterSpacing: 0.3 }}>SANDBOX</span>}
+                </div>
                 {e.description && <p style={S.cardDesc}>{e.description}</p>}
                 <div style={S.cardMeta}>
                   <span style={S.cardRole}>{e.yourRole || "\u2014"}</span>
@@ -746,26 +753,27 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
 
       {/* ── Learn More — sticky bottom, browser sandbox only ── */}
       {isDevMode() && (
-        <div style={{ flexShrink: 0, padding: "14px 0 8px", borderTop: "1px solid #1e293b", marginTop: 8 }}>
-          <div style={{ padding: "14px", background: "#111827", border: "1px solid #1e293b", borderRadius: 12, textAlign: "center" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>{t("learnMoreTitle") || "New to Bitcoin or Fedi?"}</div>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 12, lineHeight: 1.5 }}>{t("learnMoreDesc") || "Get started with these resources"}</div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
-              <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", color: "#f59e0b", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+        <div style={{ flexShrink: 0, paddingTop: 10, borderTop: "1px solid #1e293b" }}>
+          <div style={{ padding: "12px 14px", background: "linear-gradient(145deg, #111827, #0f1320)", border: "1px solid #1e293b", borderRadius: 12, textAlign: "center" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", marginBottom: 10 }}>{t("learnMoreTitle") || "New to Bitcoin or Fedi?"}</div>
+            <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap", marginBottom: 10 }}>
+              <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)", color: "#f59e0b", fontSize: 11, fontWeight: 600, textDecoration: "none", transition: "all 0.2s" }}>
                 🛡️ {t("learnFedi") || "What is Fedi?"}
               </a>
-              <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8, background: "rgba(247,147,26,0.08)", border: "1px solid rgba(247,147,26,0.15)", color: "#f7931a", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+              <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "rgba(247,147,26,0.06)", border: "1px solid rgba(247,147,26,0.12)", color: "#f7931a", fontSize: 11, fontWeight: 600, textDecoration: "none", transition: "all 0.2s" }}>
                 ₿ {t("learnBitcoin") || "What is Bitcoin?"}
               </a>
             </div>
-            {/* QR code for laptop users — points to Fedi website */}
-            <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid #1e293b" }}>
-              <div style={{ fontSize: 11, color: "#475569", marginBottom: 8 }}>{t("scanToDownload") || "Scan to download Fedi"}</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
               <img
                 src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https%3A%2F%2Ffedi.xyz%2Fproduct&bgcolor=111827&color=f8fafc&format=png"
                 alt="Download Fedi"
-                style={{ width: 120, height: 120, borderRadius: 8, border: "1px solid #1e293b" }}
+                style={{ width: 64, height: 64, borderRadius: 6, border: "1px solid #1e293b" }}
               />
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: "#94a3b8" }}>{t("scanToDownload") || "Scan to download Fedi"}</div>
+                <div style={{ fontSize: 10, color: "#475569", marginTop: 2 }}>fedi.xyz/product</div>
+              </div>
             </div>
           </div>
         </div>
@@ -982,15 +990,23 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           try { await window.webln.enable(); const result = await window.webln.makeInvoice({ amount: amountSats }); invoice = result.paymentRequest; }
           catch { showToast(t("invoiceCancelled"), "error"); setLoading(false); return; }
         } else if (isDevMode()) {
-          // Sandbox: skip real invoice, use a dev placeholder
           invoice = `SANDBOX_INVOICE_${e.id}_${Date.now()}`;
         } else {
           invoice = prompt(`Paste a BOLT-11 invoice for ${amountSats} sats:`);
           if (!invoice) { setLoading(false); return; }
         }
         showToast(t("sendingPayout"));
-        const payout = await api(`/${e.id}/payout`, { method: "POST", body: JSON.stringify({ invoice }) });
-        if (payout.error) throw new Error(payout.error);
+        // Retry payout up to 2 times with short delay (handles race conditions)
+        let payout, lastErr;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            payout = await api(`/${e.id}/payout`, { method: "POST", body: JSON.stringify({ invoice }) });
+            if (!payout.error) break;
+            lastErr = payout.error;
+          } catch (err) { lastErr = err.message; }
+          if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+        }
+        if (payout?.error || !payout) throw new Error(lastErr || "Payout failed");
         showToast(isDevMode() ? (t("sandboxPayout") || `🧪 Sandbox: ${amountSats.toLocaleString()} sats claimed!`) : t("satsReceived"));
       } else if (notes) {
         copy(notes, "E-cash notes");
@@ -1226,7 +1242,7 @@ const S = {
   title: { fontSize: 24, fontWeight: 700, color: "#f8fafc", margin: 0, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: "#64748b", margin: "2px 0 0", fontFamily: "monospace" },
   emptyState: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", textAlign: "center" },
-  escrowCard: { background: "#111827", border: "1px solid #1e293b", borderRadius: 12, padding: "14px 16px", textAlign: "left", color: "#e2e8f0", width: "100%", transition: "background 0.15s" },
+  escrowCard: { background: "linear-gradient(145deg, #111827, #0f1320)", border: "1px solid #1e293b", borderRadius: 14, padding: "14px 16px", textAlign: "left", color: "#e2e8f0", width: "100%", transition: "all 0.2s ease" },
   cardAmount: { fontSize: 17, fontWeight: 600, color: "#f8fafc" },
   cardDesc: { fontSize: 12, color: "#94a3b8", margin: "6px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   cardMeta: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 },
@@ -1235,8 +1251,8 @@ const S = {
   viewHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0 12px" },
   viewTitle: { fontSize: 17, fontWeight: 600, color: "#f8fafc", margin: 0 },
   iconBtn: { background: "transparent", color: "#94a3b8", padding: 8, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" },
-  primaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#f59e0b", color: "#0c0f17", fontWeight: 600, fontSize: 14, padding: "10px 20px", borderRadius: 10, flex: 1 },
-  secondaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "#1e293b", color: "#e2e8f0", fontWeight: 500, fontSize: 14, padding: "10px 20px", borderRadius: 10, flex: 1 },
+  primaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontWeight: 700, fontSize: 14, padding: "12px 20px", borderRadius: 12, flex: 1, boxShadow: "0 2px 12px rgba(245,158,11,0.2)", transition: "all 0.2s ease" },
+  secondaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "linear-gradient(145deg, #1e293b, #1a2332)", color: "#e2e8f0", fontWeight: 600, fontSize: 14, padding: "12px 20px", borderRadius: 12, flex: 1, border: "1px solid #334155", transition: "all 0.2s ease" },
   roleBtn: { flex: 1, padding: "12px 16px", borderRadius: 10, background: "#111827", color: "#94a3b8", fontSize: 14, fontWeight: 500, border: "1px solid #1e293b", textAlign: "center" },
   roleBtnActive: { background: "#1e293b", color: "#f8fafc", borderColor: "#f59e0b" },
   formGroup: { marginBottom: 16 },
@@ -1253,9 +1269,9 @@ const S = {
   actionBar: { position: "sticky", bottom: 0, left: 0, right: 0, padding: "12px 0 20px", background: "linear-gradient(transparent, #0c0f17 20%)" },
   actionBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "16px 0", borderRadius: 14, background: "#f59e0b", color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: -0.3 },
   waitBanner: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 0", color: "#64748b", fontSize: 13, fontWeight: 500 },
-  demoBar: { display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 12px", background: "linear-gradient(135deg, #1a1625, #111827)", borderBottom: "1px solid #2d2640", position: "sticky", top: 0, zIndex: 100 },
-  demoLabel: { fontSize: 11, fontWeight: 800, color: "#f59e0b", letterSpacing: 0.5 },
-  demoRoleBtn: { padding: "4px 10px", borderRadius: 6, background: "#111827", color: "#64748b", fontSize: 11, fontWeight: 500, border: "1px solid #1e293b", textTransform: "capitalize", display: "inline-flex", alignItems: "center", gap: 3 },
-  demoRoleBtnActive: { background: "rgba(245,158,11,0.15)", color: "#f59e0b", borderColor: "rgba(245,158,11,0.3)" },
-  demoChatLink: { display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 8, background: "rgba(139,92,246,0.12)", color: "#a78bfa", fontSize: 11, fontWeight: 600, border: "1px solid rgba(139,92,246,0.2)", textDecoration: "none", whiteSpace: "nowrap", cursor: "pointer" },
+  demoBar: { display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "10px 14px 12px", background: "linear-gradient(180deg, #1a1428, #12101d)", borderBottom: "1px solid #2d264080", position: "sticky", top: 0, zIndex: 100, flexShrink: 0 },
+  demoLabel: { fontSize: 12, fontWeight: 800, color: "#f59e0b", letterSpacing: 1, textTransform: "uppercase" },
+  demoRoleBtn: { padding: "6px 12px", borderRadius: 8, background: "#111827", color: "#64748b", fontSize: 12, fontWeight: 600, border: "1px solid #1e293b", textTransform: "capitalize", display: "inline-flex", alignItems: "center", gap: 4, transition: "all 0.2s ease" },
+  demoRoleBtnActive: { background: "rgba(245,158,11,0.12)", color: "#fbbf24", borderColor: "rgba(245,158,11,0.3)", boxShadow: "0 0 12px rgba(245,158,11,0.1)" },
+  demoChatLink: { display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(139,92,246,0.1)", color: "#a78bfa", fontSize: 12, fontWeight: 600, border: "1px solid rgba(139,92,246,0.18)", textDecoration: "none", whiteSpace: "nowrap", cursor: "pointer", transition: "all 0.2s ease" },
 };
