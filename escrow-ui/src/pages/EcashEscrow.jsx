@@ -121,17 +121,25 @@ function getFediRoomLink(locale) {
 
 let _devPubkey = null;
 
-async function api(path, opts = {}) {
+async function api(path, opts = {}, _retries = 2) {
   const method = opts.method || "GET";
   const url = `${location.origin}${API}${path}`;
   const headers = { "Content-Type": "application/json" };
-  // makeNip98Header can throw NostrRejectedError if user presses No
-  const nip98 = await makeNip98Header(url, method);
-  if (nip98) headers["Authorization"] = nip98;
-  else if (_devPubkey) headers["X-Dev-Pubkey"] = _devPubkey;
+  try {
+    const nip98 = await makeNip98Header(url, method);
+    if (nip98) headers["Authorization"] = nip98;
+    else if (_devPubkey) headers["X-Dev-Pubkey"] = _devPubkey;
+  } catch (err) {
+    if (err.name === "NostrRejectedError" && _retries > 0) {
+      return api(path, opts, _retries - 1);
+    }
+    throw err;
+  }
   const res = await fetch(url, { ...opts, headers });
+  if ((res.status === 401 || res.status === 403) && _retries > 0) {
+    return api(path, opts, _retries - 1);
+  }
   if (res.status === 401 || res.status === 403) {
-    const text = await res.text();
     throw new Error("Authentication required — please approve the Nostr signing request");
   }
   const text = await res.text();
@@ -627,7 +635,10 @@ export default function EcashEscrow() {
     setLoading(false);
   }, [showToast]);
 
-  const openDetail = (id) => { setSelected(null); setView("detail"); loadDetail(id); };
+  const openDetail = (id) => {
+    if (selected && selected.id !== id) setSelected(null);
+    setView("detail"); loadDetail(id);
+  };
 
   // ── Onboarding gate ─────────────────────────────────────────────
   if (!onboarded) return <OnboardingSplash onComplete={() => setOnboarded(true)} locale={locale} />;
@@ -688,8 +699,8 @@ export default function EcashEscrow() {
       {view === "list" && <ListView escrows={escrows} pubkey={pubkey} loading={loading} onOpen={openDetail} onCreate={() => setView("create")} onJoin={() => setView("join")} onRefresh={loadEscrows} locale={locale} onSwitchLocale={switchLocale} />}
       {view === "create" && <CreateView pubkey={pubkey} locale={locale} onBack={() => setView("list")} onCreated={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "join" && <JoinView pubkey={pubkey} onBack={() => setView("list")} onJoined={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
-      {view === "detail" && selected && <DetailView escrow={selected} pubkey={pubkey} onBack={() => { setView("list"); loadEscrows(); }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} />}
-      {view === "detail" && !selected && <div style={{ ...S.container, textAlign: "center", paddingTop: 80 }}><I.Refresh style={{ animation: "spin 1s linear infinite", width: 24, height: 24, color: "#475569" }} /></div>}
+      {view === "detail" && selected && <DetailView escrow={selected} pubkey={pubkey} onBack={() => { setSelected(null); setView("list"); loadEscrows(); }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} />}
+      {view === "detail" && !selected && <div style={{ display: "flex", justifyContent: "center", paddingTop: "30vh" }}><div style={{ width: 20, height: 20, border: "2px solid #1e293b", borderTopColor: "#475569", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /></div>}
     </div>
   );
 }
@@ -867,8 +878,8 @@ function JoinView({ pubkey, onBack, onJoined, showToast, setLoading, loading }) 
   return (
     <div style={{ ...S.container, paddingBottom: 20 }}>
       <div style={S.viewHeader}><button style={S.iconBtn} onClick={onBack}><I.Back /></button><h2 style={S.viewTitle}>{t("joinEscrow")}</h2><div style={{ width: 36 }} /></div>
-      <div style={S.formGroup}><label style={S.label}>{t("escrowId")}</label><input style={S.input} placeholder={t("escrowIdPlaceholder")} value={escrowId} onChange={e => setEscrowId(e.target.value)} /></div>
       <div style={S.formGroup}><label style={S.label}>{t("yourRole")}</label><div style={{ display: "flex", gap: 8 }}>{["buyer", "arbiter"].map(r => (<button key={r} onClick={() => setRole(r)} style={{ ...S.roleBtn, ...(role === r ? S.roleBtnActive : {}), ...(r === "arbiter" && arbiterAllowed === false ? { opacity: 0.4 } : {}) }}>{r === "buyer" ? `\ud83d\uded2 ${t("buyer")}` : `\u2696\ufe0f ${t("arbiter")}`}</button>))}</div></div>
+      <div style={S.formGroup}><label style={S.label}>{t("escrowId")}</label><input style={S.input} placeholder={t("escrowIdPlaceholder")} value={escrowId} onChange={e => setEscrowId(e.target.value)} /></div>
 
       {arbiterBlocked && (
         <div style={{ padding: "10px 14px", background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10, marginTop: 8, fontSize: 12, color: "#f87171", lineHeight: 1.6 }}>
@@ -895,6 +906,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const role = e.yourRole || null;
   const status = e.status;
   const [showBurst, setShowBurst] = useState(false);
+  const [locking, setLocking] = useState(false);
   const prevStatus = useRef(status);
 
   useEffect(() => {
@@ -913,33 +925,65 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   };
 
   // ── WebLN Lock (seller) ─────────────────────────────────────────
-  const handleLock = async () => {
-    // Pre-flight federation limit check
+  const [lockInvoice, setLockInvoice] = useState(null); // { invoice, bolt11 }
+  const [lockStep, setLockStep] = useState("idle"); // idle | fetching | ready | paying | done
+
+  const handleLockFetch = async () => {
     const amountSats = Math.floor((e.amountMsats || 0) / 1000);
     if (amountSats > FED_LIMITS.MAX_TX_SATS) {
       return showToast(`Exceeds ${FED_LIMITS.MAX_TX_SATS.toLocaleString()} sats federation limit`, "error");
     }
-    setLoading(true);
-    try {
-      if (window.webln) {
-        const inv = await api(`/${e.id}/invoice`);
-        if (inv.error) throw new Error(inv.error);
-        if (inv.mode === "webln" && inv.invoice) {
-          try { await window.webln.enable(); showToast(t("confirmInFedi")); await window.webln.sendPayment(inv.invoice); }
-          catch { showToast(t("paymentCancelled"), "error"); setLoading(false); return; }
-          const lock = await api(`/${e.id}/lock`, { method: "POST", body: JSON.stringify({ mode: "webln" }) });
-          if (lock.error) throw new Error(lock.error);
-          showToast(t("satsLocked"));
-        }
-      } else {
+    if (!window.webln) {
+      // Dev/sandbox mode
+      setLocking(true);
+      try {
         const notes = `ECASH_DEV_${Date.now()}`;
-        const lock = await api(`/${e.id}/lock`, { method: "POST", body: JSON.stringify({ mode: "manual", notes }) });
+        const lock = await api(`/${e.id}/lock`, { method: "POST", body: JSON.stringify({ mode: "manual", notes }) }, 0);
         if (lock.error) throw new Error(lock.error);
         showToast(t("lockedDevMode"));
+        onRefresh();
+      } catch (err) { showToast(err.message, "error"); }
+      finally { setLocking(false); }
+      return;
+    }
+    // Step 1: Fetch invoice from backend
+    setLockStep("fetching");
+    try {
+      const inv = await api(`/${e.id}/invoice`, {}, 0);
+      if (inv.error) throw new Error(inv.error);
+      if (inv.mode === "webln" && inv.invoice) {
+        setLockInvoice(inv.invoice);
+        setLockStep("ready");
+      } else {
+        throw new Error("No invoice returned");
       }
-      onRefresh();
-    } catch (err) { showToast(err.message, "error"); }
-    setLoading(false);
+    } catch (err) {
+      showToast(err.message, "error");
+      setLockStep("idle");
+    }
+  };
+
+  const handleLockPay = async () => {
+    // Step 2: User-initiated WebLN payment — fresh tap each time
+    if (!lockInvoice) return;
+    setLockStep("paying");
+    try {
+      await window.webln.enable();
+      await window.webln.sendPayment(lockInvoice);
+    } catch (err) {
+      showToast(t("paymentCancelled"), "error");
+      // Stay on "ready" so user can tap Pay again
+      setLockStep("ready");
+      return;
+    }
+    // Payment succeeded — confirm lock on backend
+    try {
+      const lock = await api(`/${e.id}/lock`, { method: "POST", body: JSON.stringify({ mode: "webln" }) }, 0);
+      if (lock.error) throw new Error(lock.error);
+    } catch { /* backend auto-lock handles it */ }
+    showToast(t("satsLocked"));
+    setLockStep("done");
+    onRefresh();
   };
 
   // ── 2-step confirmation for critical votes ──────────────────────
@@ -1099,7 +1143,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
                   {confirmVote ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ textAlign: "center", padding: "8px 12px", background: confirmVote === "release" ? "rgba(5,150,105,0.1)" : "rgba(180,83,9,0.1)", border: `1px solid ${confirmVote === "release" ? "rgba(5,150,105,0.3)" : "rgba(180,83,9,0.3)"}`, borderRadius: 10, fontSize: 13, fontWeight: 700, color: confirmVote === "release" ? "#10b981" : "#f59e0b" }}>
-                        {confirmVote === "release" ? "Confirm: Release sats to buyer?" : "Confirm: Dispute — request refund?"}
+                        {confirmVote === "release" ? "Confirm: Release sats to buyer?" : `Confirm: Dispute — refund to ${role === "seller" ? t("toMe") : t("seller")}?`}
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8" }} onClick={cancelConfirm}>Cancel</button>
@@ -1161,6 +1205,33 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           </div>
         )}
 
+        {/* ═══ PRIMARY ACTION — prominent, right after role ═══ */}
+        {canBuyerVote && (
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)", margin: "8px 0 16px" }} onClick={() => handleVote("release")} disabled={loading}>
+            {loading ? t("voting") : `✓ ${t("confirm")} — ${t("release")} ➜ ${t("toMe")}`}
+          </button>
+        )}
+        {(canClaim || canReclaimExpired) && (
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "8px 0 16px", animation: "pulseGreen 2s ease infinite" }} onClick={handleClaim} disabled={loading}>
+            {loading ? t("claiming") : `⚡ ${t("claimSats", { amount: fmtSats(e.amountMsats) })}`}
+          </button>
+        )}
+        {canLock && lockStep === "idle" && (
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", margin: "8px 0 16px" }} onClick={handleLockFetch}>
+            🔒 {t("lockSats", { amount: fmtSats(e.amountMsats) })}
+          </button>
+        )}
+        {canLock && lockStep === "fetching" && (
+          <button style={{ ...S.actionBtn, background: "#1e293b", margin: "8px 0 16px" }} disabled>
+            {t("locking")}
+          </button>
+        )}
+        {canLock && (lockStep === "ready" || lockStep === "paying") && (
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "8px 0 16px" }} onClick={handleLockPay} disabled={lockStep === "paying"}>
+            {lockStep === "paying" ? t("locking") : `⚡ ${t("confirmInFedi")}`}
+          </button>
+        )}
+
         {e.terms && (<div style={S.section}><div style={S.sectionLabel}>{t("tradeTerms")}</div><div style={S.sectionValue}>{e.terms}</div></div>)}
         {e.description && (<div style={S.section}><div style={S.sectionLabel}>{t("description")}</div><div style={S.sectionValue}>{e.description}</div></div>)}
 
@@ -1200,23 +1271,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         )}
       </div>
 
-      {/* ═══ BOLD ACTION BAR ═══ */}
-      <div style={S.actionBar}>
-        {canLock && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)" }} onClick={handleLock} disabled={loading}>
-            {loading ? t("locking") : t("lockSats", { amount: fmtSats(e.amountMsats) })}
-          </button>
-        )}
-        {canBuyerVote && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)" }} onClick={() => handleVote("release")} disabled={loading}>
-            {loading ? t("voting") : t("confirmRelease")}
-          </button>
-        )}
-        {(canClaim || canReclaimExpired) && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)" }} onClick={handleClaim} disabled={loading}>
-            {loading ? t("claiming") : t("claimSats", { amount: fmtSats(e.amountMsats) })}
-          </button>
-        )}
+      {/* ═══ STATUS BAR ═══ */}
+      <div style={{ padding: "12px 0 20px" }}>
         {status === "LOCKED" && role === "buyer" && hasVoted && !sellerVoted && <div style={S.waitBanner}><I.Clock /> {t("waitSeller")}</div>}
         {status === "LOCKED" && role === "buyer" && hasVoted && sellerVoted && buyerOutcome !== sellerOutcome && <div style={{ ...S.waitBanner, color: "#f59e0b" }}>⚖️ {t("waitArbiter")}</div>}
         {status === "LOCKED" && role === "seller" && hasVoted && !buyerVoted && <div style={S.waitBanner}><I.Clock /> {t("waitBuyerVote")}</div>}

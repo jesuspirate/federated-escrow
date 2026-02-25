@@ -102,6 +102,7 @@ const translations = {
     satsLocked: "Sats locked in escrow!",
     confirmInFedi: "Confirm payment in Fedi",
     paymentCancelled: "Payment cancelled",
+    retryLock: "Tap to retry — reloads page",
     lockedDevMode: "Locked (sandbox mode)",
     readyToLock: "Ready to lock",
     securedInVault: "Secured in vault",
@@ -159,6 +160,7 @@ const translations = {
     copied: "{label} copied!",
     copyFailed: "Copy failed",
     "2d": "2-of-3",
+    toMe: "me",
 
     // ── Status Badges ──────────────────────────────────────────────────
     statusCreated: "Created",
@@ -259,6 +261,7 @@ const translations = {
     satsLocked: "Sats verrouillés dans le séquestre !",
     confirmInFedi: "Confirmez le paiement dans Fedi",
     paymentCancelled: "Paiement annulé",
+    retryLock: "Appuyez pour réessayer",
     lockedDevMode: "Verrouillé (mode bac à sable)",
     readyToLock: "Prêt à verrouiller",
     securedInVault: "Sécurisé dans le coffre",
@@ -316,6 +319,7 @@ const translations = {
     copied: "{label} copié !",
     copyFailed: "Échec de la copie",
     "2d": "2-sur-3",
+    toMe: "moi",
 
     // ── Badges de statut ───────────────────────────────────────────────
     statusCreated: "Créé",
@@ -416,6 +420,7 @@ const translations = {
     satsLocked: "¡Sats bloqueados en custodia!",
     confirmInFedi: "Confirma el pago en Fedi",
     paymentCancelled: "Pago cancelado",
+    retryLock: "Toca para reintentar",
     lockedDevMode: "Bloqueado (modo sandbox)",
     readyToLock: "Listo para bloquear",
     securedInVault: "Asegurado en la bóveda",
@@ -473,6 +478,7 @@ const translations = {
     copied: "¡{label} copiado!",
     copyFailed: "Error al copiar",
     "2d": "2-de-3",
+    toMe: "mí",
 
     // ── Badges de estado ───────────────────────────────────────────────
     statusCreated: "Creado",
@@ -573,6 +579,7 @@ const translations = {
     satsLocked: "Sats zimefungwa kwenye escrow!",
     confirmInFedi: "Thibitisha malipo kwenye Fedi",
     paymentCancelled: "Malipo yameghairiwa",
+    retryLock: "Gusa kurudia",
     lockedDevMode: "Imefungwa (hali ya sandbox)",
     readyToLock: "Tayari kufunga",
     securedInVault: "Imethibitishwa kwenye kabati",
@@ -630,6 +637,7 @@ const translations = {
     copied: "{label} imenakiliwa!",
     copyFailed: "Kunakili kumeshindwa",
     "2d": "2-kati-ya-3",
+    toMe: "mimi",
 
     // ── Beji za hali ───────────────────────────────────────────────────
     statusCreated: "Imeundwa",
