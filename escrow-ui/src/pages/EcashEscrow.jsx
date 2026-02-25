@@ -112,6 +112,8 @@ function isDevMode() { return !!_devPubkey || _forceDevMode; }
 const FEDI_ROOMS = {
   en: "fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::",
   fr: "fedi:room:!qHlVxBJBCKqUbetBnA:m1.8fa.in:::",
+  pt: "fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::",
+  sw: "fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::",
 };
 function getFediRoomLink(locale) {
   return FEDI_ROOMS[locale] || FEDI_ROOMS.en;
