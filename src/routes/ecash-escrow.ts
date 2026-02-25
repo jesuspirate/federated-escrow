@@ -160,6 +160,32 @@ function getRoleByPubkey(row: DB.EscrowRow, pk: string): Role | null {
   return null;
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// BACKEND PATCH 2 — Sandbox Isolation
+// Apply to ~/federated-escrow/src/routes/ecash-escrow.ts
+// ═══════════════════════════════════════════════════════════════════════
+
+// ────────────────────────────────────────────────────────────────────────
+// ADD this helper near the other helpers (after getRoleByPubkey):
+// ────────────────────────────────────────────────────────────────────────
+
+// DEV_PUBKEYS matches the frontend sandbox identities
+
+const DEV_PUBKEYS = new Set([
+  "aa".repeat(32),  // seller
+  "bb".repeat(32),  // buyer
+  "cc".repeat(32),  // arbiter
+]);
+function isDevPubkey(pk: string): boolean { return DEV_PUBKEYS.has(pk); }
+
+// ────────────────────────────────────────────────────────────────────────
+// FIX: In POST / (create) — tag sandbox escrows
+// ────────────────────────────────────────────────────────────────────────
+//
+// After the escrow is created, if the seller has a dev pubkey,
+// the escrow is implicitly a sandbox trade (seller_pubkey is aaa...).
+// No extra tagging needed — we detect it at join time.
+
 function tallyVotes(votes: DB.VoteRow[]) {
   const release = votes.filter(v => v.outcome === "release").length;
   const refund = votes.filter(v => v.outcome === "refund").length;
@@ -267,6 +293,18 @@ router.post("/:id/join", (req: AuthenticatedRequest, res: Response) => {
     if (isExpired(row)) return res.status(400).json({ error: "This escrow has expired" });
 
     const pk = req.pubkey!;
+
+// Sandbox isolation: prevent dev pubkeys from joining real trades and vice versa
+
+    const sellerIsDev = isDevPubkey(row.seller_pubkey);
+    const joinerIsDev = isDevPubkey(pk);
+    if (sellerIsDev && !joinerIsDev) {
+      return res.status(403).json({ error: "This is a sandbox trade." });
+}
+if (!sellerIsDev && joinerIsDev) {
+  return res.status(403).json({ error: "Sandbox identities cannot join real trades." });
+}
+
     const { role } = req.body;
     if (role !== "buyer" && role !== "arbiter") return res.status(400).json({ error: 'role must be "buyer" or "arbiter"' });
     const isDevRequest = !!req.headers["x-dev-pubkey"];

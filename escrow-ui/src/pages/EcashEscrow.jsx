@@ -644,7 +644,7 @@ export default function EcashEscrow() {
   }
 
   return (
-    <div style={{ ...S.root, display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+    <div style={{ ...S.root, display: "flex", flexDirection: "column", height: "100vh", width: "100%", overflow: "hidden" }}>
       <style>{`
         @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -659,6 +659,7 @@ export default function EcashEscrow() {
         @keyframes joinGlow { 0% { box-shadow: 0 0 0 rgba(96,165,250,0), inset 0 0 0 rgba(96,165,250,0); transform: scale(0.85); } 15% { box-shadow: 0 0 32px rgba(96,165,250,0.5), 0 0 12px rgba(96,165,250,0.3), inset 0 0 16px rgba(96,165,250,0.2); transform: scale(1.08); } 40% { box-shadow: 0 0 24px rgba(96,165,250,0.35), inset 0 0 10px rgba(96,165,250,0.12); transform: scale(1); } 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.3); transform: scale(1); } }
         @keyframes joinRingPulse { 0% { transform: scale(1); opacity: 0.6; border-color: rgba(96,165,250,0.5); } 100% { transform: scale(1.8); opacity: 0; border-color: rgba(96,165,250,0); } }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body, #root { margin: 0; padding: 0; width: 100%; overflow: hidden; }
         button { cursor: pointer; border: none; font-family: inherit; }
         input, textarea { font-family: inherit; }
         ::-webkit-scrollbar { width: 0; }
@@ -816,7 +817,7 @@ function CreateView({ pubkey, locale, onBack, onCreated, showToast, setLoading, 
     setLoading(false);
   };
   return (
-    <div style={{ ...S.container, flex: 1, overflowY: "auto" }}>
+    <div style={{ ...S.container, flex: 1, overflowY: "auto", minHeight: 0, paddingBottom: 20 }}>
       <div style={S.viewHeader}><button style={S.iconBtn} onClick={onBack}><I.Back /></button><h2 style={S.viewTitle}>{t("newTrade")}</h2><div style={{ width: 36 }} /></div>
       <div style={S.formGroup}><label style={S.label}>{t("amountSats")}</label><input style={{ ...S.input, ...(amountError ? { borderColor: "#ef4444" } : {}) }} type="number" placeholder="25000" value={amount} onChange={e => onAmountChange(e.target.value)} />{amountError && <p style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>{amountError}</p>}<p style={S.hint}>{t("maxFedLimit", { limit: FED_LIMITS.MAX_TX_SATS.toLocaleString() })}</p></div>
       <div style={S.formGroup}><label style={S.label}>{t("description")}</label><input style={S.input} placeholder="Selling 50 USD for sats" value={desc} onChange={e => setDesc(e.target.value)} /></div>
@@ -873,7 +874,7 @@ function JoinView({ pubkey, onBack, onJoined, showToast, setLoading, loading }) 
   const arbiterBlocked = role === "arbiter" && arbiterAllowed === false;
 
   return (
-    <div style={{ ...S.container, flex: 1, overflowY: "auto" }}>
+    <div style={{ ...S.container, flex: 1, overflowY: "auto", minHeight: 0, paddingBottom: 20 }}>
       <div style={S.viewHeader}><button style={S.iconBtn} onClick={onBack}><I.Back /></button><h2 style={S.viewTitle}>{t("joinEscrow")}</h2><div style={{ width: 36 }} /></div>
       <div style={S.formGroup}><label style={S.label}>{t("escrowId")}</label><input style={S.input} placeholder={t("escrowIdPlaceholder")} value={escrowId} onChange={e => setEscrowId(e.target.value)} /></div>
       <div style={S.formGroup}><label style={S.label}>{t("yourRole")}</label><div style={{ display: "flex", gap: 8 }}>{["buyer", "arbiter"].map(r => (<button key={r} onClick={() => setRole(r)} style={{ ...S.roleBtn, ...(role === r ? S.roleBtnActive : {}), ...(r === "arbiter" && arbiterAllowed === false ? { opacity: 0.4 } : {}) }}>{r === "buyer" ? `\ud83d\uded2 ${t("buyer")}` : `\u2696\ufe0f ${t("arbiter")}`}</button>))}</div></div>
@@ -1243,7 +1244,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
 const S = {
   root: { background: "#0c0f17", color: "#e2e8f0", minHeight: "100vh", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 14, lineHeight: 1.5 },
-  container: { maxWidth: 480, margin: "0 auto", padding: "0 16px", minHeight: "100vh", display: "flex", flexDirection: "column" },
+  container: { width: "100%", maxWidth: 480, margin: "0 auto", padding: "0 16px", minHeight: "100vh", display: "flex", flexDirection: "column", boxSizing: "border-box" },
   listHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0 16px" },
   title: { fontSize: 24, fontWeight: 700, color: "#f8fafc", margin: 0, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: "#64748b", margin: "2px 0 0", fontFamily: "monospace" },
