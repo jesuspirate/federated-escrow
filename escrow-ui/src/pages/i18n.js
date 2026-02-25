@@ -158,6 +158,15 @@ const translations = {
     copied: "{label} copied!",
     copyFailed: "Copy failed",
     "2d": "2-of-3",
+
+    // ── Status Badges ──────────────────────────────────────────────────
+    statusCreated: "Created",
+    statusFunded: "Funded",
+    statusLocked: "Locked",
+    statusApproved: "Approved",
+    statusClaimed: "Claimed",
+    statusCompleted: "Completed",
+    statusExpired: "Expired",
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -305,153 +314,171 @@ const translations = {
     copied: "{label} copié !",
     copyFailed: "Échec de la copie",
     "2d": "2-sur-3",
+
+    // ── Badges de statut ───────────────────────────────────────────────
+    statusCreated: "Créé",
+    statusFunded: "Financé",
+    statusLocked: "Verrouillé",
+    statusApproved: "Approuvé",
+    statusClaimed: "Réclamé",
+    statusCompleted: "Terminé",
+    statusExpired: "Expiré",
   },
 
   // ─────────────────────────────────────────────────────────────────────
-  // PORTUGUÊS
+  // ESPAÑOL
   // ─────────────────────────────────────────────────────────────────────
-  pt: {
-    // ── Integração (app Fedi) ──────────────────────────────────────────
-    ob1Title: "Negociação P2P sem confiança",
-    ob1Desc: "Negocie qualquer coisa por bitcoin sem confiar na outra parte. Seus sats ficam bloqueados em custódia federada de e-cash até que ambas as partes confirmem o acordo.",
+  es: {
+    // ── Incorporación (app Fedi) ───────────────────────────────────────
+    ob1Title: "Comercio P2P sin confianza",
+    ob1Desc: "Intercambia cualquier cosa por bitcoin sin confiar en la otra parte. Tus sats quedan bloqueados en custodia federada de e-cash hasta que ambas partes confirmen el acuerdo.",
     ob2Title: "3 Partes, voto 2-de-3",
-    ob2Desc: "Cada negociação tem um Vendedor, um Comprador e um Árbitro aprovado pela comunidade. Dois devem concordar para liberar ou reembolsar. Se comprador e vendedor concordarem, o árbitro nunca é necessário.",
-    ob3Title: "Pagamento Lightning instantâneo",
-    ob3Desc: "Sats são bloqueados via Lightning e pagos instantaneamente. Sem taxas on-chain, sem espera. Tudo alimentado pela sua federação Fedi.",
-    obStartTrading: "Começar a negociar",
-    obNext: "Próximo",
-    obSkip: "Pular",
-    obFedLimit: "Limite da federação: {limit} sats por negociação",
+    ob2Desc: "Cada intercambio tiene un Vendedor, un Comprador y un Árbitro aprobado por la comunidad. Dos deben estar de acuerdo para liberar o reembolsar. Si comprador y vendedor coinciden, el árbitro nunca interviene.",
+    ob3Title: "Pago Lightning instantáneo",
+    ob3Desc: "Los sats se bloquean vía Lightning y se pagan al instante. Sin comisiones on-chain, sin esperas. Todo impulsado por tu federación Fedi.",
+    obStartTrading: "Empezar a comerciar",
+    obNext: "Siguiente",
+    obSkip: "Omitir",
+    obFedLimit: "Límite de federación: {limit} sats por intercambio",
 
-    // ── Integração (Sandbox / navegador) ───────────────────────────────
-    obSandboxTitle: "Bem-vindo ao Sandbox de Custódia",
-    obSandboxDesc: "Esta é uma demo ao vivo da nossa custódia multisig 2-de-3 — alimentada por Fedimint e Lightning. Experimente cada papel: crie custódias, financie, vote e reclame. Sem sats reais, sem risco.",
-    obRolesTitle: "Experimente cada papel",
-    obRolesDesc: "Alterne entre Vendedor, Comprador e Árbitro usando a barra de papéis no topo. Cada papel tem uma visão diferente — como numa negociação real. Complete um ciclo inteiro em minutos.",
-    obCommunityTitle: "Pronto para negociações reais?",
-    obCommunityDesc: "Quando estiver pronto para negociar sats reais, junte-se à nossa comunidade no Fedi. Converse com traders, aprenda as regras e inicie sua primeira custódia.",
+    // ── Incorporación (Sandbox / navegador) ────────────────────────────
+    obSandboxTitle: "Bienvenido al Sandbox de Custodia",
+    obSandboxDesc: "Esta es una demo en vivo de nuestra custodia multisig 2-de-3 — impulsada por Fedimint y Lightning. Prueba cada rol: crea custodias, fináncias, vota y reclama. Sin sats reales, sin riesgo.",
+    obRolesTitle: "Prueba cada rol",
+    obRolesDesc: "Alterna entre Vendedor, Comprador y Árbitro con la barra de roles arriba. Cada rol tiene una vista diferente — como en un intercambio real. Completa un ciclo entero en minutos.",
+    obCommunityTitle: "¿Listo para intercambios reales?",
+    obCommunityDesc: "Cuando estés listo para intercambiar sats reales, únete a nuestra comunidad en Fedi. Chatea con comerciantes, aprende las reglas e inicia tu primera custodia.",
     sandboxBadge: "MODO SANDBOX",
-    sandboxFooter: "Sem sats reais. Explore livremente.",
-    tryDemo: "Experimentar a demo",
+    sandboxFooter: "Sin sats reales. Explora libremente.",
+    tryDemo: "Probar la demo",
     sandbox: "Sandbox",
-    playAs: "Jogar como:",
+    playAs: "Jugar como:",
 
     // ── Vista de lista ─────────────────────────────────────────────────
-    escrow: "Custódia federada",
-    newTrade: "Nova negociação",
-    joinEscrow: "Participar",
-    noEscrows: "Sem negociações. Crie uma ou junte-se a uma existente.",
+    escrow: "Custodia federada",
+    newTrade: "Nuevo intercambio",
+    joinEscrow: "Unirse",
+    noEscrows: "Sin intercambios. Crea uno o únete a uno existente.",
     sats: "sats",
-    maxPerTrade: "Máx {limit} sats por negociação",
-    failedLoadEscrows: "Falha ao carregar negociações",
+    maxPerTrade: "Máx {limit} sats por intercambio",
+    failedLoadEscrows: "Error al cargar intercambios",
 
-    // ── Vista de criação ───────────────────────────────────────────────
-    amountSats: "Valor (sats)",
-    description: "Descrição",
-    tradeTerms: "Termos da negociação",
-    communityLink: "Link do chat da comunidade",
-    communityLinkHint: "Link da sala Fedi onde as partes podem se comunicar",
-    maxFedLimit: "Limite da federação: {limit} sats",
-    creating: "Criando...",
-    createEscrow: "Criar custódia",
-    escrowCreated: "Custódia criada!",
+    // ── Vista de creación ──────────────────────────────────────────────
+    amountSats: "Cantidad (sats)",
+    description: "Descripción",
+    tradeTerms: "Condiciones del intercambio",
+    communityLink: "Enlace del chat comunitario",
+    communityLinkHint: "Enlace de la sala Fedi donde las partes pueden comunicarse",
+    maxFedLimit: "Límite de federación: {limit} sats",
+    creating: "Creando...",
+    createEscrow: "Crear custodia",
+    escrowCreated: "¡Custodia creada!",
 
-    // ── Como funciona ──────────────────────────────────────────────────
-    howItWorks: "Como funciona",
-    howStep1: "Você cria a custódia e se torna o",
+    // ── Cómo funciona ──────────────────────────────────────────────────
+    howItWorks: "Cómo funciona",
+    howStep1: "Creas la custodia y te conviertes en el",
     howStep1Role: "Vendedor",
-    howStep2: "Um Comprador e um Árbitro participam usando o ID da custódia.",
-    howStep3: "Você bloqueia sats via Lightning. O comprador cumpre sua parte.",
-    howStep4: "Ambos votam. Se concordarem, os sats são transferidos.",
-    howStep5: "Se discordarem, o Árbitro dá o voto decisivo.",
+    howStep2: "Un Comprador y un Árbitro se unen usando el ID de custodia.",
+    howStep3: "Bloqueas sats vía Lightning. El comprador cumple su parte.",
+    howStep4: "Ambos votan. Si coinciden, los sats se transfieren.",
+    howStep5: "Si no coinciden, el Árbitro emite el voto decisivo.",
 
-    // ── Vista de participação ──────────────────────────────────────────
-    escrowId: "ID da custódia",
-    escrowIdPlaceholder: "ex. ecash_23",
-    yourRole: "Seu papel",
+    // ── Vista de unión ─────────────────────────────────────────────────
+    escrowId: "ID de custodia",
+    escrowIdPlaceholder: "ej. ecash_23",
+    yourRole: "Tu rol",
     buyer: "Comprador",
     arbiter: "Árbitro",
     seller: "Vendedor",
-    joining: "Entrando...",
-    joinAs: "Entrar como {role}",
-    joinedAs: "Entrou como {role}!",
-    buyerDesc: "Cumpra suas obrigações e vote para liberar os sats para si ou reembolsar o vendedor.",
-    arbiterDesc: "Analise as evidências e vote apenas se comprador e vendedor discordarem.",
-    arbiterRestricted: "Árbitro restrito",
-    arbiterRestrictedDesc: "Apenas árbitros aprovados pela comunidade podem participar. Candidate-se no chat.",
+    joining: "Uniéndose...",
+    joinAs: "Unirse como {role}",
+    joinedAs: "¡Unido como {role}!",
+    buyerDesc: "Cumple tus obligaciones, luego vota para liberar los sats o reembolsar al vendedor.",
+    arbiterDesc: "Revisa las pruebas y vota solo si comprador y vendedor no se ponen de acuerdo.",
+    arbiterRestricted: "Árbitro restringido",
+    arbiterRestrictedDesc: "Solo árbitros aprobados por la comunidad pueden unirse. Solicita acceso en el chat.",
 
-    // ── Vista de detalhes ──────────────────────────────────────────────
-    youAreThe: "Você é o",
-    connectingNostr: "Conectando ao Nostr...",
+    // ── Vista de detalle ───────────────────────────────────────────────
+    youAreThe: "Eres el",
+    connectingNostr: "Conectando a Nostr...",
 
-    // ── Compartilhamento ───────────────────────────────────────────────
-    shareEscrowTitle: "Compartilhe este ID de custódia",
-    shareEscrowDesc: "Envie o ID ao comprador e ao árbitro para que possam participar.",
+    // ── Compartir ──────────────────────────────────────────────────────
+    shareEscrowTitle: "Comparte este ID de custodia",
+    shareEscrowDesc: "Envía el ID al comprador y al árbitro para que puedan unirse.",
     copyId: "Copiar ID",
     openCommunity: "Abrir chat",
 
-    // ── Bloqueio ───────────────────────────────────────────────────────
+    // ── Bloqueo ────────────────────────────────────────────────────────
     lockSats: "Bloquear {amount} sats",
     locking: "Bloqueando...",
-    satsLocked: "Sats bloqueados na custódia!",
-    confirmInFedi: "Confirme o pagamento no Fedi",
-    paymentCancelled: "Pagamento cancelado",
+    satsLocked: "¡Sats bloqueados en custodia!",
+    confirmInFedi: "Confirma el pago en Fedi",
+    paymentCancelled: "Pago cancelado",
     lockedDevMode: "Bloqueado (modo sandbox)",
-    readyToLock: "Pronto para bloquear",
-    securedInVault: "Protegido no cofre",
+    readyToLock: "Listo para bloquear",
+    securedInVault: "Asegurado en la bóveda",
 
-    // ── Votação ────────────────────────────────────────────────────────
-    release: "Liberar ao comprador",
-    refund: "Reembolsar o vendedor",
+    // ── Votación ───────────────────────────────────────────────────────
+    release: "Liberar al comprador",
+    refund: "Reembolsar al vendedor",
     confirm: "Confirmar",
-    dispute: "Contestar",
-    noDispute: "Sem disputa — negociação concluída",
+    dispute: "Disputar",
+    noDispute: "Sin disputa — intercambio completo",
     voting: "Votando...",
-    votedRelease: "Votou: liberar ao comprador",
-    votedRefund: "Votou: reembolsar o vendedor",
-    confirmRelease: "Confirmar — liberar sats ao comprador?",
-    resolvedRelease: "Resolvido: liberado ao comprador",
-    resolvedRefund: "Resolvido: reembolsado ao vendedor",
+    votedRelease: "Votó: liberar al comprador",
+    votedRefund: "Votó: reembolsar al vendedor",
+    confirmRelease: "Confirmar — ¿liberar sats al comprador?",
+    resolvedRelease: "Resuelto: liberado al comprador",
+    resolvedRefund: "Resuelto: reembolsado al vendedor",
 
-    // ── Reivindicação / Pagamento ──────────────────────────────────────
-    claimSats: "Reivindicar {amount} sats",
-    claiming: "Reivindicando...",
-    claimed: "Reivindicado! Pagamento em andamento.",
-    readyToClaim: "Pronto para reivindicar",
-    invoiceCancelled: "Criação da fatura cancelada",
-    sendingPayout: "Enviando pagamento...",
-    satsReceived: "Sats recebidos!",
-    satsDelivered: "{amount} sats entregues",
-    notesCopied: "Notas e-cash copiadas!",
-    sandboxPayout: "🧪 Sandbox: sats reivindicados!",
-    deliveredToBuyer: "Entregue ao comprador",
-    refundedToSeller: "Reembolsado ao vendedor",
+    // ── Reclamación / Pago ─────────────────────────────────────────────
+    claimSats: "Reclamar {amount} sats",
+    claiming: "Reclamando...",
+    claimed: "¡Reclamado! Pago en proceso.",
+    readyToClaim: "Listo para reclamar",
+    invoiceCancelled: "Creación de factura cancelada",
+    sendingPayout: "Enviando pago...",
+    satsReceived: "¡Sats recibidos!",
+    satsDelivered: "{amount} sats entregados",
+    notesCopied: "¡Notas e-cash copiadas!",
+    sandboxPayout: "🧪 Sandbox: ¡sats reclamados!",
+    deliveredToBuyer: "Entregado al comprador",
+    refundedToSeller: "Reembolsado al vendedor",
 
-    // ── Status / Banners de espera ─────────────────────────────────────
-    waitParties: "Aguardando todas as partes",
-    waitingAllParties: "Aguardando participantes",
-    waitSellerLock: "Aguardando o vendedor bloquear os sats",
-    waitBuyerVote: "Aguardando o voto do comprador",
-    waitSeller: "Aguardando o voto do vendedor",
-    waitBothVote: "Aguardando o voto de ambas as partes",
-    waitResolution: "Aguardando resolução",
-    tradeComplete: "Negociação concluída",
-    tradeCompleteBanner: "Negociação concluída",
-    escrowExpired: "Custódia expirada",
+    // ── Estado / Banners de espera ─────────────────────────────────────
+    waitParties: "Esperando a todas las partes",
+    waitingAllParties: "Esperando participantes",
+    waitSellerLock: "Esperando que el vendedor bloquee los sats",
+    waitBuyerVote: "Esperando el voto del comprador",
+    waitSeller: "Esperando el voto del vendedor",
+    waitBothVote: "Esperando el voto de ambas partes",
+    waitResolution: "Esperando resolución",
+    tradeComplete: "Intercambio completado",
+    tradeCompleteBanner: "Intercambio completado",
+    escrowExpired: "Custodia expirada",
 
-    // ── Chat / Comunidade ──────────────────────────────────────────────
-    joinChat: "Entrar no chat da comunidade",
+    // ── Chat / Comunidad ───────────────────────────────────────────────
+    joinChat: "Unirse al chat comunitario",
 
-    // ── Saiba mais (Sandbox) ───────────────────────────────────────────
-    learnMoreTitle: "Novo no Bitcoin ou Fedi?",
-    learnFedi: "O que é Fedi?",
-    learnBitcoin: "O que é Bitcoin?",
-    scanToDownload: "Escaneie para baixar o Fedi",
+    // ── Más información (Sandbox) ──────────────────────────────────────
+    learnMoreTitle: "¿Nuevo en Bitcoin o Fedi?",
+    learnFedi: "¿Qué es Fedi?",
+    learnBitcoin: "¿Qué es Bitcoin?",
+    scanToDownload: "Escanea para descargar Fedi",
 
-    // ── Diversos ───────────────────────────────────────────────────────
-    copied: "{label} copiado!",
-    copyFailed: "Falha ao copiar",
+    // ── Varios ─────────────────────────────────────────────────────────
+    copied: "¡{label} copiado!",
+    copyFailed: "Error al copiar",
     "2d": "2-de-3",
+
+    // ── Badges de estado ───────────────────────────────────────────────
+    statusCreated: "Creado",
+    statusFunded: "Financiado",
+    statusLocked: "Bloqueado",
+    statusApproved: "Aprobado",
+    statusClaimed: "Reclamado",
+    statusCompleted: "Completado",
+    statusExpired: "Expirado",
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -599,6 +626,15 @@ const translations = {
     copied: "{label} imenakiliwa!",
     copyFailed: "Kunakili kumeshindwa",
     "2d": "2-kati-ya-3",
+
+    // ── Beji za hali ───────────────────────────────────────────────────
+    statusCreated: "Imeundwa",
+    statusFunded: "Imefadhiliwa",
+    statusLocked: "Imefungwa",
+    statusApproved: "Imeidhinishwa",
+    statusClaimed: "Imedaiwa",
+    statusCompleted: "Imekamilika",
+    statusExpired: "Imeisha muda",
   },
 };
 
@@ -612,7 +648,7 @@ function detectLocale() {
   try { const s = localStorage.getItem(STORAGE_KEY); if (s && translations[s]) return s; } catch {}
   const nav = (typeof navigator !== "undefined" ? navigator.language : "en").toLowerCase();
   if (nav.startsWith("fr")) return "fr";
-  if (nav.startsWith("pt")) return "pt";
+  if (nav.startsWith("es")) return "es";
   if (nav.startsWith("sw")) return "sw";
   return "en";
 }
@@ -637,7 +673,7 @@ export function getAvailableLocales() {
   return [
     { code: "en", flag: "🇬🇧", label: "English" },
     { code: "fr", flag: "🇫🇷", label: "Français" },
-    { code: "pt", flag: "🇧🇷", label: "Português" },
+    { code: "es", flag: "🇪🇸", label: "Español" },
     { code: "sw", flag: "🇰🇪", label: "Kiswahili" },
   ];
 }

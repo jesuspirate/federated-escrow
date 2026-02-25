@@ -112,7 +112,7 @@ function isDevMode() { return !!_devPubkey || _forceDevMode; }
 const FEDI_ROOMS = {
   en: "fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::",
   fr: "fedi:room:!qHlVxBJBCKqUbetBnA:m1.8fa.in:::",
-  pt: "fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::",
+  es: "fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::",
   sw: "fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::",
 };
 function getFediRoomLink(locale) {
@@ -724,18 +724,18 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
   return (
     <div style={{ ...S.container, flex: 1, minHeight: 0, overflow: "hidden" }}>
       <div style={S.listHeader}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div>
-            <h1 style={S.title}>{isDevMode() ? "🧪 " + t("escrow") : t("escrow")}</h1>
-            <p style={S.subtitle}>{isDevMode() ? t("sandboxFooter") || "No real sats. Explore freely." : truncPk(pubkey)}</p>
-          </div>
-          <div style={{ display: "flex", gap: 2, alignSelf: "flex-start", marginTop: 4 }}>
+        <div>
+          <h1 style={S.title}>{t("escrow")}</h1>
+          <p style={S.subtitle}>{isDevMode() ? t("sandboxFooter") : truncPk(pubkey)}</p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ display: "flex", gap: 2 }}>
             {getAvailableLocales().map(l => (
               <button key={l.code} onClick={() => onSwitchLocale(l.code)} style={{ padding: "4px 6px", borderRadius: 6, background: locale === l.code ? "#1e293b" : "transparent", color: locale === l.code ? "#f8fafc" : "#475569", fontSize: 14, border: locale === l.code ? "1px solid #334155" : "1px solid transparent", cursor: "pointer", lineHeight: 1, transition: "all 0.2s" }}>{l.flag}</button>
             ))}
           </div>
+          <button style={S.iconBtn} onClick={onRefresh}><I.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
         </div>
-        <button style={S.iconBtn} onClick={onRefresh}><I.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
       </div>
       <div style={{ display: "flex", gap: 10, margin: "0 0 12px" }}>
         <button style={S.primaryBtn} onClick={onCreate}><I.Plus /> {t("newTrade")}</button>
@@ -839,7 +839,7 @@ function CreateView({ pubkey, locale, onBack, onCreated, showToast, setLoading, 
     setLoading(false);
   };
   return (
-    <div style={S.container}>
+    <div style={{ ...S.container, flex: 1, overflowY: "auto" }}>
       <div style={S.viewHeader}><button style={S.iconBtn} onClick={onBack}><I.Back /></button><h2 style={S.viewTitle}>{t("newTrade")}</h2><div style={{ width: 36 }} /></div>
       <div style={S.formGroup}><label style={S.label}>{t("amountSats")}</label><input style={{ ...S.input, ...(amountError ? { borderColor: "#ef4444" } : {}) }} type="number" placeholder="25000" value={amount} onChange={e => onAmountChange(e.target.value)} />{amountError && <p style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>{amountError}</p>}<p style={S.hint}>{t("maxFedLimit", { limit: FED_LIMITS.MAX_TX_SATS.toLocaleString() })}</p></div>
       <div style={S.formGroup}><label style={S.label}>{t("description")}</label><input style={S.input} placeholder="Selling 50 USD for sats" value={desc} onChange={e => setDesc(e.target.value)} /></div>
@@ -896,7 +896,7 @@ function JoinView({ pubkey, onBack, onJoined, showToast, setLoading, loading }) 
   const arbiterBlocked = role === "arbiter" && arbiterAllowed === false;
 
   return (
-    <div style={S.container}>
+    <div style={{ ...S.container, flex: 1, overflowY: "auto" }}>
       <div style={S.viewHeader}><button style={S.iconBtn} onClick={onBack}><I.Back /></button><h2 style={S.viewTitle}>{t("joinEscrow")}</h2><div style={{ width: 36 }} /></div>
       <div style={S.formGroup}><label style={S.label}>{t("escrowId")}</label><input style={S.input} placeholder={t("escrowIdPlaceholder")} value={escrowId} onChange={e => setEscrowId(e.target.value)} /></div>
       <div style={S.formGroup}><label style={S.label}>{t("yourRole")}</label><div style={{ display: "flex", gap: 8 }}>{["buyer", "arbiter"].map(r => (<button key={r} onClick={() => setRole(r)} style={{ ...S.roleBtn, ...(role === r ? S.roleBtnActive : {}), ...(r === "arbiter" && arbiterAllowed === false ? { opacity: 0.4 } : {}) }}>{r === "buyer" ? `\ud83d\uded2 ${t("buyer")}` : `\u2696\ufe0f ${t("arbiter")}`}</button>))}</div></div>
@@ -1072,7 +1072,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   };
 
   return (
-    <div style={S.container}>
+    <div style={{ ...S.container, flex: 1, overflowY: "auto" }}>
       <div style={S.viewHeader}>
         <button style={S.iconBtn} onClick={onBack}><I.Back /></button>
         <h2 style={S.viewTitle}>Trade #{e.id}</h2>
