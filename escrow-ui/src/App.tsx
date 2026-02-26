@@ -1,5 +1,2 @@
-import EcashEscrow from "./pages/EcashEscrow";
-
-export default function App() {
-  return <EcashEscrow />;
-}
+import App from "./pages/App";
+export default App;

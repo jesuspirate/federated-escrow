@@ -1,9 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════
-// i18n.js — Internationalization for Fedi Escrow
-// English • Français • Português • Kiswahili
+// i18n.js — Internationalization for Fedi Escrow + Marketplace
+// English • Français • Español • Kiswahili
 // ═══════════════════════════════════════════════════════════════════════
 //
-// Usage in EcashEscrow.jsx:
+// Usage in EcashEscrow.jsx / Marketplace.jsx:
 //   import { t, setLocale, getLocale, getAvailableLocales } from "./i18n";
 //   t("newTrade")  →  "New Trade" / "Nouvelle transaction" / etc.
 //
@@ -43,7 +43,7 @@ const translations = {
     playAs: "Play as:",
 
     // ── List View ──────────────────────────────────────────────────────
-    escrow: "Federated Escrow",
+    escrow: "Escrow",
     newTrade: "New Trade",
     joinEscrow: "Join Trade",
     noEscrows: "No trades yet. Create one or join an existing trade.",
@@ -170,6 +170,63 @@ const translations = {
     statusClaimed: "Claimed",
     statusCompleted: "Completed",
     statusExpired: "Expired",
+
+    // ── Marketplace ────────────────────────────────────────────────────
+    mkTitle: "Marketplace",
+    mkListingCount: "{count} listings",
+    mkSell: "Sell",
+    mkOrders: "Orders",
+    mkSearchPlaceholder: "Search listings...",
+    mkLoading: "Loading...",
+    mkNoResults: "No listings found",
+    mkNoListings: "No listings yet. Be the first to sell!",
+    mkNoOrders: "No orders yet",
+    mkListing: "Listing",
+    mkNewListing: "New Listing",
+    mkCreateListing: "Create Listing",
+    mkListingCreated: "Listing created!",
+    mkMyOrders: "My Orders",
+    mkOrder: "Order",
+    mkBuyFor: "Buy for {amount} sats",
+    mkBuying: "Processing...",
+    mkBuySuccess: "Purchase initiated! Seller will lock sats.",
+    mkYourListing: "This is your listing",
+    mkCancelOrder: "Cancel Order",
+    mkCancelling: "Cancelling...",
+    mkOrderCancelledToast: "Order cancelled",
+    mkParticipants: "Participants",
+    mkWaitSellerLock: "Waiting for seller to lock sats...",
+    mkTradeInProgress: "Trade in progress — complete your side and vote",
+    mkFieldTitle: "Title",
+    mkFieldTitleHint: "What are you selling?",
+    mkFieldPrice: "Price (sats)",
+    mkFieldDescHint: "Describe what you're selling...",
+    mkFieldTermsHint: "Shipping, inspection period, payment method...",
+    mkFieldQty: "Qty",
+    mkFieldCategoryHint: "electronics, clothing, services...",
+    mkCondition: "Condition",
+    mkCategory: "Category",
+    mkAvailable: "Available",
+    mkCommunityHint: "Required for buyers to purchase (links escrow to your federation)",
+    mkTitleRequired: "Title is required",
+    mkPriceRequired: "Enter a valid price in sats",
+    mkPriceExceeds: "Exceeds 2M sats federation limit",
+    mkCondNew: "New",
+    mkCondUsed: "Used",
+    mkCondDigital: "Digital",
+    mkCondService: "Service",
+    mkQtyAvailable: "{qty} available",
+    mkQtyOneLeft: "1 left",
+    mkQtySoldOut: "Sold out",
+    mkStatusPaused: "Paused",
+    mkStatusDeleted: "Deleted",
+    mkOrderPending: "Pending",
+    mkOrderActive: "Active",
+    mkOrderCompleted: "Completed",
+    mkOrderExpired: "Expired",
+    mkOrderCancelled: "Cancelled",
+    mkNetworkError: "Network error — check your connection",
+    mkAuthRequired: "Authentication required",
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -188,7 +245,6 @@ const translations = {
     obSkip: "Passer",
     obFedLimit: "Limite fédération : {limit} sats par échange",
 
-    // ── Intégration (Sandbox / navigateur) ─────────────────────────────
     obSandboxTitle: "Bienvenue dans le bac à sable",
     obSandboxDesc: "Ceci est une démo en direct de notre séquestre multisig 2-sur-3 — propulsé par Fedimint et Lightning. Essayez chaque rôle : créez des séquestres, financez-les, votez et réclamez. Pas de vrais sats, aucun risque.",
     obRolesTitle: "Jouez chaque rôle",
@@ -201,8 +257,7 @@ const translations = {
     sandbox: "Bac à sable",
     playAs: "Jouer en tant que :",
 
-    // ── Vue liste ──────────────────────────────────────────────────────
-    escrow: "Séquestre fédéré",
+    escrow: "Séquestre",
     newTrade: "Nouvel échange",
     joinEscrow: "Rejoindre",
     noEscrows: "Aucun échange. Créez-en un ou rejoignez un échange existant.",
@@ -210,7 +265,6 @@ const translations = {
     maxPerTrade: "Max {limit} sats par échange",
     failedLoadEscrows: "Échec du chargement des échanges",
 
-    // ── Vue création ───────────────────────────────────────────────────
     amountSats: "Montant (sats)",
     description: "Description",
     tradeTerms: "Conditions de l'échange",
@@ -221,7 +275,6 @@ const translations = {
     createEscrow: "Créer le séquestre",
     escrowCreated: "Séquestre créé !",
 
-    // ── Comment ça marche ──────────────────────────────────────────────
     howItWorks: "Comment ça marche",
     howStep1: "Vous créez le séquestre et devenez le",
     howStep1Role: "Vendeur",
@@ -230,7 +283,6 @@ const translations = {
     howStep4: "Les deux votent. S'ils sont d'accord, les sats sont transférés.",
     howStep5: "En cas de désaccord, l'Arbitre tranche.",
 
-    // ── Vue rejoindre ──────────────────────────────────────────────────
     escrowId: "ID du séquestre",
     escrowIdPlaceholder: "ex. ecash_23",
     yourRole: "Votre rôle",
@@ -245,17 +297,13 @@ const translations = {
     arbiterRestricted: "Arbitre restreint",
     arbiterRestrictedDesc: "Seuls les arbitres approuvés par la communauté peuvent rejoindre. Postulez dans le chat.",
 
-    // ── Vue détail ─────────────────────────────────────────────────────
     youAreThe: "Vous êtes le",
     connectingNostr: "Connexion à Nostr...",
-
-    // ── Partage ────────────────────────────────────────────────────────
     shareEscrowTitle: "Partagez cet ID de séquestre",
     shareEscrowDesc: "Envoyez l'ID à l'acheteur et à l'arbitre pour qu'ils puissent rejoindre.",
     copyId: "Copier l'ID",
     openCommunity: "Ouvrir le chat",
 
-    // ── Verrouillage ───────────────────────────────────────────────────
     lockSats: "Verrouiller {amount} sats",
     locking: "Verrouillage...",
     satsLocked: "Sats verrouillés dans le séquestre !",
@@ -266,7 +314,6 @@ const translations = {
     readyToLock: "Prêt à verrouiller",
     securedInVault: "Sécurisé dans le coffre",
 
-    // ── Vote ───────────────────────────────────────────────────────────
     release: "Libérer à l'acheteur",
     refund: "Rembourser le vendeur",
     confirm: "Confirmer",
@@ -279,7 +326,6 @@ const translations = {
     resolvedRelease: "Résolu : libéré à l'acheteur",
     resolvedRefund: "Résolu : remboursé au vendeur",
 
-    // ── Réclamation / Paiement ─────────────────────────────────────────
     claimSats: "Réclamer {amount} sats",
     claiming: "Réclamation...",
     claimed: "Réclamé ! Paiement en cours.",
@@ -293,7 +339,6 @@ const translations = {
     deliveredToBuyer: "Livré à l'acheteur",
     refundedToSeller: "Remboursé au vendeur",
 
-    // ── Statut / Bannières d'attente ───────────────────────────────────
     waitParties: "En attente de toutes les parties",
     waitingAllParties: "En attente des participants",
     waitSellerLock: "En attente du verrouillage par le vendeur",
@@ -306,22 +351,17 @@ const translations = {
     tradeCompleteBanner: "Échange terminé",
     escrowExpired: "Séquestre expiré",
 
-    // ── Chat / Communauté ──────────────────────────────────────────────
     joinChat: "Rejoindre le chat communautaire",
-
-    // ── En savoir plus (Sandbox) ───────────────────────────────────────
     learnMoreTitle: "Nouveau sur Bitcoin ou Fedi ?",
     learnFedi: "C'est quoi Fedi ?",
     learnBitcoin: "C'est quoi Bitcoin ?",
     scanToDownload: "Scannez pour télécharger Fedi",
 
-    // ── Divers ─────────────────────────────────────────────────────────
     copied: "{label} copié !",
     copyFailed: "Échec de la copie",
     "2d": "2-sur-3",
     toMe: "moi",
 
-    // ── Badges de statut ───────────────────────────────────────────────
     statusCreated: "Créé",
     statusFunded: "Financé",
     statusLocked: "Verrouillé",
@@ -329,13 +369,69 @@ const translations = {
     statusClaimed: "Réclamé",
     statusCompleted: "Terminé",
     statusExpired: "Expiré",
+
+    // ── Marketplace ────────────────────────────────────────────────────
+    mkTitle: "Marché",
+    mkListingCount: "{count} annonces",
+    mkSell: "Vendre",
+    mkOrders: "Commandes",
+    mkSearchPlaceholder: "Rechercher...",
+    mkLoading: "Chargement...",
+    mkNoResults: "Aucune annonce trouvée",
+    mkNoListings: "Aucune annonce. Soyez le premier à vendre !",
+    mkNoOrders: "Aucune commande",
+    mkListing: "Annonce",
+    mkNewListing: "Nouvelle annonce",
+    mkCreateListing: "Créer l'annonce",
+    mkListingCreated: "Annonce créée !",
+    mkMyOrders: "Mes commandes",
+    mkOrder: "Commande",
+    mkBuyFor: "Acheter pour {amount} sats",
+    mkBuying: "En cours...",
+    mkBuySuccess: "Achat initié ! Le vendeur va verrouiller les sats.",
+    mkYourListing: "C'est votre annonce",
+    mkCancelOrder: "Annuler la commande",
+    mkCancelling: "Annulation...",
+    mkOrderCancelledToast: "Commande annulée",
+    mkParticipants: "Participants",
+    mkWaitSellerLock: "En attente du verrouillage par le vendeur...",
+    mkTradeInProgress: "Échange en cours — complétez votre part et votez",
+    mkFieldTitle: "Titre",
+    mkFieldTitleHint: "Que vendez-vous ?",
+    mkFieldPrice: "Prix (sats)",
+    mkFieldDescHint: "Décrivez ce que vous vendez...",
+    mkFieldTermsHint: "Livraison, période d'inspection, mode de paiement...",
+    mkFieldQty: "Qté",
+    mkFieldCategoryHint: "électronique, vêtements, services...",
+    mkCondition: "État",
+    mkCategory: "Catégorie",
+    mkAvailable: "Disponible",
+    mkCommunityHint: "Nécessaire pour que les acheteurs puissent acheter (lie le séquestre à votre fédération)",
+    mkTitleRequired: "Le titre est requis",
+    mkPriceRequired: "Entrez un prix valide en sats",
+    mkPriceExceeds: "Dépasse la limite de 2M sats",
+    mkCondNew: "Neuf",
+    mkCondUsed: "Occasion",
+    mkCondDigital: "Numérique",
+    mkCondService: "Service",
+    mkQtyAvailable: "{qty} disponibles",
+    mkQtyOneLeft: "1 restant",
+    mkQtySoldOut: "Épuisé",
+    mkStatusPaused: "En pause",
+    mkStatusDeleted: "Supprimé",
+    mkOrderPending: "En attente",
+    mkOrderActive: "Actif",
+    mkOrderCompleted: "Terminé",
+    mkOrderExpired: "Expiré",
+    mkOrderCancelled: "Annulé",
+    mkNetworkError: "Erreur réseau — vérifiez votre connexion",
+    mkAuthRequired: "Authentification requise",
   },
 
   // ─────────────────────────────────────────────────────────────────────
   // ESPAÑOL
   // ─────────────────────────────────────────────────────────────────────
   es: {
-    // ── Incorporación (app Fedi) ───────────────────────────────────────
     ob1Title: "Comercio P2P sin confianza",
     ob1Desc: "Intercambia cualquier cosa por bitcoin sin confiar en la otra parte. Tus sats quedan bloqueados en custodia federada de e-cash hasta que ambas partes confirmen el acuerdo.",
     ob2Title: "3 Partes, voto 2-de-3",
@@ -347,7 +443,6 @@ const translations = {
     obSkip: "Omitir",
     obFedLimit: "Límite de federación: {limit} sats por intercambio",
 
-    // ── Incorporación (Sandbox / navegador) ────────────────────────────
     obSandboxTitle: "Bienvenido al Sandbox de Custodia",
     obSandboxDesc: "Esta es una demo en vivo de nuestra custodia multisig 2-de-3 — impulsada por Fedimint y Lightning. Prueba cada rol: crea custodias, fináncias, vota y reclama. Sin sats reales, sin riesgo.",
     obRolesTitle: "Prueba cada rol",
@@ -360,8 +455,7 @@ const translations = {
     sandbox: "Sandbox",
     playAs: "Jugar como:",
 
-    // ── Vista de lista ─────────────────────────────────────────────────
-    escrow: "Custodia federada",
+    escrow: "Custodia",
     newTrade: "Nuevo intercambio",
     joinEscrow: "Unirse",
     noEscrows: "Sin intercambios. Crea uno o únete a uno existente.",
@@ -369,7 +463,6 @@ const translations = {
     maxPerTrade: "Máx {limit} sats por intercambio",
     failedLoadEscrows: "Error al cargar intercambios",
 
-    // ── Vista de creación ──────────────────────────────────────────────
     amountSats: "Cantidad (sats)",
     description: "Descripción",
     tradeTerms: "Condiciones del intercambio",
@@ -380,7 +473,6 @@ const translations = {
     createEscrow: "Crear custodia",
     escrowCreated: "¡Custodia creada!",
 
-    // ── Cómo funciona ──────────────────────────────────────────────────
     howItWorks: "Cómo funciona",
     howStep1: "Creas la custodia y te conviertes en el",
     howStep1Role: "Vendedor",
@@ -389,7 +481,6 @@ const translations = {
     howStep4: "Ambos votan. Si coinciden, los sats se transfieren.",
     howStep5: "Si no coinciden, el Árbitro emite el voto decisivo.",
 
-    // ── Vista de unión ─────────────────────────────────────────────────
     escrowId: "ID de custodia",
     escrowIdPlaceholder: "ej. ecash_23",
     yourRole: "Tu rol",
@@ -404,17 +495,13 @@ const translations = {
     arbiterRestricted: "Árbitro restringido",
     arbiterRestrictedDesc: "Solo árbitros aprobados por la comunidad pueden unirse. Solicita acceso en el chat.",
 
-    // ── Vista de detalle ───────────────────────────────────────────────
     youAreThe: "Eres el",
     connectingNostr: "Conectando a Nostr...",
-
-    // ── Compartir ──────────────────────────────────────────────────────
     shareEscrowTitle: "Comparte este ID de custodia",
     shareEscrowDesc: "Envía el ID al comprador y al árbitro para que puedan unirse.",
     copyId: "Copiar ID",
     openCommunity: "Abrir chat",
 
-    // ── Bloqueo ────────────────────────────────────────────────────────
     lockSats: "Bloquear {amount} sats",
     locking: "Bloqueando...",
     satsLocked: "¡Sats bloqueados en custodia!",
@@ -425,7 +512,6 @@ const translations = {
     readyToLock: "Listo para bloquear",
     securedInVault: "Asegurado en la bóveda",
 
-    // ── Votación ───────────────────────────────────────────────────────
     release: "Liberar al comprador",
     refund: "Reembolsar al vendedor",
     confirm: "Confirmar",
@@ -438,7 +524,6 @@ const translations = {
     resolvedRelease: "Resuelto: liberado al comprador",
     resolvedRefund: "Resuelto: reembolsado al vendedor",
 
-    // ── Reclamación / Pago ─────────────────────────────────────────────
     claimSats: "Reclamar {amount} sats",
     claiming: "Reclamando...",
     claimed: "¡Reclamado! Pago en proceso.",
@@ -452,7 +537,6 @@ const translations = {
     deliveredToBuyer: "Entregado al comprador",
     refundedToSeller: "Reembolsado al vendedor",
 
-    // ── Estado / Banners de espera ─────────────────────────────────────
     waitParties: "Esperando a todas las partes",
     waitingAllParties: "Esperando participantes",
     waitSellerLock: "Esperando que el vendedor bloquee los sats",
@@ -465,22 +549,17 @@ const translations = {
     tradeCompleteBanner: "Intercambio completado",
     escrowExpired: "Custodia expirada",
 
-    // ── Chat / Comunidad ───────────────────────────────────────────────
     joinChat: "Unirse al chat comunitario",
-
-    // ── Más información (Sandbox) ──────────────────────────────────────
     learnMoreTitle: "¿Nuevo en Bitcoin o Fedi?",
     learnFedi: "¿Qué es Fedi?",
     learnBitcoin: "¿Qué es Bitcoin?",
     scanToDownload: "Escanea para descargar Fedi",
 
-    // ── Varios ─────────────────────────────────────────────────────────
     copied: "¡{label} copiado!",
     copyFailed: "Error al copiar",
     "2d": "2-de-3",
     toMe: "mí",
 
-    // ── Badges de estado ───────────────────────────────────────────────
     statusCreated: "Creado",
     statusFunded: "Financiado",
     statusLocked: "Bloqueado",
@@ -488,13 +567,69 @@ const translations = {
     statusClaimed: "Reclamado",
     statusCompleted: "Completado",
     statusExpired: "Expirado",
+
+    // ── Marketplace ────────────────────────────────────────────────────
+    mkTitle: "Mercado",
+    mkListingCount: "{count} anuncios",
+    mkSell: "Vender",
+    mkOrders: "Pedidos",
+    mkSearchPlaceholder: "Buscar anuncios...",
+    mkLoading: "Cargando...",
+    mkNoResults: "No se encontraron anuncios",
+    mkNoListings: "Aún no hay anuncios. ¡Sé el primero en vender!",
+    mkNoOrders: "Aún no hay pedidos",
+    mkListing: "Anuncio",
+    mkNewListing: "Nuevo anuncio",
+    mkCreateListing: "Crear anuncio",
+    mkListingCreated: "¡Anuncio creado!",
+    mkMyOrders: "Mis pedidos",
+    mkOrder: "Pedido",
+    mkBuyFor: "Comprar por {amount} sats",
+    mkBuying: "Procesando...",
+    mkBuySuccess: "¡Compra iniciada! El vendedor bloqueará los sats.",
+    mkYourListing: "Este es tu anuncio",
+    mkCancelOrder: "Cancelar pedido",
+    mkCancelling: "Cancelando...",
+    mkOrderCancelledToast: "Pedido cancelado",
+    mkParticipants: "Participantes",
+    mkWaitSellerLock: "Esperando que el vendedor bloquee los sats...",
+    mkTradeInProgress: "Intercambio en curso — completa tu parte y vota",
+    mkFieldTitle: "Título",
+    mkFieldTitleHint: "¿Qué vendes?",
+    mkFieldPrice: "Precio (sats)",
+    mkFieldDescHint: "Describe lo que vendes...",
+    mkFieldTermsHint: "Envío, período de inspección, método de pago...",
+    mkFieldQty: "Cant",
+    mkFieldCategoryHint: "electrónica, ropa, servicios...",
+    mkCondition: "Estado",
+    mkCategory: "Categoría",
+    mkAvailable: "Disponible",
+    mkCommunityHint: "Necesario para que los compradores puedan comprar (vincula la custodia a tu federación)",
+    mkTitleRequired: "El título es obligatorio",
+    mkPriceRequired: "Ingresa un precio válido en sats",
+    mkPriceExceeds: "Supera el límite de 2M sats",
+    mkCondNew: "Nuevo",
+    mkCondUsed: "Usado",
+    mkCondDigital: "Digital",
+    mkCondService: "Servicio",
+    mkQtyAvailable: "{qty} disponibles",
+    mkQtyOneLeft: "1 restante",
+    mkQtySoldOut: "Agotado",
+    mkStatusPaused: "Pausado",
+    mkStatusDeleted: "Eliminado",
+    mkOrderPending: "Pendiente",
+    mkOrderActive: "Activo",
+    mkOrderCompleted: "Completado",
+    mkOrderExpired: "Expirado",
+    mkOrderCancelled: "Cancelado",
+    mkNetworkError: "Error de red — verifica tu conexión",
+    mkAuthRequired: "Autenticación requerida",
   },
 
   // ─────────────────────────────────────────────────────────────────────
   // KISWAHILI
   // ─────────────────────────────────────────────────────────────────────
   sw: {
-    // ── Utangulizi (app ya Fedi) ───────────────────────────────────────
     ob1Title: "Biashara ya P2P bila kuamini",
     ob1Desc: "Fanya biashara yoyote kwa bitcoin bila kuamini upande mwingine. Sats zako zimefungwa katika escrow ya e-cash ya shirikisho hadi pande zote mbili zikubaliane.",
     ob2Title: "Watu 3, kura ya 2-kati-ya-3",
@@ -506,7 +641,6 @@ const translations = {
     obSkip: "Ruka",
     obFedLimit: "Kikomo cha shirikisho: sats {limit} kwa biashara",
 
-    // ── Utangulizi (Sandbox / kivinjari) ───────────────────────────────
     obSandboxTitle: "Karibu kwenye Sandbox ya Escrow",
     obSandboxDesc: "Hii ni demo ya moja kwa moja ya escrow yetu ya multisig 2-kati-ya-3 — inayotumia Fedimint na Lightning. Jaribu kila jukumu: tengeneza escrow, weka fedha, piga kura na dai. Hakuna sats halisi, hakuna hatari.",
     obRolesTitle: "Cheza kila jukumu",
@@ -519,8 +653,7 @@ const translations = {
     sandbox: "Sandbox",
     playAs: "Cheza kama:",
 
-    // ── Orodha ─────────────────────────────────────────────────────────
-    escrow: "Escrow ya shirikisho",
+    escrow: "Escrow",
     newTrade: "Biashara mpya",
     joinEscrow: "Jiunge",
     noEscrows: "Hakuna biashara bado. Tengeneza moja au jiunge na iliyopo.",
@@ -528,7 +661,6 @@ const translations = {
     maxPerTrade: "Upeo sats {limit} kwa biashara",
     failedLoadEscrows: "Imeshindwa kupakia biashara",
 
-    // ── Tengeneza ──────────────────────────────────────────────────────
     amountSats: "Kiasi (sats)",
     description: "Maelezo",
     tradeTerms: "Masharti ya biashara",
@@ -539,7 +671,6 @@ const translations = {
     createEscrow: "Tengeneza escrow",
     escrowCreated: "Escrow imetengenezwa!",
 
-    // ── Jinsi inavyofanya kazi ─────────────────────────────────────────
     howItWorks: "Jinsi inavyofanya kazi",
     howStep1: "Unatengeneza escrow na kuwa",
     howStep1Role: "Muuzaji",
@@ -548,7 +679,6 @@ const translations = {
     howStep4: "Wote wanapiga kura. Wakikubaliana, sats zinahamishwa papo hapo.",
     howStep5: "Wasipokubaliana, Msuluhishi anapiga kura ya mwisho.",
 
-    // ── Jiunge ─────────────────────────────────────────────────────────
     escrowId: "ID ya escrow",
     escrowIdPlaceholder: "mf. ecash_23",
     yourRole: "Jukumu lako",
@@ -563,17 +693,13 @@ const translations = {
     arbiterRestricted: "Msuluhishi amezuiwa",
     arbiterRestrictedDesc: "Ni wasuluhishi walioidhinishwa na jamii pekee wanaoweza kujiunga. Omba kwenye mazungumzo ya jamii.",
 
-    // ── Maelezo ────────────────────────────────────────────────────────
     youAreThe: "Wewe ni",
     connectingNostr: "Inaunganisha na Nostr...",
-
-    // ── Shiriki ────────────────────────────────────────────────────────
     shareEscrowTitle: "Shiriki ID hii ya escrow",
     shareEscrowDesc: "Tuma ID kwa mnunuzi na msuluhishi ili waweze kujiunga.",
     copyId: "Nakili ID",
     openCommunity: "Fungua mazungumzo",
 
-    // ── Kufunga ────────────────────────────────────────────────────────
     lockSats: "Funga sats {amount}",
     locking: "Inafunga...",
     satsLocked: "Sats zimefungwa kwenye escrow!",
@@ -584,7 +710,6 @@ const translations = {
     readyToLock: "Tayari kufunga",
     securedInVault: "Imethibitishwa kwenye kabati",
 
-    // ── Kupiga kura ────────────────────────────────────────────────────
     release: "Achilia kwa mnunuzi",
     refund: "Rudisha kwa muuzaji",
     confirm: "Thibitisha",
@@ -597,7 +722,6 @@ const translations = {
     resolvedRelease: "Imetatuliwa: imeachiliwa kwa mnunuzi",
     resolvedRefund: "Imetatuliwa: imerudishwa kwa muuzaji",
 
-    // ── Kudai / Malipo ─────────────────────────────────────────────────
     claimSats: "Dai sats {amount}",
     claiming: "Inadai...",
     claimed: "Imedaiwa! Malipo yanaendelea.",
@@ -611,7 +735,6 @@ const translations = {
     deliveredToBuyer: "Imetolewa kwa mnunuzi",
     refundedToSeller: "Imerudishwa kwa muuzaji",
 
-    // ── Hali / Mabango ya kusubiri ─────────────────────────────────────
     waitParties: "Inasubiri wahusika wote",
     waitingAllParties: "Inasubiri washiriki",
     waitSellerLock: "Inasubiri muuzaji afunge sats",
@@ -624,22 +747,17 @@ const translations = {
     tradeCompleteBanner: "Biashara imekamilika",
     escrowExpired: "Escrow imeisha muda",
 
-    // ── Mazungumzo / Jamii ─────────────────────────────────────────────
     joinChat: "Jiunge na mazungumzo ya jamii",
-
-    // ── Jifunze zaidi (Sandbox) ────────────────────────────────────────
     learnMoreTitle: "Mpya kwenye Bitcoin au Fedi?",
     learnFedi: "Fedi ni nini?",
     learnBitcoin: "Bitcoin ni nini?",
     scanToDownload: "Changanua kupakua Fedi",
 
-    // ── Mengineyo ──────────────────────────────────────────────────────
     copied: "{label} imenakiliwa!",
     copyFailed: "Kunakili kumeshindwa",
     "2d": "2-kati-ya-3",
     toMe: "mimi",
 
-    // ── Beji za hali ───────────────────────────────────────────────────
     statusCreated: "Imeundwa",
     statusFunded: "Imefadhiliwa",
     statusLocked: "Imefungwa",
@@ -647,6 +765,63 @@ const translations = {
     statusClaimed: "Imedaiwa",
     statusCompleted: "Imekamilika",
     statusExpired: "Imeisha muda",
+
+    // ── Marketplace ────────────────────────────────────────────────────
+    mkTitle: "Soko",
+    mkListingCount: "Tangazo {count}",
+    mkSell: "Uza",
+    mkOrders: "Maagizo",
+    mkSearchPlaceholder: "Tafuta matangazo...",
+    mkLoading: "Inapakia...",
+    mkNoResults: "Hakuna matangazo yaliyopatikana",
+    mkNoListings: "Hakuna matangazo bado. Kuwa wa kwanza kuuza!",
+    mkNoOrders: "Hakuna maagizo bado",
+    mkListing: "Tangazo",
+    mkNewListing: "Tangazo jipya",
+    mkCreateListing: "Tengeneza tangazo",
+    mkListingCreated: "Tangazo limetengenezwa!",
+    mkMyOrders: "Maagizo yangu",
+    mkOrder: "Agizo",
+    mkBuyFor: "Nunua kwa sats {amount}",
+    mkBuying: "Inashughulika...",
+    mkBuySuccess: "Ununuzi umeanzishwa! Muuzaji atafunga sats.",
+    mkYourListing: "Hili ni tangazo lako",
+    mkCancelOrder: "Ghairi agizo",
+    mkCancelling: "Inaghairi...",
+    mkOrderCancelledToast: "Agizo limeghairiwa",
+    mkParticipants: "Washiriki",
+    mkWaitSellerLock: "Inasubiri muuzaji afunge sats...",
+    mkTradeInProgress: "Biashara inaendelea — kamilisha upande wako na piga kura",
+    mkFieldTitle: "Kichwa",
+    mkFieldTitleHint: "Unauza nini?",
+    mkFieldPrice: "Bei (sats)",
+    mkFieldDescHint: "Eleza unachouza...",
+    mkFieldTermsHint: "Usafirishaji, kipindi cha ukaguzi, njia ya malipo...",
+    mkFieldQty: "Idadi",
+    mkFieldCategoryHint: "vifaa vya kielektroniki, nguo, huduma...",
+    mkCondition: "Hali",
+    mkCategory: "Kategoria",
+    mkAvailable: "Inapatikana",
+    mkCommunityHint: "Inahitajika ili wanunuzi waweze kununua (inaunganisha escrow na shirikisho lako)",
+    mkTitleRequired: "Kichwa kinahitajika",
+    mkPriceRequired: "Weka bei halali kwa sats",
+    mkPriceExceeds: "Inazidi kikomo cha sats 2M",
+    mkCondNew: "Mpya",
+    mkCondUsed: "Iliyotumika",
+    mkCondDigital: "Ya kidijitali",
+    mkCondService: "Huduma",
+    mkQtyAvailable: "{qty} zinapatikana",
+    mkQtyOneLeft: "1 imebaki",
+    mkQtySoldOut: "Imeuzwa",
+    mkStatusPaused: "Imesimamishwa",
+    mkStatusDeleted: "Imefutwa",
+    mkOrderPending: "Inasubiri",
+    mkOrderActive: "Hai",
+    mkOrderCompleted: "Imekamilika",
+    mkOrderExpired: "Imeisha muda",
+    mkOrderCancelled: "Imeghairiwa",
+    mkNetworkError: "Hitilafu ya mtandao — angalia muunganisho wako",
+    mkAuthRequired: "Uthibitishaji unahitajika",
   },
 };
 

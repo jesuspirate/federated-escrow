@@ -285,7 +285,7 @@ function ParticleBurst({ active }) {
   return <canvas ref={ref} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 5 }} />;
 }
 
-function ParticipantNode({ label, IconComp, pkDisplay, joined, voted, voteOutcome, resolvedOutcome, isDispute, isArbiter, isYou, delay = 0 }) {
+function ParticipantNode({ label, IconComp, pkDisplay, joined, voted, voteOutcome, resolvedOutcome, isDispute, delay = 0 }) {
   // Track join transition for glow effect
   const [justJoined, setJustJoined] = useState(false);
   const prevJoined = useRef(joined);
@@ -333,15 +333,11 @@ function ParticipantNode({ label, IconComp, pkDisplay, joined, voted, voteOutcom
     : isLoser ? "#4b2e14"
     : voted && !isResolved ? (voteOutcome === "release" ? "#3b82f6" : "#d97706")
     : justJoined ? "#60a5fa"
-    : isYou && joined ? "#f59e0b"
-    : isArbiter && joined ? "#7c3aed55"
     : joined ? "#475569"
     : "#1e293b";
 
   const iconColor = isWinner ? "#6ee7b7"
     : isLoser ? "#78350f"
-    : isYou && joined ? "#fbbf24"
-    : isArbiter && joined ? "#a78bfa"
     : joined ? "#cbd5e1"
     : "#1e293b";
 
@@ -349,8 +345,6 @@ function ParticipantNode({ label, IconComp, pkDisplay, joined, voted, voteOutcom
     : isLoser ? "#78350f"
     : voted && !isResolved ? (voteOutcome === "release" ? "#93c5fd" : "#fcd34d")
     : justJoined ? "#93c5fd"
-    : isYou && joined ? "#fbbf24"
-    : isArbiter && joined ? "#8b5cf6"
     : joined ? "#94a3b8"
     : "#1e293b";
 
@@ -358,8 +352,6 @@ function ParticipantNode({ label, IconComp, pkDisplay, joined, voted, voteOutcom
     ? "0 0 20px rgba(16,185,129,0.35), inset 0 0 10px rgba(16,185,129,0.15)"
     : justJoined
     ? "0 0 28px rgba(96,165,250,0.45), 0 0 8px rgba(96,165,250,0.25), inset 0 0 12px rgba(96,165,250,0.15)"
-    : isYou && joined
-    ? "0 4px 16px rgba(245,158,11,0.3), 0 0 12px rgba(245,158,11,0.15)"
     : joined
     ? "0 4px 12px rgba(0,0,0,0.3)"
     : "none";
@@ -415,24 +407,6 @@ function ParticipantNode({ label, IconComp, pkDisplay, joined, voted, voteOutcom
         fontSize: 10, fontWeight: 700, letterSpacing: 0.8, textTransform: "uppercase",
         color: labelColor, transition: "color 0.6s ease",
       }}>{label}</span>
-      {isYou && joined && (
-        <span style={{
-          fontSize: 9, fontWeight: 800, letterSpacing: 0.5,
-          padding: "2px 8px", borderRadius: 4,
-          background: "rgba(245,158,11,0.2)",
-          color: "#fbbf24",
-          border: "1px solid rgba(245,158,11,0.35)",
-        }}>YOU</span>
-      )}
-      {isArbiter && joined && !isYou && (
-        <span style={{
-          fontSize: 8, fontWeight: 700, letterSpacing: 0.3,
-          padding: "1px 5px", borderRadius: 3,
-          background: "rgba(139,92,246,0.1)",
-          color: "#8b5cf6",
-          border: "1px solid rgba(139,92,246,0.2)",
-        }}>⚖️</span>
-      )}
       <span style={{
         fontSize: 9, fontFamily: "monospace",
         color: isLoser ? "#1a1e2a" : joined ? "#475569" : "#1a1e2a",
@@ -598,7 +572,7 @@ function OnboardingSplash({ onComplete, locale }) {
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════════════
 
-export default function EcashEscrow({ onSwitchToMarketplace, initialEscrowId, onEscrowOpened }) {
+export default function EcashEscrow({ onSwitchToMarketplace }) {
   const [onboarded, setOnboarded] = useState(() => {
     try { return localStorage.getItem(ONBOARDING_KEY) === "1"; } catch { return false; }
   });
@@ -665,14 +639,6 @@ export default function EcashEscrow({ onSwitchToMarketplace, initialEscrowId, on
     if (selected && selected.id !== id) setSelected(null);
     setView("detail"); loadDetail(id);
   };
-
-  // ── Deep-link: auto-open escrow from marketplace ────────────────
-  useEffect(() => {
-    if (initialEscrowId && pubkey) {
-      openDetail(initialEscrowId);
-      if (onEscrowOpened) onEscrowOpened();
-    }
-  }, [initialEscrowId, pubkey]);
 
   // ── Onboarding gate ─────────────────────────────────────────────
   if (!onboarded) return <OnboardingSplash onComplete={() => setOnboarded(true)} locale={locale} />;
@@ -971,7 +937,6 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   // ── WebLN Lock (seller) ─────────────────────────────────────────
   const [lockInvoice, setLockInvoice] = useState(null); // { invoice, bolt11 }
   const [lockStep, setLockStep] = useState("idle"); // idle | fetching | ready | paying | done
-  const [claimRetry, setClaimRetry] = useState(false); // true when user rejected invoice, shows retry button
 
   const handleLockFetch = async () => {
     const amountSats = Math.floor((e.amountMsats || 0) / 1000);
@@ -991,31 +956,19 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       finally { setLocking(false); }
       return;
     }
-    // Step 1: Fetch invoice from backend (with retry)
+    // Step 1: Fetch invoice from backend
     setLockStep("fetching");
-    let inv, lastErr;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      try {
-        inv = await api(`/${e.id}/invoice`, {}, 0);
-        if (!inv.error) break;
-        lastErr = inv.error;
-      } catch (err) {
-        lastErr = err.message === "Failed to fetch"
-          ? "Connection failed — check your network and try again"
-          : err.message;
+    try {
+      const inv = await api(`/${e.id}/invoice`, {}, 0);
+      if (inv.error) throw new Error(inv.error);
+      if (inv.mode === "webln" && inv.invoice) {
+        setLockInvoice(inv.invoice);
+        setLockStep("ready");
+      } else {
+        throw new Error("No invoice returned");
       }
-      if (attempt < 2) await new Promise(r => setTimeout(r, 1500));
-    }
-    if (!inv || inv.error) {
-      showToast(lastErr || "Failed to get invoice", "error");
-      setLockStep("idle");
-      return;
-    }
-    if (inv.mode === "webln" && inv.invoice) {
-      setLockInvoice(inv.invoice);
-      setLockStep("ready");
-    } else {
-      showToast("No invoice returned — try again", "error");
+    } catch (err) {
+      showToast(err.message, "error");
       setLockStep("idle");
     }
   };
@@ -1028,7 +981,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       await window.webln.enable();
       await window.webln.sendPayment(lockInvoice);
     } catch (err) {
-      showToast("Payment cancelled — tap to try again", "error");
+      showToast(t("paymentCancelled"), "error");
       // Stay on "ready" so user can tap Pay again
       setLockStep("ready");
       return;
@@ -1078,52 +1031,38 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         const claim = await api(`/${e.id}/claim`, { method: "POST" });
         if (claim.error) throw new Error(claim.error);
         payoutReady = claim.payoutReady; amountSats = claim.amountSats || amountSats; notes = claim.notes;
+        // If backend says not ready but we're in WebLN/sandbox mode, force payout flow
         if (!payoutReady && (window.webln || isDevMode())) payoutReady = true;
       }
       if (payoutReady) {
-        // ── 2-step claim: keep retrying if user rejects invoice ──
-        let claimed = false;
-        while (!claimed) {
-          let invoice;
-          if (window.webln) {
-            try {
-              await window.webln.enable();
-              showToast("Create an invoice in Fedi to receive sats…", "ok");
-              const result = await window.webln.makeInvoice({ amount: amountSats });
-              invoice = result.paymentRequest;
-            } catch {
-              // User rejected — ask if they want to retry
-              setLoading(false);
-              setClaimRetry(true);
-              return;
-            }
-          } else if (isDevMode()) {
-            invoice = `SANDBOX_INVOICE_${e.id}_${Date.now()}`;
-          } else {
-            invoice = prompt(`Paste a BOLT-11 invoice for ${amountSats} sats:`);
-            if (!invoice) { setLoading(false); setClaimRetry(true); return; }
-          }
-          showToast(t("sendingPayout"));
-          let payout, lastErr;
-          for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-              payout = await api(`/${e.id}/payout`, { method: "POST", body: JSON.stringify({ invoice }) });
-              if (!payout.error) break;
-              lastErr = payout.error;
-            } catch (err) { lastErr = err.message; }
-            if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
-          }
-          if (payout?.error || !payout) throw new Error(lastErr || "Payout failed");
-          claimed = true;
-          showToast(isDevMode() ? (t("sandboxPayout") || `🧪 Sandbox: ${amountSats.toLocaleString()} sats claimed!`) : t("satsReceived"));
+        let invoice;
+        if (window.webln) {
+          try { await window.webln.enable(); const result = await window.webln.makeInvoice({ amount: amountSats }); invoice = result.paymentRequest; }
+          catch { showToast(t("invoiceCancelled"), "error"); setLoading(false); return; }
+        } else if (isDevMode()) {
+          invoice = `SANDBOX_INVOICE_${e.id}_${Date.now()}`;
+        } else {
+          invoice = prompt(`Paste a BOLT-11 invoice for ${amountSats} sats:`);
+          if (!invoice) { setLoading(false); return; }
         }
+        showToast(t("sendingPayout"));
+        let payout, lastErr;
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            payout = await api(`/${e.id}/payout`, { method: "POST", body: JSON.stringify({ invoice }) });
+            if (!payout.error) break;
+            lastErr = payout.error;
+          } catch (err) { lastErr = err.message; }
+          if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
+        }
+        if (payout?.error || !payout) throw new Error(lastErr || "Payout failed");
+        showToast(isDevMode() ? (t("sandboxPayout") || `🧪 Sandbox: ${amountSats.toLocaleString()} sats claimed!`) : t("satsReceived"));
       } else if (notes) {
         try { await navigator.clipboard.writeText(notes); showToast(t("notesCopied")); }
         catch { showToast(t("claimed")); }
       } else {
         showToast(t("claimed"));
       }
-      setClaimRetry(false);
       onRefresh();
     } catch (err) { showToast(err.message, "error"); }
     setLoading(false);
@@ -1170,17 +1109,17 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
         {/* ── Participants (animated SVG nodes) ──────────────────── */}
         <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 0, padding: "0 8px 16px" }}>
-          <ParticipantNode label="Seller" IconComp={SvgSeller} pkDisplay={getPkDisplay(e.participants?.seller)} joined={isParticipantJoined(e.participants?.seller)} voted={!!e.votes?.voters?.find(v => v.role === "seller")} voteOutcome={sellerOutcome} resolvedOutcome={e.resolvedOutcome} isDispute={buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome} isYou={role === "seller"} delay={0} />
+          <ParticipantNode label="Seller" IconComp={SvgSeller} pkDisplay={getPkDisplay(e.participants?.seller)} joined={isParticipantJoined(e.participants?.seller)} voted={!!e.votes?.voters?.find(v => v.role === "seller")} voteOutcome={sellerOutcome} resolvedOutcome={e.resolvedOutcome} isDispute={buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome} delay={0} />
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 20, opacity: isParticipantJoined(e.participants?.buyer) ? 0.6 : 0.08, transition: "opacity 0.8s ease" }}>
             <div style={{ width: 28, height: 1, background: status === "LOCKED" || status === "APPROVED" || status === "CLAIMED" ? `linear-gradient(90deg, ${status === "CLAIMED" || status === "COMPLETED" ? "#10b981" : "#f59e0b"}, transparent)` : isParticipantJoined(e.participants?.buyer) ? "#334155" : "#111827", transition: "background 0.5s ease" }} />
             <div style={{ fontSize: 8, color: isParticipantJoined(e.participants?.buyer) && isParticipantJoined(e.participants?.arbiter) ? "#475569" : "#1a1e2a", letterSpacing: 1, transition: "color 0.5s ease" }}>2-of-3</div>
             <div style={{ width: 28, height: 1, background: status === "LOCKED" || status === "APPROVED" || status === "CLAIMED" ? `linear-gradient(270deg, ${status === "CLAIMED" || status === "COMPLETED" ? "#10b981" : "#f59e0b"}, transparent)` : isParticipantJoined(e.participants?.buyer) ? "#334155" : "#111827", transition: "background 0.5s ease" }} />
           </div>
-          <ParticipantNode label="Buyer" IconComp={SvgBuyer} pkDisplay={getPkDisplay(e.participants?.buyer)} joined={isParticipantJoined(e.participants?.buyer)} voted={!!e.votes?.voters?.find(v => v.role === "buyer")} voteOutcome={buyerOutcome} resolvedOutcome={e.resolvedOutcome} isDispute={buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome} isYou={role === "buyer"} delay={150} />
+          <ParticipantNode label="Buyer" IconComp={SvgBuyer} pkDisplay={getPkDisplay(e.participants?.buyer)} joined={isParticipantJoined(e.participants?.buyer)} voted={!!e.votes?.voters?.find(v => v.role === "buyer")} voteOutcome={buyerOutcome} resolvedOutcome={e.resolvedOutcome} isDispute={buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome} delay={150} />
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, paddingTop: 20, opacity: isParticipantJoined(e.participants?.arbiter) ? 0.4 : 0.05, transition: "opacity 0.8s ease" }}>
             <div style={{ width: 16, height: 1, background: "#1e293b" }} />
           </div>
-          <ParticipantNode label="Arbiter" IconComp={SvgArbiter} pkDisplay={getPkDisplay(e.participants?.arbiter)} joined={isParticipantJoined(e.participants?.arbiter)} voted={!!e.votes?.voters?.find(v => v.role === "arbiter")} voteOutcome={e.votes?.voters?.find(v => v.role === "arbiter")?.outcome} resolvedOutcome={e.resolvedOutcome} isDispute={buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome} isArbiter isYou={role === "arbiter"} delay={300} />
+          <ParticipantNode label="Arbiter" IconComp={SvgArbiter} pkDisplay={getPkDisplay(e.participants?.arbiter)} joined={isParticipantJoined(e.participants?.arbiter)} voted={!!e.votes?.voters?.find(v => v.role === "arbiter")} voteOutcome={e.votes?.voters?.find(v => v.role === "arbiter")?.outcome} resolvedOutcome={e.resolvedOutcome} isDispute={buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome} delay={300} />
         </div>
 
         {/* ── Vote tally + inline seller/arbiter actions ──────────── */}
@@ -1309,20 +1248,10 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             {loading ? t("voting") : `✓ ${t("confirm")} — ${t("release")} ➜ ${t("toMe")}`}
           </button>
         )}
-        {(canClaim || canReclaimExpired) && !claimRetry && (
+        {(canClaim || canReclaimExpired) && (
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "8px 0 16px", animation: "pulseGreen 2s ease infinite" }} onClick={handleClaim} disabled={loading}>
             {loading ? t("claiming") : `⚡ ${t("claimSats", { amount: fmtSats(e.amountMsats) })}`}
           </button>
-        )}
-        {claimRetry && (
-          <div style={{ margin: "8px 0 16px", display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ textAlign: "center", padding: "10px 14px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, fontSize: 13, color: "#fbbf24", lineHeight: 1.5 }}>
-              Invoice was rejected. Tap below to try again — you need to approve the invoice in Fedi to receive your sats.
-            </div>
-            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", animation: "pulseGreen 2s ease infinite" }} onClick={() => { setClaimRetry(false); handleClaim(); }} disabled={loading}>
-              {loading ? t("claiming") : `⚡ Retry — ${t("claimSats", { amount: fmtSats(e.amountMsats) })}`}
-            </button>
-          </div>
         )}
         {canLock && lockStep === "idle" && (
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", margin: "8px 0 16px" }} onClick={handleLockFetch}>
