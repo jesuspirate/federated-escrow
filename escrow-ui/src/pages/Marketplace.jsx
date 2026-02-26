@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { t, getLocale, getAvailableLocales, setLocale } from "./i18n";
 
 // ═══════════════════════════════════════════════════════════════════════
-// Marketplace UI — Browse, Buy, Manage Orders
-// i18n via shared i18n.js • NIP-98 Nostr auth • Fedi + browser sandbox
+// Fedi Mini-App: Marketplace v2.0
+// Community homepage • Onboarding • Category filters • Deep-link escrow
+// NIP-98 Nostr auth • Fedi + browser sandbox
 // ═══════════════════════════════════════════════════════════════════════
 
 const MAPI = "/api/marketplace/listings";
@@ -559,6 +560,80 @@ const CATEGORIES = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════
+// NEW TO BITCOIN / FEDI — Collapsible education banner
+// ═══════════════════════════════════════════════════════════════════════
+
+const LEARN_DISMISSED_KEY = "fedi-mk-learn-dismissed";
+
+function NewToFediBanner() {
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem(LEARN_DISMISSED_KEY) === "1"; } catch { return false; }
+  });
+  const [expanded, setExpanded] = useState(false);
+
+  if (dismissed) return null;
+
+  return (
+    <div style={{
+      marginBottom: 12, borderRadius: 12, overflow: "hidden",
+      background: "linear-gradient(145deg, #111827, #0f1320)",
+      border: "1px solid #1e293b", transition: "all 0.3s ease",
+    }}>
+      <button
+        onClick={() => setExpanded(!expanded)}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          width: "100%", padding: "10px 14px", background: "transparent",
+          border: "none", color: "#e2e8f0", cursor: "pointer", textAlign: "left",
+        }}
+      >
+        <span style={{ fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
+          💡 New to Bitcoin or Fedi?
+        </span>
+        <span style={{ fontSize: 11, color: "#475569", transform: expanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }}>▼</span>
+      </button>
+
+      {expanded && (
+        <div style={{ padding: "0 14px 14px", animation: "slideUp 0.2s ease-out" }}>
+          <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.7, marginBottom: 12 }}>
+            This is a Bitcoin-powered marketplace where every trade is protected by <strong style={{ color: "#f59e0b" }}>2-of-3 escrow</strong>. No trust required — funds are locked until both parties confirm.
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{
+              display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8,
+              background: "rgba(247,147,26,0.06)", border: "1px solid rgba(247,147,26,0.12)",
+              color: "#f7931a", fontSize: 11, fontWeight: 600, textDecoration: "none",
+            }}>
+              ₿ What is Bitcoin?
+            </a>
+            <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{
+              display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8,
+              background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)",
+              color: "#f59e0b", fontSize: 11, fontWeight: 600, textDecoration: "none",
+            }}>
+              🛡️ What is Fedi?
+            </a>
+            <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{
+              display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8,
+              background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.12)",
+              color: "#10b981", fontSize: 11, fontWeight: 600, textDecoration: "none",
+            }}>
+              📲 Download Fedi
+            </a>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); try { localStorage.setItem(LEARN_DISMISSED_KEY, "1"); } catch {} setDismissed(true); }}
+            style={{ marginTop: 10, background: "transparent", border: "none", color: "#334155", fontSize: 11, cursor: "pointer", padding: "4px 0" }}
+          >
+            Don't show this again
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // BROWSE VIEW — Community homepage with hero + categories
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -648,6 +723,9 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
           </button>
         ))}
       </div>
+
+      {/* ── New to Bitcoin / Fedi? — helpful for newcomers ── */}
+      <NewToFediBanner />
 
       {/* ── Browser sandbox banner ── */}
       {isDevMode() && listings.length === 0 && (

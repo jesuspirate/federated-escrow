@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { t, setLocale, getLocale, getAvailableLocales } from "./i18n";
 
 // ═══════════════════════════════════════════════════════════════════════
-// Fedi Mini-App: E-Cash Escrow v9.2
+// Fedi Mini-App: E-Cash Escrow v9.3
 // WebLN lock/claim • NIP-98 Nostr auth • Fedimint-powered
-// Onboarding • Federation limit safeguards • Marketplace-ready
+// Deep-link from Marketplace • Claim retry UX • YOU/Arbiter indicators
 // Browser sandbox mode • Community-first onboarding
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -760,24 +760,6 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
           <button style={S.iconBtn} onClick={onRefresh}><I.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
         </div>
       </div>
-
-      {/* ── Learn More — top of page, sandbox only ── */}
-      {isDevMode() && (
-        <div style={{ padding: "10px 14px", background: "linear-gradient(145deg, #111827, #0f1320)", border: "1px solid #1e293b", borderRadius: 12, textAlign: "center", marginBottom: 12 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#e2e8f0", marginBottom: 8 }}>{t("learnMoreTitle")}</div>
-          <div style={{ display: "flex", gap: 6, justifyContent: "center", flexWrap: "wrap" }}>
-            <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)", color: "#f59e0b", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
-              🛡️ {t("learnFedi")}
-            </a>
-            <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "rgba(247,147,26,0.06)", border: "1px solid rgba(247,147,26,0.12)", color: "#f7931a", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
-              ₿ {t("learnBitcoin")}
-            </a>
-            <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.12)", color: "#10b981", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
-              📲 {t("scanToDownload")}
-            </a>
-          </div>
-        </div>
-      )}
 
       <div style={{ display: "flex", gap: 10, margin: "0 0 12px" }}>
         <button style={S.primaryBtn} onClick={onCreate}><I.Plus /> {t("newTrade")}</button>
