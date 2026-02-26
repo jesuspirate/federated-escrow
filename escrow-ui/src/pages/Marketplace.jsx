@@ -298,6 +298,9 @@ function Toast({ msg, type, visible }) {
 // ═══════════════════════════════════════════════════════════════════════
 
 export default function Marketplace({ pubkey, devRole, onSwitchToEscrow }) {
+  const [onboarded, setOnboarded] = useState(() => {
+    try { return localStorage.getItem(MK_ONBOARDING_KEY) === "1"; } catch { return false; }
+  });
   const [view, setView] = useState("browse");
   const [listings, setListings] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -384,6 +387,9 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow }) {
     setView("profile");
   };
 
+  // ── Onboarding gate ─────────────────────────────────────────────
+  if (!onboarded) return <MarketplaceOnboarding onComplete={() => setOnboarded(true)} />;
+
   return (
     <div style={M.root}>
       <style>{`
@@ -460,17 +466,118 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// BROWSE VIEW
+// MARKETPLACE ONBOARDING — First-time welcome + how it works
+// ═══════════════════════════════════════════════════════════════════════
+
+const MK_ONBOARDING_KEY = "fedi-marketplace-onboarded";
+
+function MarketplaceOnboarding({ onComplete }) {
+  const [step, setStep] = useState(0);
+  const isBrowser = isDevMode();
+
+  const steps = [
+    {
+      icon: "🏪",
+      title: "Welcome to the Market",
+      desc: isBrowser
+        ? "A Bitcoin-native marketplace powered by federated e-cash. Browse, buy, and sell — all secured by escrow."
+        : "Buy and sell anything with your community. Every trade is protected by 2-of-3 escrow — no trust needed.",
+    },
+    {
+      icon: "🔒",
+      title: "Escrow Protects You",
+      desc: "When you buy, sats are locked in escrow. When you sell, you don't ship until payment is locked. If there's a dispute, the community arbiter resolves it.",
+    },
+    {
+      icon: "⚡",
+      title: isBrowser ? "Try it in Sandbox" : "Start Trading",
+      desc: isBrowser
+        ? "This is a demo — explore listings, create test trades, and see how escrow works. For real trades, use the Fedi app."
+        : "List something for sale, browse what's available, or start a P2P sats-for-fiat trade. Welcome to the community economy.",
+    },
+  ];
+
+  const s = steps[step];
+  const isLast = step === steps.length - 1;
+
+  const handleNext = () => {
+    if (isLast) { try { localStorage.setItem(MK_ONBOARDING_KEY, "1"); } catch {} onComplete(); }
+    else setStep(step + 1);
+  };
+
+  return (
+    <div style={{ ...M.root, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "40px 24px", textAlign: "center", minHeight: "100vh" }}>
+      <style>{`@keyframes obFadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+
+      {isBrowser && (
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: 99, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", marginBottom: 24 }}>
+          <span style={{ fontSize: 12 }}>🧪</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b", letterSpacing: 0.5 }}>SANDBOX MODE</span>
+        </div>
+      )}
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 48 }}>
+        {steps.map((_, i) => (
+          <div key={i} style={{ width: i === step ? 24 : 8, height: 8, borderRadius: 4, background: i <= step ? "#f59e0b" : "#1e293b", transition: "all 0.3s ease" }} />
+        ))}
+      </div>
+
+      <div key={step} style={{ fontSize: 56, marginBottom: 24, animation: "obFadeUp 0.4s ease-out" }}>{s.icon}</div>
+
+      <div key={`t-${step}`} style={{ animation: "obFadeUp 0.4s ease-out 0.1s both", maxWidth: 320 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", margin: "0 0 12px", letterSpacing: -0.5 }}>{s.title}</h1>
+        <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7, margin: 0 }}>{s.desc}</p>
+      </div>
+
+      <div style={{ marginTop: 48, width: "100%", maxWidth: 320 }}>
+        <button onClick={handleNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: isLast ? "#f59e0b" : "transparent", border: isLast ? "none" : "1.5px solid #334155", color: isLast ? "#0c0f17" : "#f8fafc", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          {isLast ? (isBrowser ? "🧪 Explore Demo" : "🏪 Enter Market") : "Next →"}
+        </button>
+        {!isLast && (
+          <button onClick={() => { try { localStorage.setItem(MK_ONBOARDING_KEY, "1"); } catch {} onComplete(); }}
+            style={{ width: "100%", padding: "12px 0", marginTop: 8, background: "transparent", border: "none", color: "#475569", fontSize: 13, cursor: "pointer" }}>
+            Skip
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CATEGORY QUICK-FILTERS
+// ═══════════════════════════════════════════════════════════════════════
+
+const CATEGORIES = [
+  { key: "all", label: "All", icon: "🏪" },
+  { key: "sats-for-fiat", label: "₿ P2P", icon: "₿" },
+  { key: "electronics", label: "Electronics", icon: "📱" },
+  { key: "services", label: "Services", icon: "🛠️" },
+  { key: "digital", label: "Digital", icon: "💾" },
+  { key: "clothing", label: "Clothing", icon: "👕" },
+  { key: "other", label: "Other", icon: "📦" },
+];
+
+// ═══════════════════════════════════════════════════════════════════════
+// BROWSE VIEW — Community homepage with hero + categories
 // ═══════════════════════════════════════════════════════════════════════
 
 function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale }) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState("all");
+
+  const filteredListings = activeCategory === "all"
+    ? listings
+    : listings.filter(l => {
+        if (activeCategory === "sats-for-fiat") return isSatsForFiat(l.category);
+        return l.category?.toLowerCase() === activeCategory;
+      });
 
   return (
     <div style={M.container}>
       <div style={M.header}>
         <div>
-          <h1 style={M.title}>{t("mkTitle")}</h1>
+          <h1 style={M.title}>🏪 {t("mkTitle")}</h1>
           <p style={M.subtitle}>{t("mkListingCount", { count: listings.length })}</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -483,6 +590,32 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
           <button style={M.iconBtn} onClick={onRefresh}><Icons.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
         </div>
       </div>
+
+      {/* ── Hero banner — community vibe ── */}
+      {!searchOpen && listings.length > 0 && (
+        <div style={{
+          padding: "16px 18px", marginBottom: 14, borderRadius: 14,
+          background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(139,92,246,0.06))",
+          border: "1px solid rgba(245,158,11,0.12)",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-around", textAlign: "center" }}>
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "#f59e0b" }}>{listings.length}</div>
+              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>Listings</div>
+            </div>
+            <div style={{ width: 1, background: "#1e293b" }} />
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "#a78bfa" }}>{listings.filter(l => isSatsForFiat(l.category)).length}</div>
+              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>P2P Trades</div>
+            </div>
+            <div style={{ width: 1, background: "#1e293b" }} />
+            <div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "#10b981" }}>2-of-3</div>
+              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>Escrow</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {searchOpen && (
         <div style={{ display: "flex", gap: 8, marginBottom: 12, animation: "slideUp 0.2s ease-out" }}>
@@ -497,7 +630,61 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         <button style={M.secondaryBtn} onClick={() => onSwitchToEscrow()}>⚖️ {t("escrow")}</button>
       </div>
 
-      {listings.length === 0 ? (
+      {/* ── Category quick-filters ── */}
+      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 12, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+        {CATEGORIES.map(c => (
+          <button
+            key={c.key}
+            onClick={() => setActiveCategory(c.key)}
+            style={{
+              padding: "6px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,
+              whiteSpace: "nowrap", cursor: "pointer", transition: "all 0.2s",
+              border: activeCategory === c.key ? "1px solid rgba(245,158,11,0.4)" : "1px solid #1e293b",
+              background: activeCategory === c.key ? "rgba(245,158,11,0.12)" : "#111827",
+              color: activeCategory === c.key ? "#fbbf24" : "#94a3b8",
+            }}
+          >
+            {c.icon} {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Browser sandbox banner ── */}
+      {isDevMode() && listings.length === 0 && (
+        <div style={{
+          padding: "20px 18px", marginBottom: 14, borderRadius: 14, textAlign: "center",
+          background: "linear-gradient(145deg, #111827, #0f1320)", border: "1px solid #1e293b",
+        }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>🧪</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc", marginBottom: 8 }}>Sandbox Mode</div>
+          <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.7, marginBottom: 16 }}>
+            You're exploring a demo marketplace. Create test listings, simulate trades, and see how escrow protects both parties.
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+            <button onClick={onCreate} style={{ ...M.primaryBtn, flex: "none", padding: "10px 20px", fontSize: 13 }}>
+              <Icons.Plus /> Create a Listing
+            </button>
+            <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{
+              display: "inline-flex", alignItems: "center", gap: 5, padding: "10px 16px",
+              borderRadius: 12, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.15)",
+              color: "#a78bfa", fontSize: 13, fontWeight: 600, textDecoration: "none",
+            }}>
+              📲 Get Fedi for real trades
+            </a>
+          </div>
+        </div>
+      )}
+
+      {filteredListings.length === 0 && !loading && listings.length > 0 && activeCategory !== "all" ? (
+        <div style={M.emptyState}>
+          <p style={{ color: "#64748b", fontSize: 14 }}>
+            No listings in this category yet.
+          </p>
+          <button onClick={() => setActiveCategory("all")} style={{ ...M.secondaryBtn, flex: "none", marginTop: 8, padding: "8px 16px", fontSize: 12 }}>
+            Show all listings
+          </button>
+        </div>
+      ) : filteredListings.length === 0 ? (
         <div style={M.emptyState}>
           <Icons.Tag style={{ color: "#475569" }} />
           <p style={{ color: "#64748b", marginTop: 12, fontSize: 14 }}>
@@ -506,7 +693,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 20 }}>
-          {listings.map(l => (
+          {filteredListings.map(l => (
             <button key={l.id} style={M.listingCard} onClick={() => onOpen(l.id)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={M.cardTitle}>{l.title}</span>
