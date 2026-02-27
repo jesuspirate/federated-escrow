@@ -762,9 +762,7 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
       </div>
 
       <div style={{ display: "flex", gap: 10, margin: "0 0 12px" }}>
-        <button style={S.primaryBtn} onClick={onCreate}><I.Plus /> {t("newTrade")}</button>
-        <button style={S.secondaryBtn} onClick={onJoin}>{t("joinEscrow")}</button>
-	<button style={S.secondaryBtn} onClick={onSwitchToMarketplace}>🏪 Market</button>
+        <button style={{ ...S.primaryBtn, flex: 1, justifyContent: "center" }} onClick={onSwitchToMarketplace}>🏪 {t("mkTitle") || "Marketplace"}</button>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.1)", borderRadius: 8, marginBottom: 12, fontSize: 11, color: "#64748b" }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>

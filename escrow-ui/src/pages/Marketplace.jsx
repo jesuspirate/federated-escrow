@@ -551,7 +551,7 @@ function MarketplaceOnboarding({ onComplete }) {
 
 const CATEGORIES = [
   { key: "all", label: "All", icon: "🏪" },
-  { key: "sats-for-fiat", label: "₿ P2P", icon: "₿" },
+  { key: "sats-for-fiat", label: "P2P", icon: "₿" },
   { key: "electronics", label: "Electronics", icon: "📱" },
   { key: "services", label: "Services", icon: "🛠️" },
   { key: "digital", label: "Digital", icon: "💾" },
@@ -575,55 +575,57 @@ function NewToFediBanner() {
 
   return (
     <div style={{
-      marginBottom: 12, borderRadius: 12, overflow: "hidden",
-      background: "linear-gradient(145deg, #111827, #0f1320)",
-      border: "1px solid #1e293b", transition: "all 0.3s ease",
+      marginBottom: 14, borderRadius: 12, overflow: "hidden",
+      background: "linear-gradient(145deg, rgba(245,158,11,0.04), rgba(17,24,39,0.95))",
+      border: "1px solid rgba(245,158,11,0.2)",
+      borderLeft: "3px solid #f59e0b",
     }}>
       <button
         onClick={() => setExpanded(!expanded)}
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          width: "100%", padding: "10px 14px", background: "transparent",
+          width: "100%", padding: "12px 14px", background: "transparent",
           border: "none", color: "#e2e8f0", cursor: "pointer", textAlign: "left",
         }}
       >
-        <span style={{ fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-          💡 New to Bitcoin or Fedi?
+        <span style={{ fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>💡</span>
+          New to Bitcoin or Fedi?
         </span>
-        <span style={{ fontSize: 11, color: "#475569", transform: expanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }}>▼</span>
+        <span style={{ fontSize: 11, color: "#f59e0b", fontWeight: 600, transform: expanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }}>▼</span>
       </button>
 
       {expanded && (
         <div style={{ padding: "0 14px 14px", animation: "slideUp 0.2s ease-out" }}>
           <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.7, marginBottom: 12 }}>
-            This is a Bitcoin-powered marketplace where every trade is protected by <strong style={{ color: "#f59e0b" }}>2-of-3 escrow</strong>. No trust required — funds are locked until both parties confirm.
+            This marketplace runs on Bitcoin through the Fedi app. Trades are secured by <strong style={{ color: "#f59e0b" }}>2-of-3 escrow</strong> — no trust needed between buyer and seller.
           </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{
-              display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8,
-              background: "rgba(247,147,26,0.06)", border: "1px solid rgba(247,147,26,0.12)",
-              color: "#f7931a", fontSize: 11, fontWeight: 600, textDecoration: "none",
+              display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
+              background: "rgba(247,147,26,0.06)", border: "1px solid rgba(247,147,26,0.15)",
+              color: "#f7931a", fontSize: 12, fontWeight: 600, textDecoration: "none",
             }}>
               ₿ What is Bitcoin?
             </a>
             <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{
-              display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8,
-              background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.15)",
-              color: "#f59e0b", fontSize: 11, fontWeight: 600, textDecoration: "none",
+              display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
+              background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)",
+              color: "#a78bfa", fontSize: 12, fontWeight: 600, textDecoration: "none",
             }}>
               🛡️ What is Fedi?
             </a>
             <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{
-              display: "inline-flex", alignItems: "center", gap: 5, padding: "7px 14px", borderRadius: 8,
-              background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.12)",
-              color: "#10b981", fontSize: 11, fontWeight: 600, textDecoration: "none",
+              display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
+              background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)",
+              color: "#10b981", fontSize: 12, fontWeight: 600, textDecoration: "none",
             }}>
               📲 Download Fedi
             </a>
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); try { localStorage.setItem(LEARN_DISMISSED_KEY, "1"); } catch {} setDismissed(true); }}
-            style={{ marginTop: 10, background: "transparent", border: "none", color: "#334155", fontSize: 11, cursor: "pointer", padding: "4px 0" }}
+            style={{ marginTop: 12, background: "transparent", border: "none", color: "#475569", fontSize: 11, cursor: "pointer", padding: "4px 0" }}
           >
             Don't show this again
           </button>
@@ -666,6 +668,9 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         </div>
       </div>
 
+      {/* ── New to Bitcoin / Fedi? — prominent for newcomers, dismissable ── */}
+      <NewToFediBanner />
+
       {/* ── Hero banner — community vibe ── */}
       {!searchOpen && listings.length > 0 && (
         <div style={{
@@ -699,10 +704,10 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-        <button style={M.primaryBtn} onClick={onCreate}><Icons.Plus /> {t("mkSell")}</button>
-        <button style={M.secondaryBtn} onClick={onOrders}><Icons.Package /> {t("mkOrders")}</button>
-        <button style={M.secondaryBtn} onClick={() => onSwitchToEscrow()}>⚖️ {t("escrow")}</button>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <button style={{ ...M.primaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={onCreate}><Icons.Plus /> {t("mkSell")}</button>
+        <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={onOrders}><Icons.Package /> {t("mkOrders")}</button>
+        <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={() => onSwitchToEscrow()}>⚖️ {t("escrow")}</button>
       </div>
 
       {/* ── Category quick-filters ── */}
@@ -723,9 +728,6 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
           </button>
         ))}
       </div>
-
-      {/* ── New to Bitcoin / Fedi? — helpful for newcomers ── */}
-      <NewToFediBanner />
 
       {/* ── Browser sandbox banner ── */}
       {isDevMode() && listings.length === 0 && (
@@ -955,6 +957,9 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
   const [category, setCategory] = useState("");
   const [condition, setCondition] = useState("new");
   const [quantity, setQuantity] = useState("1");
+  const [fiatCurrency, setFiatCurrency] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
+  const [ratePremium, setRatePremium] = useState("");
   const locale = getLocale();
   const FEDI_ROOMS = {
     en: "fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::",
@@ -962,11 +967,28 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
   };
   const [community, setCommunity] = useState(() => isDevMode() ? (FEDI_ROOMS[locale] || FEDI_ROOMS.en) : "");
 
+  const isP2P = isSatsForFiat(category);
+
+  // Auto-set condition/qty when P2P is selected
+  useEffect(() => {
+    if (isP2P) { setCondition("service"); setQuantity("1"); }
+  }, [isP2P]);
+
   const handleCreate = async () => {
     const sats = parseInt(price);
     if (!title.trim()) return showToast(t("mkTitleRequired"), "error");
     if (!sats || sats <= 0) return showToast(t("mkPriceRequired"), "error");
     if (sats > 2_000_000) return showToast(t("mkPriceExceeds"), "error");
+
+    // Append P2P metadata to terms
+    let finalTerms = terms.trim();
+    if (isP2P) {
+      const p2pMeta = [];
+      if (fiatCurrency) p2pMeta.push(`Currency: ${fiatCurrency}`);
+      if (paymentMethod) p2pMeta.push(`Payment: ${paymentMethod}`);
+      if (ratePremium) p2pMeta.push(`Rate: ${ratePremium}`);
+      if (p2pMeta.length) finalTerms = (finalTerms ? finalTerms + "\n\n" : "") + "--- P2P Details ---\n" + p2pMeta.join("\n");
+    }
 
     setLoading(true);
     try {
@@ -976,11 +998,11 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           title: title.trim(),
           description: desc.trim() || undefined,
           priceMsats: sats * 1000,
-          terms: terms.trim() || undefined,
+          terms: finalTerms || undefined,
           category: category.trim() || undefined,
-          condition,
+          condition: isP2P ? "service" : condition,
           communityLink: community.trim() || undefined,
-          quantity: parseInt(quantity) || 1,
+          quantity: isP2P ? 1 : (parseInt(quantity) || 1),
         }),
       });
       if (res.error) throw new Error(res.error);
@@ -994,32 +1016,11 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
     <div style={M.container}>
       <div style={M.viewHeader}>
         <button style={M.iconBtn} onClick={onBack}><Icons.Back /></button>
-        <h2 style={M.viewTitle}>{t("mkNewListing")}</h2>
+        <h2 style={M.viewTitle}>{isP2P ? t("mkP2PSellTitle") : t("mkNewListing")}</h2>
         <div style={{ width: 36 }} />
       </div>
 
-      <div style={M.formGroup}><label style={M.label}>{t("mkFieldTitle")} *</label><input style={M.input} placeholder={t("mkFieldTitleHint")} value={title} onChange={e => setTitle(e.target.value)} /></div>
-      <div style={M.formGroup}><label style={M.label}>{t("mkFieldPrice")} *</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}</p></div>
-      <div style={M.formGroup}><label style={M.label}>{t("description")}</label><textarea style={{ ...M.input, minHeight: 72, resize: "vertical" }} placeholder={t("mkFieldDescHint")} value={desc} onChange={e => setDesc(e.target.value)} /></div>
-      <div style={M.formGroup}><label style={M.label}>{t("tradeTerms")}</label><textarea style={{ ...M.input, minHeight: 60, resize: "vertical" }} placeholder={t("mkFieldTermsHint")} value={terms} onChange={e => setTerms(e.target.value)} /></div>
-
-      <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-        <div style={{ flex: 1 }}>
-          <label style={M.label}>{t("mkCondition")}</label>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {["new", "used", "digital", "service"].map(c => (
-              <button key={c} onClick={() => setCondition(c)} style={{ ...M.chipBtn, ...(condition === c ? M.chipBtnActive : {}) }}>
-                {t(CONDITION_KEYS[c])}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{ width: 80 }}>
-          <label style={M.label}>{t("mkFieldQty")}</label>
-          <input style={M.input} type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} />
-        </div>
-      </div>
-
+      {/* ── Category selection (always visible at top) ── */}
       <div style={M.formGroup}>
         <label style={M.label}>{t("mkCategory")}</label>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
@@ -1041,16 +1042,99 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
             );
           })}
         </div>
-        <input style={M.input} placeholder={t("mkFieldCategoryHint")} value={category} onChange={e => setCategory(e.target.value)} />
-        {isSatsForFiat(category) && (
-          <div style={{ ...M.infoBanner, borderColor: "rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.06)", marginTop: 8 }}>
-            <span style={{ fontSize: 12, color: "#f59e0b", fontWeight: 600 }}>₿ P2P Trade Mode</span>
-            <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4, lineHeight: 1.5 }}>
-              You will lock your sats in escrow. The buyer sends you fiat (or other payment) externally. Once confirmed, sats release to the buyer.
-            </div>
-          </div>
+        {!isP2P && (
+          <input style={M.input} placeholder={t("mkFieldCategoryHint")} value={category} onChange={e => setCategory(e.target.value)} />
         )}
       </div>
+
+      {/* ── P2P mode banner ── */}
+      {isP2P && (
+        <div style={{ ...M.infoBanner, borderColor: "rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.06)", marginBottom: 14, borderLeft: "3px solid #f59e0b" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 15 }}>₿</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b" }}>{t("mkP2PSellTitle")}</span>
+          </div>
+          <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
+            {t("mkP2PNote")}
+          </div>
+        </div>
+      )}
+
+      {/* ── Common fields: Title + Price ── */}
+      <div style={M.formGroup}><label style={M.label}>{t("mkFieldTitle")} *</label><input style={M.input} placeholder={isP2P ? "e.g., Selling 50,000 sats for USD" : t("mkFieldTitleHint")} value={title} onChange={e => setTitle(e.target.value)} /></div>
+      <div style={M.formGroup}><label style={M.label}>{t("mkFieldPrice")} *</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}</p></div>
+
+      {/* ── P2P-specific fields ── */}
+      {isP2P && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={M.formGroup}>
+            <label style={M.label}>{t("mkFiatCurrency")}</label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {["USD", "EUR", "GBP", "CFA", "KES", "NGN", "BRL", "ARS", "INR"].map(cur => (
+                <button key={cur} onClick={() => setFiatCurrency(cur)} style={{
+                  ...M.chipBtn, padding: "6px 12px", fontSize: 12, fontWeight: 600,
+                  ...(fiatCurrency === cur ? { ...M.chipBtnActive, borderColor: "#f59e0b", color: "#f59e0b", background: "rgba(245,158,11,0.12)" } : {}),
+                }}>
+                  {cur}
+                </button>
+              ))}
+              <button onClick={() => setFiatCurrency("other")} style={{
+                ...M.chipBtn, padding: "6px 12px", fontSize: 12,
+                ...(fiatCurrency === "other" ? M.chipBtnActive : {}),
+              }}>
+                {t("mkFiatOther")}
+              </button>
+            </div>
+          </div>
+          <div style={M.formGroup}>
+            <label style={M.label}>{t("mkPaymentMethod")}</label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {["Bank Transfer", "M-Pesa", "Cash", "PayPal", "Wise", "Zelle", "Revolut"].map(pm => (
+                <button key={pm} onClick={() => setPaymentMethod(pm)} style={{
+                  ...M.chipBtn, padding: "6px 12px", fontSize: 12,
+                  ...(paymentMethod === pm ? { ...M.chipBtnActive, borderColor: "#a78bfa", color: "#a78bfa", background: "rgba(139,92,246,0.12)" } : {}),
+                }}>
+                  {pm}
+                </button>
+              ))}
+              <button onClick={() => setPaymentMethod("other")} style={{
+                ...M.chipBtn, padding: "6px 12px", fontSize: 12,
+                ...(paymentMethod === "other" ? M.chipBtnActive : {}),
+              }}>
+                {t("mkFiatOther")}
+              </button>
+            </div>
+          </div>
+          <div style={M.formGroup}>
+            <label style={M.label}>{t("mkRatePremium")}</label>
+            <input style={M.input} placeholder={t("mkRatePremiumHint")} value={ratePremium} onChange={e => setRatePremium(e.target.value)} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Non-P2P fields: Condition + Quantity ── */}
+      {!isP2P && (
+        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+          <div style={{ flex: 1 }}>
+            <label style={M.label}>{t("mkCondition")}</label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {["new", "used", "digital", "service"].map(c => (
+                <button key={c} onClick={() => setCondition(c)} style={{ ...M.chipBtn, ...(condition === c ? M.chipBtnActive : {}) }}>
+                  {t(CONDITION_KEYS[c])}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ width: 80 }}>
+            <label style={M.label}>{t("mkFieldQty")}</label>
+            <input style={M.input} type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Common fields: Description + Terms + Community ── */}
+      <div style={M.formGroup}><label style={M.label}>{t("description")}</label><textarea style={{ ...M.input, minHeight: 72, resize: "vertical" }} placeholder={isP2P ? "Any additional details about your trade..." : t("mkFieldDescHint")} value={desc} onChange={e => setDesc(e.target.value)} /></div>
+      <div style={M.formGroup}><label style={M.label}>{t("tradeTerms")}</label><textarea style={{ ...M.input, minHeight: 60, resize: "vertical" }} placeholder={isP2P ? "Payment window, confirmation steps..." : t("mkFieldTermsHint")} value={terms} onChange={e => setTerms(e.target.value)} /></div>
       <div style={M.formGroup}><label style={M.label}>{t("communityLink")}</label><input style={M.input} placeholder="fedi:room:!roomId:federation.domain:::" value={community} onChange={e => setCommunity(e.target.value)} /><p style={M.hint}>{t("mkCommunityHint")}</p></div>
 
       <button style={{ ...M.primaryBtn, width: "100%", marginTop: 8, padding: "14px 0" }} onClick={handleCreate} disabled={loading}>

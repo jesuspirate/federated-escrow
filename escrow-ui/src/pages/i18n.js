@@ -46,7 +46,7 @@ const translations = {
     escrow: "Escrow",
     newTrade: "New Trade",
     joinEscrow: "Join Trade",
-    noEscrows: "No trades yet. Create one or join an existing trade.",
+    noEscrows: "No trades yet. Head to the Marketplace to start trading.",
     sats: "sats",
     maxPerTrade: "Max {limit} sats per trade",
     failedLoadEscrows: "Failed to load trades",
@@ -227,6 +227,14 @@ const translations = {
     mkOrderCancelled: "Cancelled",
     mkNetworkError: "Network error — check your connection",
     mkAuthRequired: "Authentication required",
+    mkFiatCurrency: "Fiat Currency",
+    mkPaymentMethod: "Payment Method",
+    mkRatePremium: "Rate / Premium",
+    mkRatePremiumHint: "e.g., Market rate + 3%",
+    mkFiatOther: "Other",
+    mkP2PNote: "P2P sats-for-fiat trade. You lock sats, buyer pays in fiat.",
+    mkP2PSellTitle: "Sell Sats for Fiat",
+    mkTradeStarted: "Trade started!",
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -257,10 +265,10 @@ const translations = {
     sandbox: "Bac à sable",
     playAs: "Jouer en tant que :",
 
-    escrow: "Séquestre",
+    escrow: "Escrow",
     newTrade: "Nouvel échange",
     joinEscrow: "Rejoindre",
-    noEscrows: "Aucun échange. Créez-en un ou rejoignez un échange existant.",
+    noEscrows: "Aucune transaction. Rendez-vous au Marché pour commencer.",
     sats: "sats",
     maxPerTrade: "Max {limit} sats par échange",
     failedLoadEscrows: "Échec du chargement des échanges",
@@ -426,6 +434,14 @@ const translations = {
     mkOrderCancelled: "Annulé",
     mkNetworkError: "Erreur réseau — vérifiez votre connexion",
     mkAuthRequired: "Authentification requise",
+    mkFiatCurrency: "Devise fiat",
+    mkPaymentMethod: "Moyen de paiement",
+    mkRatePremium: "Taux / Prime",
+    mkRatePremiumHint: "ex. Taux du marché + 3%",
+    mkFiatOther: "Autre",
+    mkP2PNote: "Échange P2P sats-contre-fiat. Vous verrouillez les sats, l'acheteur paie en fiat.",
+    mkP2PSellTitle: "Vendre des sats contre du fiat",
+    mkTradeStarted: "Échange lancé !",
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -458,7 +474,7 @@ const translations = {
     escrow: "Custodia",
     newTrade: "Nuevo intercambio",
     joinEscrow: "Unirse",
-    noEscrows: "Sin intercambios. Crea uno o únete a uno existente.",
+    noEscrows: "Sin transacciones. Ve al Mercado para empezar.",
     sats: "sats",
     maxPerTrade: "Máx {limit} sats por intercambio",
     failedLoadEscrows: "Error al cargar intercambios",
@@ -624,6 +640,14 @@ const translations = {
     mkOrderCancelled: "Cancelado",
     mkNetworkError: "Error de red — verifica tu conexión",
     mkAuthRequired: "Autenticación requerida",
+    mkFiatCurrency: "Moneda fiat",
+    mkPaymentMethod: "Método de pago",
+    mkRatePremium: "Tasa / Prima",
+    mkRatePremiumHint: "ej. Tasa de mercado + 3%",
+    mkFiatOther: "Otro",
+    mkP2PNote: "Intercambio P2P sats-por-fiat. Bloqueas sats, el comprador paga en fiat.",
+    mkP2PSellTitle: "Vender sats por fiat",
+    mkTradeStarted: "¡Intercambio iniciado!",
   },
 
   // ─────────────────────────────────────────────────────────────────────
@@ -656,7 +680,7 @@ const translations = {
     escrow: "Escrow",
     newTrade: "Biashara mpya",
     joinEscrow: "Jiunge",
-    noEscrows: "Hakuna biashara bado. Tengeneza moja au jiunge na iliyopo.",
+    noEscrows: "Hakuna miamala. Nenda Sokoni kuanza biashara.",
     sats: "sats",
     maxPerTrade: "Upeo sats {limit} kwa biashara",
     failedLoadEscrows: "Imeshindwa kupakia biashara",
@@ -822,6 +846,14 @@ const translations = {
     mkOrderCancelled: "Imeghairiwa",
     mkNetworkError: "Hitilafu ya mtandao — angalia muunganisho wako",
     mkAuthRequired: "Uthibitishaji unahitajika",
+    mkFiatCurrency: "Fedha ya kawaida",
+    mkPaymentMethod: "Njia ya malipo",
+    mkRatePremium: "Kiwango / Ziada",
+    mkRatePremiumHint: "mf. Kiwango cha soko + 3%",
+    mkFiatOther: "Nyingine",
+    mkP2PNote: "Biashara ya P2P sats-kwa-fiat. Unafunga sats, mnunuaji analipa kwa fiat.",
+    mkP2PSellTitle: "Uza sats kwa fiat",
+    mkTradeStarted: "Biashara imeanza!",
   },
 };
 
@@ -840,7 +872,37 @@ function detectLocale() {
   return "en";
 }
 
+// Fedi Mini App locale detection — async upgrade
+// The Fedi guide says to use window.fedi.getLanguageCode() to match
+// the user's Fedi settings, which may differ from navigator.language.
+async function detectFediLocale() {
+  if (typeof window === "undefined" || !window.fedi) return null;
+  try {
+    const fediLang = await window.fedi.getLanguageCode();
+    if (!fediLang) return null;
+    // Exact match first (e.g. "fr")
+    if (translations[fediLang]) return fediLang;
+    // Prefix match (e.g. "fr-FR" → "fr")
+    const prefix = fediLang.split("-")[0].toLowerCase();
+    if (translations[prefix]) return prefix;
+  } catch {}
+  return null;
+}
+
 let _locale = detectLocale();
+
+// Auto-upgrade locale from Fedi API when running inside Fedi.
+// This runs once on load — if Fedi reports a different language than
+// navigator.language, we silently update. Components that cache locale
+// will pick it up on next getLocale() call or re-render.
+if (typeof window !== "undefined") {
+  detectFediLocale().then(code => {
+    if (code && code !== _locale) {
+      _locale = code;
+      try { localStorage.setItem(STORAGE_KEY, code); } catch {}
+    }
+  });
+}
 
 export function t(key, vars = {}) {
   const str = translations[_locale]?.[key] || translations.en?.[key] || key;
