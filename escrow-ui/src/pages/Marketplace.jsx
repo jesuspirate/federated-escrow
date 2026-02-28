@@ -337,6 +337,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   const [view, setView] = useState("browse");
   const [listings, setListings] = useState([]);
   const [selected, setSelected] = useState(null);
+  const [editingListing, setEditingListing] = useState(null);
   const [orders, setOrders] = useState([]);
 
   // Deep-link: if arriving from escrow with an escrowId, find the linked order and open it
@@ -442,6 +443,39 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
 
   const openOrders = () => { setView("orders"); loadOrders(); };
 
+  const handleEdit = (listing) => { setEditingListing(listing); setView("edit"); };
+
+  const handlePause = async (id) => {
+    try {
+      const res = await mapi(`/${id}/update`, { method: "POST", body: JSON.stringify({ status: "paused" }) });
+      if (res.error) throw new Error(res.error);
+      showToast("⏸ Listing paused");
+      loadListings();
+      setView("browse");
+    } catch (err) { showToast(err.message, "error"); }
+  };
+
+  const handleUnpause = async (id) => {
+    try {
+      const res = await mapi(`/${id}/update`, { method: "POST", body: JSON.stringify({ status: "active" }) });
+      if (res.error) throw new Error(res.error);
+      showToast("▶ Listing resumed");
+      loadListings();
+      setView("browse");
+    } catch (err) { showToast(err.message, "error"); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this listing? This cannot be undone.")) return;
+    try {
+      const res = await mapi(`/${id}/delete`, { method: "POST" });
+      if (res.error) throw new Error(res.error);
+      showToast("🗑 Listing deleted");
+      loadListings();
+      setView("browse");
+    } catch (err) { showToast(err.message, "error"); }
+  };
+
   const openProfile = (pk) => {
     setProfilePubkey(pk);
     setView("profile");
@@ -475,11 +509,26 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
           locale={locale} onSwitchLocale={switchLocale}
         />
       )}
+      {view === "edit" && editingListing && (
+        <EditListingView
+          listing={editingListing}
+          onBack={(updated) => {
+            setEditingListing(null);
+            if (updated) { loadListings(); setView("browse"); }
+            else setView("detail");
+          }}
+          showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
+        />
+      )}
       {view === "detail" && selected && (
         <ListingDetail
           listing={selected} pubkey={pubkey}
           onBack={() => { setSelected(null); setView("browse"); }}
           onProfile={openProfile}
+          onEdit={handleEdit}
+          onPause={handlePause}
+          onUnpause={handleUnpause}
+          onDelete={handleDelete}
           onOrderCreated={(order) => { setSelected(order); setView("orderDetail"); loadOrders(); }}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
         />
@@ -924,11 +973,92 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   );
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// EDIT LISTING VIEW — seller can update title, description, price, qty
+// ═══════════════════════════════════════════════════════════════════════
+function EditListingView({ listing: l, onBack, showToast, loading, setLoading }) {
+  const [title, setTitle] = useState(l.title || "");
+  const [description, setDescription] = useState(l.description || "");
+  const [price, setPrice] = useState(l.priceMsats ? Math.floor(l.priceMsats / 1000) : "");
+  const [terms, setTerms] = useState(l.terms || "");
+  const [quantity, setQuantity] = useState(l.quantity ?? 1);
+
+  const handleSave = async () => {
+    if (!title.trim()) return showToast("Title is required", "error");
+    if (!price || Number(price) <= 0) return showToast("Price must be positive", "error");
+    setLoading(true);
+    try {
+      const res = await mapi(`/${l.id}/update`, {
+        method: "POST",
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          priceMsats: Number(price) * 1000,
+          terms: terms.trim(),
+          quantity: Number(quantity),
+        }),
+      });
+      if (res.error) throw new Error(res.error);
+      showToast("✅ Listing updated!");
+      onBack(res); // pass updated listing back
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={M.container}>
+      <div style={M.header}>
+        <button style={M.backBtn} onClick={() => onBack(null)}>←</button>
+        <span style={M.headerTitle}>Edit Listing</span>
+        <div style={{ width: 32 }} />
+      </div>
+
+      <div style={{ padding: "0 0 100px" }}>
+        <div style={{ marginBottom: 14 }}>
+          <div style={M.sectionLabel}>Title *</div>
+          <input style={M.input} value={title} onChange={e => setTitle(e.target.value)} placeholder="What are you selling?" maxLength={120} />
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <div style={M.sectionLabel}>Description</div>
+          <textarea style={{ ...M.input, minHeight: 80, resize: "vertical" }} value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe your item..." maxLength={2000} />
+        </div>
+
+        <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+          <div style={{ flex: 1 }}>
+            <div style={M.sectionLabel}>Price (sats) *</div>
+            <input style={M.input} type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="e.g. 5000" min={1} />
+          </div>
+          <div style={{ width: 90 }}>
+            <div style={M.sectionLabel}>Quantity</div>
+            <input style={M.input} type="number" value={quantity} onChange={e => setQuantity(e.target.value)} min={1} max={999} />
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <div style={M.sectionLabel}>Trade Terms</div>
+          <textarea style={{ ...M.input, minHeight: 60, resize: "vertical" }} value={terms} onChange={e => setTerms(e.target.value)} placeholder="Terms and conditions..." maxLength={1000} />
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button style={{ ...M.secondaryBtn, flex: 1 }} onClick={() => onBack(null)}>Cancel</button>
+          <button style={{ ...M.primaryBtn, flex: 2 }} onClick={handleSave} disabled={loading}>
+            {loading ? "Saving…" : "💾 Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // LISTING DETAIL
 // ═══════════════════════════════════════════════════════════════════════
 
-function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, showToast, loading, setLoading }) {
+function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, showToast, loading, setLoading, onEdit, onPause, onUnpause, onDelete }) {
   const isSeller = l.sellerPubkey === pubkey;
   const canBuy = !isSeller && l.status === "active" && l.quantity > 0;
   const isP2P = isSatsForFiat(l.category);
@@ -1010,10 +1140,24 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
 
         {isSeller && (
           <div style={{ ...M.infoBanner, borderColor: "rgba(245,158,11,0.2)", background: "rgba(245,158,11,0.06)" }}>
-            <span style={{ color: "#f59e0b", fontSize: 13, fontWeight: 600 }}>
-              {isP2P ? "₿ Your P2P Trade Listing" : `🏠 ${t("mkYourListing")}`}
-            </span>
-            {isP2P && isSeller && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <span style={{ color: "#f59e0b", fontSize: 13, fontWeight: 600 }}>
+                {isP2P ? "₿ Your P2P Trade Listing" : `🏠 ${t("mkYourListing")}`}
+              </span>
+              {l.status !== "deleted" && (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => onEdit(l)} style={{ padding: "4px 10px", borderRadius: 8, border: "1px solid rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.1)", color: "#f59e0b", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>✏️ Edit</button>
+                  {l.status === "active" && (
+                    <button onClick={() => onPause(l.id)} style={{ padding: "4px 10px", borderRadius: 8, border: "1px solid rgba(100,116,139,0.3)", background: "rgba(100,116,139,0.1)", color: "#94a3b8", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>⏸ Pause</button>
+                  )}
+                  {l.status === "paused" && (
+                    <button onClick={() => onUnpause(l.id)} style={{ padding: "4px 10px", borderRadius: 8, border: "1px solid rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.1)", color: "#10b981", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>▶ Resume</button>
+                  )}
+                  <button onClick={() => onDelete(l.id)} style={{ padding: "4px 10px", borderRadius: 8, border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.1)", color: "#f87171", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>🗑 Delete</button>
+                </div>
+              )}
+            </div>
+            {isP2P && (
               <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4, lineHeight: 1.5 }}>
                 When someone starts this trade, you'll lock your sats in escrow. The buyer sends you fiat externally.
               </div>
