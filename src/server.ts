@@ -4,7 +4,6 @@ import cors from "cors";
 import path from "path";
 import ecashEscrowRoutes from "./routes/ecash-escrow";
 import marketplaceRoutes from "./routes/marketplace";
-import notificationRoutes from "./routes/notifications";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,7 +21,6 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/ecash-escrows", ecashEscrowRoutes);
 app.use("/api/marketplace/listings", marketplaceRoutes);
-app.use("/api/notifications", notificationRoutes);
 
 // Serve UI static files from escrow-ui/dist
 const distPath = path.join(__dirname, "..", "escrow-ui", "dist");

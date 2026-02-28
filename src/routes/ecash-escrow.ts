@@ -77,7 +77,6 @@ import { Router, Request, Response, NextFunction } from "express";
 import { verifyEvent } from "nostr-tools/pure";
 import * as DB from "../db";
 import * as FM from "../fedimint";
-import * as Notify from "../notifications";
 
 type Role = "buyer" | "seller" | "arbiter";
 type Outcome = "release" | "refund";
@@ -328,12 +327,9 @@ if (!sellerIsDev && joinerIsDev) {
 
     const updated = DB.getEscrow(row.id)!;
 
-    // Phase 5: DM notifications
     const otherPks = [updated.seller_pubkey, updated.buyer_pubkey, updated.arbiter_pubkey].filter(Boolean) as string[];
-    Notify.notifyEscrowJoin(updated.id, pk, role, otherPks);
     if (updated.status === "FUNDED") {
-      Notify.notifyEscrowFunded(updated.id, updated.seller_pubkey, updated.buyer_pubkey!, updated.arbiter_pubkey!);
-    }
+      }
 
     res.json({
       id: updated.id, status: updated.status, yourRole: role,
@@ -513,10 +509,8 @@ router.post("/:id/lock", async (req: AuthenticatedRequest, res: Response) => {
 
     const updated = DB.getEscrow(row.id)!;
 
-    // Phase 5: DM notification — sats locked
     if (updated.buyer_pubkey && updated.arbiter_pubkey) {
-      Notify.notifyEscrowLocked(updated.id, updated.seller_pubkey, updated.buyer_pubkey, updated.arbiter_pubkey);
-    }
+      }
 
     res.json({
       id: updated.id, status: updated.status, lockedAt: updated.locked_at,
@@ -567,12 +561,9 @@ router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
 
     if (tally.outcome) DB.resolveEscrow(row.id, tally.outcome);
 
-    // Phase 5: DM notifications — vote + resolution
     const allPks = [row.seller_pubkey, row.buyer_pubkey, row.arbiter_pubkey].filter(Boolean) as string[];
-    Notify.notifyEscrowVote(row.id, pk, role, allPks);
     if (tally.outcome) {
-      Notify.notifyEscrowResolved(row.id, tally.outcome as "release" | "refund", row.seller_pubkey, row.buyer_pubkey!, row.arbiter_pubkey!);
-    }
+      }
 
     const winner = tally.outcome === "release" ? "buyer" : tally.outcome === "refund" ? "seller" : null;
 
@@ -714,8 +705,6 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
     // Mark COMPLETED immediately to prevent duplicate payouts
     DB.completeEscrow(row.id);
 
-    // Phase 5: DM notification — payout complete
-    Notify.notifyEscrowCompleted(row.id, pk);
 
     // Confirm in background
     FM.awaitPayout(payment.operationId!).then(result => {
