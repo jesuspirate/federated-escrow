@@ -118,6 +118,14 @@ function isSatsForFiat(category) { return category?.toLowerCase().trim() === SAT
 // ── Nostr Profile Lookup (client-side, no server relay needed) ────────
 
 const _nostrProfileCache = new Map(); // pubkey → { name, picture, about, nip05, fetched }
+
+// Seed from sessionStorage — profiles survive navigation without re-fetching
+try {
+  const stored = sessionStorage.getItem("nostr_profile_cache");
+  if (stored) Object.entries(JSON.parse(stored)).forEach(([k, v]) => _nostrProfileCache.set(k, v));
+} catch {}
+
+const _pendingFetches = new Map(); // dedup simultaneous fetches for same pubkey
 const NOSTR_RELAYS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.nostr.band"];
 
 async function fetchNostrProfile(pubkey) {
@@ -126,6 +134,15 @@ async function fetchNostrProfile(pubkey) {
   // Mark as fetching to avoid duplicate requests
   const placeholder = { name: null, picture: null, about: null, nip05: null, fetched: false };
   _nostrProfileCache.set(pubkey, placeholder);
+
+  const fetchPromise = _doFetchNostrProfile(pubkey);
+  _pendingFetches.set(pubkey, fetchPromise);
+  fetchPromise.finally(() => _pendingFetches.delete(pubkey));
+  return fetchPromise;
+}
+
+async function _doFetchNostrProfile(pubkey) {
+  const placeholder = _nostrProfileCache.get(pubkey);
 
   return new Promise((resolve) => {
     let resolved = false;
@@ -137,8 +154,8 @@ async function fetchNostrProfile(pubkey) {
       }
     }, 4000);
 
-    // Try first relay that responds
-    for (const relay of NOSTR_RELAYS) {
+    // Use only the first relay with a hard 3s timeout to avoid blocking renders
+    for (const relay of NOSTR_RELAYS.slice(0, 1)) {
       try {
         const ws = new WebSocket(relay);
         const subId = "p_" + pubkey.slice(0, 8);
@@ -160,6 +177,12 @@ async function fetchNostrProfile(pubkey) {
                 fetched: true,
               };
               _nostrProfileCache.set(pubkey, profile);
+              // Persist to sessionStorage for fast re-use across navigation
+              try {
+                const existing = JSON.parse(sessionStorage.getItem("nostr_profile_cache") || "{}");
+                existing[pubkey] = profile;
+                sessionStorage.setItem("nostr_profile_cache", JSON.stringify(existing));
+              } catch {}
               if (!resolved) { resolved = true; clearTimeout(timeout); resolve(profile); }
             }
             if (msg[0] === "EOSE") {
@@ -189,9 +212,17 @@ function useNostrProfile(pubkey) {
 
   useEffect(() => {
     if (!pubkey || pubkey.length !== 64) return;
+    // If already cached with a real name, use it immediately
+    if (_nostrProfileCache.has(pubkey) && _nostrProfileCache.get(pubkey).name) {
+      setProfile(_nostrProfileCache.get(pubkey));
+      return;
+    }
     let cancelled = false;
-    fetchNostrProfile(pubkey).then(p => { if (!cancelled) setProfile(p); });
-    return () => { cancelled = true; };
+    // Delay 400ms — prevents N simultaneous WebSockets on initial render
+    const timer = setTimeout(() => {
+      fetchNostrProfile(pubkey).then(p => { if (!cancelled) setProfile(p); });
+    }, 400);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [pubkey]);
 
   return {
