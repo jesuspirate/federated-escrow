@@ -1,7 +1,7 @@
 {
   "name": "fedi-escrow",
-  "version": "2.0.0",
-  "description": "P2P e-cash escrow for Fedi federations — 2-of-3 voting with strict trade flow",
+  "version": "2.1.0",
+  "description": "P2P e-cash escrow for Fedi federations — 2-of-3 voting with strict trade flow + marketplace + NIP-44 notifications",
   "main": "src/server.ts",
   "scripts": {
     "start": "tsx src/server.ts",
@@ -18,10 +18,12 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@types/ws": "^8.18.1",
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "nostr-tools": "^2.23.1"
+    "nostr-tools": "^2.23.1",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",

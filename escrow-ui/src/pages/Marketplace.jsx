@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { t, getLocale, getAvailableLocales, setLocale } from "./i18n";
+import NotificationSettings, { NotifBellIcon } from "./NotificationSettings";
 
 // ═══════════════════════════════════════════════════════════════════════
 // Fedi Mini-App: Marketplace v2.0
@@ -409,6 +410,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow }) {
           onOpen={openListing}
           onCreate={() => setView("create")}
           onOrders={openOrders}
+          onNotifications={() => setView("notifications")}
           onRefresh={() => loadListings(searchQuery)}
           onSwitchToEscrow={onSwitchToEscrow}
           onProfile={openProfile}
@@ -459,6 +461,13 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow }) {
           pubkey={profilePubkey} myPubkey={pubkey}
           onBack={() => { setProfilePubkey(null); setView("browse"); }}
           onOpen={openListing}
+          showToast={showToast}
+        />
+      )}
+      {view === "notifications" && (
+        <NotificationSettings
+          pubkey={pubkey}
+          onBack={() => setView("browse")}
           showToast={showToast}
         />
       )}
@@ -639,7 +648,7 @@ function NewToFediBanner() {
 // BROWSE VIEW — Community homepage with hero + categories
 // ═══════════════════════════════════════════════════════════════════════
 
-function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale }) {
+function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
 
@@ -663,6 +672,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
               <button key={l.code} onClick={() => onSwitchLocale(l.code)} style={{ padding: "4px 6px", borderRadius: 6, background: locale === l.code ? "#1e293b" : "transparent", color: locale === l.code ? "#f8fafc" : "#475569", fontSize: 14, border: locale === l.code ? "1px solid #334155" : "1px solid transparent", cursor: "pointer", lineHeight: 1 }}>{l.flag}</button>
             ))}
           </div>
+          <NotifBellIcon onClick={onNotifications} style={{ color: "#94a3b8" }} />
           <button style={M.iconBtn} onClick={() => setSearchOpen(!searchOpen)}><Icons.Search /></button>
           <button style={M.iconBtn} onClick={onRefresh}><Icons.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
         </div>
@@ -1089,7 +1099,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           <div style={M.formGroup}>
             <label style={M.label}>{t("mkPaymentMethod")}</label>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {["Bank Transfer", "M-Pesa", "Cash", "PayPal", "Wise", "Zelle", "Revolut"].map(pm => (
+              {["Bank Transfer", "M-Pesa", "Orange Money", "Cash", "PayPal", "Wise", "Zelle", "Revolut"].map(pm => (
                 <button key={pm} onClick={() => setPaymentMethod(pm)} style={{
                   ...M.chipBtn, padding: "6px 12px", fontSize: 12,
                   ...(paymentMethod === pm ? { ...M.chipBtnActive, borderColor: "#a78bfa", color: "#a78bfa", background: "rgba(139,92,246,0.12)" } : {}),

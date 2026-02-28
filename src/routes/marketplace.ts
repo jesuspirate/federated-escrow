@@ -14,6 +14,7 @@ import { verifyEvent } from "nostr-tools/pure";
 import db from "../db";
 import * as DB from "../db";
 import crypto from "crypto";
+import * as Notify from "../notifications";
 
 type AuthenticatedRequest = Request & { pubkey?: string };
 
@@ -647,6 +648,9 @@ router.post("/profile/:pubkey/rate", ...requireAuth, (req: AuthenticatedRequest,
       comment: comment?.trim() || null,
     });
 
+    // Phase 5: DM notification — new rating
+    Notify.notifyNewRating(ratedPubkey, score, raterPubkey);
+
     res.status(201).json({
       id,
       orderId,
@@ -920,6 +924,9 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     // ── Response ──────────────────────────────────────────────────────
 
     const escrow = DB.getEscrow(escrowId);
+
+    // Phase 5: DM notification — listing purchased
+    Notify.notifyListingPurchased(listing.id, listing.title, listing.seller_pubkey, buyerPubkey, escrowId);
 
     const nextStepMsg = isP2PTrade
       ? `Seller opens escrow ${escrowId} and locks sats. Buyer sends fiat.`
