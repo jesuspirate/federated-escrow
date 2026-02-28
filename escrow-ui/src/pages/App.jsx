@@ -25,8 +25,11 @@ export default function App() {
     setActiveApp("escrow");
   }, []);
 
-  const switchToMarketplace = useCallback(() => {
+  const [initialMarketplaceEscrowId, setInitialMarketplaceEscrowId] = useState(null);
+
+  const switchToMarketplace = useCallback((escrowId = null) => {
     setInitialEscrowId(null);
+    setInitialMarketplaceEscrowId(escrowId || null);
     setActiveApp("marketplace");
   }, []);
 
@@ -40,7 +43,7 @@ export default function App() {
         />
       )}
       {activeApp === "marketplace" && (
-        <MarketplaceShell onSwitchToEscrow={switchToEscrow} />
+        <MarketplaceShell onSwitchToEscrow={switchToEscrow} initialEscrowId={initialMarketplaceEscrowId} onOpened={() => setInitialMarketplaceEscrowId(null)} />
       )}
     </>
   );
@@ -74,7 +77,7 @@ const _forceDevMode = typeof location !== "undefined"
 
 function isDevMode() { return _forceDevMode || !_isFediApp; }
 
-function MarketplaceShell({ onSwitchToEscrow }) {
+function MarketplaceShell({ onSwitchToEscrow, initialEscrowId, onOpened }) {
   const [pubkey, setPubkey] = useState(null);
   const [devRole, setDevRole] = useState("seller");
 
@@ -138,7 +141,7 @@ function MarketplaceShell({ onSwitchToEscrow }) {
           </div>
         </div>
       )}
-      <Marketplace pubkey={pubkey} devRole={devRole} onSwitchToEscrow={onSwitchToEscrow} />
+      <Marketplace pubkey={pubkey} devRole={devRole} onSwitchToEscrow={onSwitchToEscrow} initialEscrowId={initialEscrowId} onOpened={onOpened} />
     </div>
   );
 }

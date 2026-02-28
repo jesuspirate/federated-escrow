@@ -817,7 +817,7 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
       </div>
 
       <div style={{ display: "flex", gap: 10, margin: "0 0 12px" }}>
-        <button style={{ ...S.primaryBtn, flex: 1, justifyContent: "center" }} onClick={onSwitchToMarketplace}>🏪 {t("mkTitle") || "Marketplace"}</button>
+        <button style={{ ...S.primaryBtn, flex: 1, justifyContent: "center" }} onClick={() => onSwitchToMarketplace(e.id)}>🏪 {t("mkTitle") || "Marketplace"}</button>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.1)", borderRadius: 8, marginBottom: 12, fontSize: 11, color: "#64748b" }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -1213,7 +1213,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             <div style={{ fontSize: 24, marginBottom: 6 }}>⭐</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>Trade complete!</div>
             <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 14, lineHeight: 1.5 }}>Head back to rate your trade partner and help build community trust.</div>
-            <button onClick={onSwitchToMarketplace} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontSize: 14, fontWeight: 700, boxShadow: "0 4px 16px rgba(245,158,11,0.25)" }}>
+            <button onClick={() => onSwitchToMarketplace(e.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontSize: 14, fontWeight: 700, boxShadow: "0 4px 16px rgba(245,158,11,0.25)" }}>
               ⭐ Go Rate Your Trade Partner
             </button>
           </div>
@@ -1445,7 +1445,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
               Ratings help build trust in the community. It only takes a moment!
             </div>
             <button
-              onClick={onSwitchToMarketplace}
+              onClick={() => onSwitchToMarketplace(e.id)}
               style={{
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                 width: "100%", padding: "14px 0",

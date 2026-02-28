@@ -299,7 +299,7 @@ function Toast({ msg, type, visible }) {
 // Per-view loading states prevent cross-contamination between views.
 // ═══════════════════════════════════════════════════════════════════════
 
-export default function Marketplace({ pubkey, devRole, onSwitchToEscrow }) {
+export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initialEscrowId, onOpened }) {
   const [onboarded, setOnboarded] = useState(() => {
     try { return localStorage.getItem(MK_ONBOARDING_KEY) === "1"; } catch { return false; }
   });
@@ -307,6 +307,33 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow }) {
   const [listings, setListings] = useState([]);
   const [selected, setSelected] = useState(null);
   const [orders, setOrders] = useState([]);
+
+  // Deep-link: if arriving from escrow with an escrowId, find the linked order and open it
+  useEffect(() => {
+    if (!initialEscrowId || !pubkey) return;
+    (async () => {
+      try {
+        const data = await mapi(`/orders/by-escrow/${initialEscrowId}`);
+        if (data.orderId) {
+          const orderData = await mapi(`/orders/${data.orderId}`);
+          if (orderData?.order) {
+            setSelected(orderData.order);
+            setView("orderDetail");
+          } else {
+            setView("orders");
+          }
+          loadOrders();
+        } else {
+          setView("orders");
+          loadOrders();
+        }
+      } catch {
+        setView("orders");
+        loadOrders();
+      }
+      if (onOpened) onOpened();
+    })();
+  }, [initialEscrowId, pubkey]);
   const [browseLoading, setBrowseLoading] = useState(false);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
