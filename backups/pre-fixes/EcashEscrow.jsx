@@ -1207,18 +1207,6 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {/* ═══ THE VAULT ═══ */}
         <Vault status={status} amountMsats={e.amountMsats} showBurst={showBurst} resolvedOutcome={e.resolvedOutcome} />
 
-        {/* ═══ POST-TRADE CTA — right after vault, impossible to miss ═══ */}
-        {(status === "CLAIMED" || status === "COMPLETED") && onSwitchToMarketplace && (
-          <div style={{ margin: "0 0 16px", padding: "16px 20px", borderRadius: 16, background: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0.04))", border: "1px solid rgba(245,158,11,0.25)", textAlign: "center" }}>
-            <div style={{ fontSize: 24, marginBottom: 6 }}>⭐</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>Trade complete!</div>
-            <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 14, lineHeight: 1.5 }}>Head back to rate your trade partner and help build community trust.</div>
-            <button onClick={onSwitchToMarketplace} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontSize: 14, fontWeight: 700, boxShadow: "0 4px 16px rgba(245,158,11,0.25)" }}>
-              ⭐ Go Rate Your Trade Partner
-            </button>
-          </div>
-        )}
-
         {/* ── Participants (animated SVG nodes) ──────────────────── */}
         <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 0, padding: "0 8px 16px" }}>
           <ParticipantNode label="Seller" IconComp={SvgSeller} pkDisplay={getPkDisplay(e.participants?.seller)} joined={isParticipantJoined(e.participants?.seller)} voted={!!e.votes?.voters?.find(v => v.role === "seller")} voteOutcome={sellerOutcome} resolvedOutcome={e.resolvedOutcome} isDispute={buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome} isYou={role === "seller"} delay={0} />

@@ -220,8 +220,8 @@ const stmts = {
   `),
   getOrder: db.prepare(`SELECT * FROM orders WHERE id = ?`),
   getOrderByEscrow: db.prepare(`SELECT * FROM orders WHERE escrow_id = ?`),
-  getOrdersByBuyer: db.prepare(`SELECT * FROM orders WHERE buyer_pubkey = ? ORDER BY CASE status WHEN 'active' THEN 1 WHEN 'pending' THEN 2 WHEN 'completed' THEN 3 WHEN 'expired' THEN 4 WHEN 'cancelled' THEN 5 ELSE 6 END, created_at DESC`),
-  getOrdersBySeller: db.prepare(`SELECT * FROM orders WHERE seller_pubkey = ? ORDER BY CASE status WHEN 'active' THEN 1 WHEN 'pending' THEN 2 WHEN 'completed' THEN 3 WHEN 'expired' THEN 4 WHEN 'cancelled' THEN 5 ELSE 6 END, created_at DESC`),
+  getOrdersByBuyer: db.prepare(`SELECT * FROM orders WHERE buyer_pubkey = ? ORDER BY created_at DESC`),
+  getOrdersBySeller: db.prepare(`SELECT * FROM orders WHERE seller_pubkey = ? ORDER BY created_at DESC`),
   getOrdersByListing: db.prepare(`SELECT * FROM orders WHERE listing_id = ? ORDER BY created_at DESC`),
   updateOrderStatus: db.prepare(`UPDATE orders SET status = ?, updated_at = datetime('now') WHERE id = ?`),
 
@@ -231,7 +231,6 @@ const stmts = {
     VALUES (@id, @order_id, @rater_pubkey, @rated_pubkey, @score, @comment)
   `),
   getRatingByOrder: db.prepare(`SELECT * FROM ratings WHERE order_id = ?`),
-  getRatingByOrderAndRater: db.prepare(`SELECT * FROM ratings WHERE order_id = ? AND rater_pubkey = ?`),
   getRatingByOrderAndRater: db.prepare(`SELECT * FROM ratings WHERE order_id = ? AND rater_pubkey = ?`),
   getRatingsByPubkey: db.prepare(`SELECT * FROM ratings WHERE rated_pubkey = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`),
   getRatingStats: db.prepare(`
@@ -733,32 +732,6 @@ router.post("/profile/:pubkey/rate", ...requireAuth, (req: AuthenticatedRequest,
 // ──────────────────────────────────────────────────────────────────────────
 // PARAMETERIZED ROUTES (/:id comes after literal paths)
 // ──────────────────────────────────────────────────────────────────────────
-
-
-// ── GET /orders/by-escrow/:escrowId — Escrow-to-order lookup (for rating from escrow UI) ──
-router.get("/orders/by-escrow/:escrowId", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const pk = req.pubkey!;
-    const order = stmts.getOrderByEscrow.get(req.params.escrowId) as OrderRow | undefined;
-    if (!order) return res.status(404).json({ error: "No order linked to this escrow" });
-
-    // Must be a participant
-    if (order.buyer_pubkey !== pk && order.seller_pubkey !== pk)
-      return res.status(403).json({ error: "Not a participant in this order" });
-
-    const otherPubkey = order.buyer_pubkey === pk ? order.seller_pubkey : order.buyer_pubkey;
-    const myRating = stmts.getRatingByOrderAndRater.get(order.id, pk) as RatingRow | undefined;
-
-    res.json({
-      orderId: order.id,
-      otherPubkey,
-      myRating: myRating || null,
-      status: order.status,
-    });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // ── GET /:id — Listing detail ────────────────────────────────────────────
 
