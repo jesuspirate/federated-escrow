@@ -19,6 +19,7 @@ import Marketplace from "./Marketplace";
 export default function App() {
   const [activeApp, setActiveApp] = useState("marketplace"); // "escrow" | "marketplace"
   const [initialEscrowId, setInitialEscrowId] = useState(null);
+  const [sharedPubkey, setSharedPubkey] = useState(null); // shared across both apps — avoids double NIP-98 prompt
 
   const switchToEscrow = useCallback((escrowId) => {
     setInitialEscrowId(escrowId || null);
@@ -40,10 +41,12 @@ export default function App() {
           onSwitchToMarketplace={switchToMarketplace}
           initialEscrowId={initialEscrowId}
           onEscrowOpened={() => setInitialEscrowId(null)}
+          sharedPubkey={sharedPubkey}
+          onPubkeyResolved={setSharedPubkey}
         />
       )}
       {activeApp === "marketplace" && (
-        <MarketplaceShell onSwitchToEscrow={switchToEscrow} initialEscrowId={initialMarketplaceEscrowId} onOpened={() => setInitialMarketplaceEscrowId(null)} />
+        <MarketplaceShell onSwitchToEscrow={switchToEscrow} initialEscrowId={initialMarketplaceEscrowId} onOpened={() => setInitialMarketplaceEscrowId(null)} sharedPubkey={sharedPubkey} onPubkeyResolved={setSharedPubkey} />
       )}
     </>
   );
@@ -77,11 +80,12 @@ const _forceDevMode = typeof location !== "undefined"
 
 function isDevMode() { return _forceDevMode || !_isFediApp; }
 
-function MarketplaceShell({ onSwitchToEscrow, initialEscrowId, onOpened }) {
-  const [pubkey, setPubkey] = useState(null);
+function MarketplaceShell({ onSwitchToEscrow, initialEscrowId, onOpened, sharedPubkey, onPubkeyResolved }) {
+  const [pubkey, setPubkey] = useState(sharedPubkey || null);
   const [devRole, setDevRole] = useState("seller");
 
   useEffect(() => {
+    if (sharedPubkey) { setPubkey(sharedPubkey); return; } // skip re-auth if already known
     (async () => {
       if (_forceDevMode || !_isFediApp) {
         setPubkey(DEV_IDENTITIES[devRole]);
@@ -89,11 +93,16 @@ function MarketplaceShell({ onSwitchToEscrow, initialEscrowId, onOpened }) {
       }
       try {
         const pk = await window.nostr?.getPublicKey();
-        if (pk) { setPubkey(pk); return; }
+        if (pk) {
+          setPubkey(pk);
+          if (onPubkeyResolved) onPubkeyResolved(pk);
+          try { sessionStorage.setItem("nostr_pubkey", pk); } catch {}
+          return;
+        }
       } catch {}
       setPubkey(DEV_IDENTITIES[devRole]);
     })();
-  }, []);
+  }, [sharedPubkey]);
 
   const switchDevIdentity = useCallback((role) => {
     setDevRole(role);

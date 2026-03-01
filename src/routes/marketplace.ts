@@ -232,7 +232,6 @@ const stmts = {
   `),
   getRatingByOrder: db.prepare(`SELECT * FROM ratings WHERE order_id = ?`),
   getRatingByOrderAndRater: db.prepare(`SELECT * FROM ratings WHERE order_id = ? AND rater_pubkey = ?`),
-  getRatingByOrderAndRater: db.prepare(`SELECT * FROM ratings WHERE order_id = ? AND rater_pubkey = ?`),
   getRatingsByPubkey: db.prepare(`SELECT * FROM ratings WHERE rated_pubkey = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`),
   getRatingStats: db.prepare(`
     SELECT 

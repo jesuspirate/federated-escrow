@@ -598,7 +598,7 @@ function OnboardingSplash({ onComplete, locale }) {
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════════════
 
-export default function EcashEscrow({ onSwitchToMarketplace, initialEscrowId, onEscrowOpened }) {
+export default function EcashEscrow({ onSwitchToMarketplace, initialEscrowId, onEscrowOpened, sharedPubkey, onPubkeyResolved }) {
   const [onboarded, setOnboarded] = useState(() => {
     try { return localStorage.getItem(ONBOARDING_KEY) === "1"; } catch { return false; }
   });
@@ -620,17 +620,32 @@ export default function EcashEscrow({ onSwitchToMarketplace, initialEscrowId, on
 
 	// Browser = sandbox identities. Fedi = real Nostr auth.
   useEffect(() => {
+    if (_forceDevMode) {
+      _devPubkey = DEV_IDENTITIES[devRole];
+      setPubkey(_devPubkey);
+      return;
+    }
+    // 1. Try sharedPubkey prop (React state from App)
+    if (sharedPubkey) { _devPubkey = null; setPubkey(sharedPubkey); return; }
+    // 2. Try sessionStorage (synchronous — set by MarketplaceShell on first auth)
+    try {
+      const cached = sessionStorage.getItem("nostr_pubkey");
+      if (cached) { _devPubkey = null; setPubkey(cached); return; }
+    } catch {}
+    // 3. Last resort — call getNostrPubkey (may prompt user in Fedi)
     (async () => {
-      if (_forceDevMode) {
+      const pk = await getNostrPubkey();
+      if (pk) {
+        _devPubkey = null;
+        setPubkey(pk);
+        if (onPubkeyResolved) onPubkeyResolved(pk);
+        try { sessionStorage.setItem("nostr_pubkey", pk); } catch {}
+      } else {
         _devPubkey = DEV_IDENTITIES[devRole];
         setPubkey(_devPubkey);
-        return;
       }
-      const pk = await getNostrPubkey();
-      if (pk) { _devPubkey = null; setPubkey(pk); }
-      else { _devPubkey = DEV_IDENTITIES[devRole]; setPubkey(_devPubkey); }
     })();
-  }, []);
+  }, [sharedPubkey]);
 
 	// FIX: Removed `if (!isDevMode()) return;` guard — it prevented switching
 	// when Nostr auth succeeded on mount but ?dev is in the URL
@@ -817,7 +832,7 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
       </div>
 
       <div style={{ display: "flex", gap: 10, margin: "0 0 12px" }}>
-        <button style={{ ...S.primaryBtn, flex: 1, justifyContent: "center" }} onClick={() => onSwitchToMarketplace(e.id)}>🏪 {t("mkTitle") || "Marketplace"}</button>
+        <button style={{ ...S.primaryBtn, flex: 1, justifyContent: "center" }} onClick={() => onSwitchToMarketplace()}>🏪 {t("mkTitle") || "Marketplace"}</button>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.1)", borderRadius: 8, marginBottom: 12, fontSize: 11, color: "#64748b" }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
