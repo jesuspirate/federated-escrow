@@ -15,7 +15,7 @@ import db from "../db";
 import * as DB from "../db";
 import crypto from "crypto";
 import { matrixBot } from "./matrix-bot";
-import * as Notify from "../notifications";
+// import * as Notify from "../notifications";
 
 type AuthenticatedRequest = Request & { pubkey?: string };
 
@@ -713,7 +713,7 @@ router.post("/profile/:pubkey/rate", ...requireAuth, (req: AuthenticatedRequest,
     });
 
     // Phase 5: DM notification — new rating
-    Notify.notifyNewRating(ratedPubkey, score, raterPubkey);
+    // Notify.notifyNewRating(ratedPubkey, score, raterPubkey);
 
     res.status(201).json({
       id,
@@ -1026,7 +1026,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     const escrow = DB.getEscrow(escrowId);
 
     // Phase 5: DM notification — listing purchased
-    Notify.notifyListingPurchased(listing.id, listing.title, listing.seller_pubkey, buyerPubkey, escrowId);
+    // Notify.notifyListingPurchased(listing.id, listing.title, listing.seller_pubkey, buyerPubkey, escrowId);
 
     const nextStepMsg = isP2PTrade
       ? `Seller opens escrow ${escrowId} and locks sats. Buyer sends fiat.`
