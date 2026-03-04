@@ -708,9 +708,24 @@ export default function EcashEscrow({ onSwitchToMarketplace, initialEscrowId, on
   return (
     <div style={{ ...S.root, display: "flex", flexDirection: "column", minHeight: "100vh", overflowX: "hidden" }}>
       <style>{`
-        *, *::before, *::after { -webkit-tap-highlight-color: transparent !important; }
-        button, a, input, select, textarea { -webkit-tap-highlight-color: transparent !important; outline: none !important; }
-        button:focus, a:focus { outline: none !important; }
+        *, *::before, *::after { -webkit-tap-highlight-color: rgba(0,0,0,0) !important; -webkit-touch-callout: none; box-sizing: border-box; }
+        button, a, input, select, textarea, [role="button"], div[onclick], span[onclick] {
+          -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+          -webkit-touch-callout: none !important;
+          -webkit-appearance: none !important;
+          outline: none !important;
+          -webkit-user-select: none;
+          user-select: none;
+        }
+        button:focus, button:active, button:focus-visible,
+        a:focus, a:active, a:focus-visible,
+        input:focus, input:focus-visible,
+        select:focus, select:focus-visible {
+          outline: none !important;
+          box-shadow: none !important;
+          -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+        }
+        input, textarea { -webkit-user-select: auto; user-select: auto; }
         @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }

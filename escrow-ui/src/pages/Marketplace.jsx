@@ -98,7 +98,10 @@ async function mapi(path, opts = {}, _retries = 1) {
       if (nip98) headers["Authorization"] = nip98;
       else if (_devPubkey) headers["X-Dev-Pubkey"] = _devPubkey;
     } catch (err) {
-      if (err.name === "NostrRejectedError" && _retries > 0) return mapi(path, opts, _retries - 1);
+      if (err.name === "NostrRejectedError") {
+        if (method !== "GET") throw err;
+        if (_retries > 0) return mapi(path, opts, _retries - 1);
+      }
       throw err;
     }
   } else if (_devPubkey) {
@@ -345,6 +348,16 @@ function Toast({ msg, type, visible }) {
 // ═══════════════════════════════════════════════════════════════════════
 
 export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initialEscrowId, onOpened }) {
+  // Auto-blur buttons on touch to prevent persistent focus rectangles in WebView
+  useEffect(() => {
+    const handler = (e) => {
+      const btn = e.target?.closest ? e.target.closest("button") : null;
+      if (btn) setTimeout(() => btn.blur(), 50);
+    };
+    document.addEventListener("touchend", handler, true);
+    return () => document.removeEventListener("touchend", handler, true);
+  }, []);
+
   const [onboarded, setOnboarded] = useState(() => {
     try { return localStorage.getItem(MK_ONBOARDING_KEY) === "1"; } catch { return false; }
   });
@@ -532,9 +545,25 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   return (
     <div style={M.root}>
       <style>{`
-        *, *::before, *::after { -webkit-tap-highlight-color: transparent !important; box-sizing: border-box; }
-        button, a, input, select, textarea, [role="button"] { -webkit-tap-highlight-color: transparent !important; outline: none !important; -webkit-appearance: none; }
-        button:focus, button:active, a:focus, a:active, input:focus { outline: none !important; box-shadow: none !important; }
+        *, *::before, *::after { -webkit-tap-highlight-color: rgba(0,0,0,0) !important; -webkit-touch-callout: none; box-sizing: border-box; }
+        button, a, input, select, textarea, [role="button"], div[onclick], span[onclick] {
+          -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+          -webkit-touch-callout: none !important;
+          -webkit-appearance: none !important;
+          outline: none !important;
+          -webkit-user-select: none;
+          user-select: none;
+        }
+        button:focus, button:active, button:focus-visible,
+        a:focus, a:active, a:focus-visible,
+        input:focus, input:focus-visible,
+        select:focus, select:focus-visible {
+          outline: none !important;
+          box-shadow: none !important;
+          -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
+        }
+        button::-moz-focus-inner { border: 0 !important; }
+        input, textarea { -webkit-user-select: auto; user-select: auto; }
         @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
@@ -1134,6 +1163,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
       const res = await mapi(`/${l.id}/buy`, { method: "POST" });
       if (res.error) throw new Error(res.error);
       showToast(isP2P ? t("mkTradeStarted") || "Trade started!" : t("mkBuySuccess"));
+      setLoading(false);
       // Navigate directly to the new order detail
       if (onOrderCreated && res.order) {
         onOrderCreated({
@@ -1150,8 +1180,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
       } else {
         onBack();
       }
-    } catch (err) { showToast(err.message, "error"); }
-    setLoading(false);
+    } catch (err) { showToast(err.message, "error"); setLoading(false); }
   };
 
   return (
@@ -1396,7 +1425,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
             return (
               <button key={cat.value} onClick={handleCatClick} style={{
                 ...M.chipBtn,
-                ...(active ? { ...M.chipBtnActive, borderColor: cat.color || "#f59e0b", color: cat.color || "#f8fafc", background: cat.bg || "rgba(245,158,11,0.12)" } : {}),
+                ...(active ? { ...M.chipBtnActive, borderColor: cat.color || "#f59e0b", color: cat.color || "#f8fafc", background: cat.bg || "rgba(245,158,11,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
               }}>
                 {cat.label}
               </button>
@@ -1434,14 +1463,14 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
               {["USD", "EUR", "GBP", "CFA", "KES", "NGN", "BRL", "ARS", "INR"].map(cur => (
                 <button key={cur} onClick={() => setFiatCurrency(cur)} style={{
                   ...M.chipBtn, padding: "6px 12px", fontSize: 12, fontWeight: 600,
-                  ...(fiatCurrency === cur ? { ...M.chipBtnActive, borderColor: "#f59e0b", color: "#f59e0b", background: "rgba(245,158,11,0.12)" } : {}),
+                  ...(fiatCurrency === cur ? { ...M.chipBtnActive, borderColor: "#f59e0b", color: "#f59e0b", background: "rgba(245,158,11,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
                 }}>
                   {cur}
                 </button>
               ))}
               <button onClick={() => setFiatCurrency("other")} style={{
                 ...M.chipBtn, padding: "6px 12px", fontSize: 12,
-                ...(fiatCurrency === "other" ? M.chipBtnActive : {}),
+                ...(fiatCurrency === "other" ? M.chipBtnActive : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
               }}>
                 {t("mkFiatOther")}
               </button>
@@ -1453,14 +1482,14 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
               {["Bank Transfer", "M-Pesa", "Orange Money", "Cash", "PayPal", "Wise", "Zelle", "Revolut"].map(pm => (
                 <button key={pm} onClick={() => setPaymentMethod(pm)} style={{
                   ...M.chipBtn, padding: "6px 12px", fontSize: 12,
-                  ...(paymentMethod === pm ? { ...M.chipBtnActive, borderColor: "#a78bfa", color: "#a78bfa", background: "rgba(139,92,246,0.12)" } : {}),
+                  ...(paymentMethod === pm ? { ...M.chipBtnActive, borderColor: "#a78bfa", color: "#a78bfa", background: "rgba(139,92,246,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
                 }}>
                   {pm}
                 </button>
               ))}
               <button onClick={() => setPaymentMethod("other")} style={{
                 ...M.chipBtn, padding: "6px 12px", fontSize: 12,
-                ...(paymentMethod === "other" ? M.chipBtnActive : {}),
+                ...(paymentMethod === "other" ? M.chipBtnActive : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
               }}>
                 {t("mkFiatOther")}
               </button>
@@ -1480,7 +1509,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
             <label style={M.label}>{t("mkCondition")}</label>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {["new", "used", "digital", "service"].map(c => (
-                <button key={c} onClick={() => setCondition(c)} style={{ ...M.chipBtn, ...(condition === c ? { ...M.chipBtnActive, borderColor: "#8b5cf6", color: "#f8fafc", background: "rgba(139,92,246,0.15)" } : {}) }}>
+                <button key={c} onClick={() => setCondition(c)} style={{ ...M.chipBtn, ...(condition === c ? { ...M.chipBtnActive, borderColor: "#8b5cf6", color: "#f8fafc", background: "rgba(139,92,246,0.15)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }) }}>
                   {t(CONDITION_KEYS[c])}
                 </button>
               ))}
@@ -2033,7 +2062,7 @@ const M = {
   cardMeta: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 },
   conditionBadge: { padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(139,92,246,0.1)", color: "#a78bfa", letterSpacing: 0.3 },
   categoryBadge: { padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: "rgba(100,116,139,0.1)", color: "#94a3b8" },
-  chipBtn: { padding: "6px 12px", borderRadius: 8, background: "#111827", color: "#94a3b8", fontSize: 12, fontWeight: 500, border: "1px solid #1e293b", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
+  chipBtn: { padding: "6px 12px", borderRadius: 8, background: "#111827", color: "#94a3b8", fontSize: 12, fontWeight: 500, border: "1px solid transparent", cursor: "pointer", WebkitTapHighlightColor: "rgba(0,0,0,0)", outline: "none" },
   chipBtnActive: { background: "#1e293b", color: "#f8fafc", borderColor: "#f59e0b" },
   infoBanner: { padding: "10px 14px", border: "1px solid", borderRadius: 10, marginBottom: 12 },
   participantRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", fontSize: 13 },
