@@ -14,6 +14,7 @@ import { verifyEvent } from "nostr-tools/pure";
 import db from "../db";
 import * as DB from "../db";
 import crypto from "crypto";
+import { matrixBot } from "./matrix-bot";
 import * as Notify from "../notifications";
 
 type AuthenticatedRequest = Request & { pubkey?: string };
@@ -823,8 +824,18 @@ router.post("/:id/update", ...requireAuth, (req: AuthenticatedRequest, res: Resp
 
     db.prepare(`UPDATE listings SET ${sets.join(", ")} WHERE id = ?`).run(...values);
 
-    const updated = stmts.getById.get(req.params.id) as ListingRow;
+    // Auto-populate community_link when resuming to "active" if missing
+    let updated = stmts.getById.get(req.params.id) as ListingRow;
+    if (updated.status === "active" && (!updated.community_link || !isValidCommunityLink(updated.community_link))) {
+      const DEFAULT_COMMUNITY_LINK = "fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::";
+      db.prepare(`UPDATE listings SET community_link = ?, updated_at = datetime('now') WHERE id = ?`)
+        .run(DEFAULT_COMMUNITY_LINK, req.params.id);
+      updated = stmts.getById.get(req.params.id) as ListingRow;
+      console.log(`[marketplace] Auto-populated community_link for listing ${req.params.id} on resume`);
+    }
+
     res.json(formatListing(updated));
+
   } catch (err: any) {
     console.error("[marketplace] POST /:id/update error:", err);
     res.status(500).json({ error: err.message });
@@ -1054,6 +1065,17 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
       message: responseMsg,
       nextStep: nextStepMsg,
     });
+
+  // ── Matrix bot: notify all participants about the new trade ──
+    matrixBot.notifyJoin({
+      id: escrowId,
+      amountMsats: listing.price_msats,
+      description: isP2PTrade ? `P2P Trade: ${listing.title}` : `Marketplace: ${listing.title}`,
+      sellerPubkey: escrowSellerPubkey,
+      buyerPubkey: escrowBuyerPubkey,
+      arbiterPubkey: arbiterPubkey,
+    }, "buyer");
+
   } catch (err: any) {
     console.error("[marketplace] POST /:id/buy error:", err);
     res.status(500).json({ error: err.message });

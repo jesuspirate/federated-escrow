@@ -77,6 +77,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import { verifyEvent } from "nostr-tools/pure";
 import * as DB from "../db";
 import * as FM from "../fedimint";
+import { matrixBot } from "./matrix-bot";
 
 type Role = "buyer" | "seller" | "arbiter";
 type Outcome = "release" | "refund";
@@ -329,7 +330,8 @@ if (!sellerIsDev && joinerIsDev) {
 
     const otherPks = [updated.seller_pubkey, updated.buyer_pubkey, updated.arbiter_pubkey].filter(Boolean) as string[];
     if (updated.status === "FUNDED") {
-      }
+      matrixBot.notifyJoin({ id: updated.id, amountMsats: updated.amount_msats, description: updated.description, sellerPubkey: updated.seller_pubkey, buyerPubkey: updated.buyer_pubkey, arbiterPubkey: updated.arbiter_pubkey }, role);
+    }
 
     res.json({
       id: updated.id, status: updated.status, yourRole: role,
@@ -510,7 +512,8 @@ router.post("/:id/lock", async (req: AuthenticatedRequest, res: Response) => {
     const updated = DB.getEscrow(row.id)!;
 
     if (updated.buyer_pubkey && updated.arbiter_pubkey) {
-      }
+      matrixBot.notifyLocked({ id: updated.id, amountMsats: updated.amount_msats, description: updated.description, sellerPubkey: updated.seller_pubkey, buyerPubkey: updated.buyer_pubkey, arbiterPubkey: updated.arbiter_pubkey });
+    }
 
     res.json({
       id: updated.id, status: updated.status, lockedAt: updated.locked_at,
@@ -563,7 +566,8 @@ router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
 
     const allPks = [row.seller_pubkey, row.buyer_pubkey, row.arbiter_pubkey].filter(Boolean) as string[];
     if (tally.outcome) {
-      }
+      matrixBot.notifyResolved({ id: row.id, amountMsats: row.amount_msats, description: row.description, sellerPubkey: row.seller_pubkey, buyerPubkey: row.buyer_pubkey, arbiterPubkey: row.arbiter_pubkey }, tally.outcome);
+    }
 
     const winner = tally.outcome === "release" ? "buyer" : tally.outcome === "refund" ? "seller" : null;
 

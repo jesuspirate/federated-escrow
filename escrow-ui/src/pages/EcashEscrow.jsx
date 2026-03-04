@@ -130,8 +130,10 @@ async function api(path, opts = {}, _retries = 2) {
     if (nip98) headers["Authorization"] = nip98;
     else if (_devPubkey) headers["X-Dev-Pubkey"] = _devPubkey;
   } catch (err) {
-    if (err.name === "NostrRejectedError" && _retries > 0) {
-      return api(path, opts, _retries - 1);
+    if (err.name === "NostrRejectedError") {
+      // Never retry write operations — the user explicitly cancelled
+      if (method !== "GET") throw err;
+      if (_retries > 0) return api(path, opts, _retries - 1);
     }
     throw err;
   }
@@ -475,7 +477,7 @@ function Vault({ status, amountMsats, showBurst, resolvedOutcome }) {
       <div style={{ fontSize: isActive ? 48 : 36, fontWeight: 900, color: isActive ? "#f8fafc" : "#334155", letterSpacing: -2, lineHeight: 1, transition: "all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)", textShadow: isActive ? `0 0 40px ${vaultGlow}` : "none", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
         <AnimNum value={fmtSatsNum(amountMsats)} dur={1400} />
       </div>
-      <div style={{ fontSize: 14, fontWeight: 500, color: isActive ? "#64748b" : "#1e293b", marginTop: 4, letterSpacing: 2, transition: "color 0.8s ease" }}>SATS</div>
+      <div style={{ fontSize: 14, fontWeight: 500, color: isActive ? "#64748b" : "#1e293b", marginTop: 4, letterSpacing: 2, transition: "color 0.8s ease" }}><span style={{ color: "#f7931a", fontWeight: 700, fontSize: 18 }}>₿</span> SATS</div>
       <div style={{ marginTop: 10, fontSize: 12, fontWeight: 500, color: isDone ? "#10b981" : isApproved ? "#10b981" : isLocked ? "#f59e0b" : status === "FUNDED" ? "#8b5cf6" : "#475569", transition: "color 0.5s ease", display: "flex", alignItems: "center", gap: 6 }}>
         {isDone ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", animation: "pulseGreen 1.5s ease infinite" }} />{resolvedOutcome === "release" ? t("deliveredToBuyer") : t("refundedToSeller")}</>) : isApproved ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981" }} />{t("readyToClaim")}</>) : isLocked ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f59e0b", animation: "pulseAmber 2s ease infinite" }} />{t("securedInVault")}</>) : status === "FUNDED" ? t("readyToLock") : status === "EXPIRED" ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ef4444" }} />{t("escrowExpired")}</>) : t("waitingAllParties")}
       </div>
@@ -563,7 +565,7 @@ function OnboardingSplash({ onComplete, locale }) {
         {isLast && isBrowser ? (
           <>
             <button onClick={handleNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: "#f59e0b", border: "none", color: "#0c0f17", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              🧪 {t("tryDemo")}
+              🚀 {t("tryDemo")}
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
             </button>
             <a href={roomLink} target="_blank" rel="noopener noreferrer" style={{ display: "flex", width: "100%", padding: "14px 0", marginTop: 10, borderRadius: 12, background: "transparent", border: "1.5px solid #334155", color: "#f8fafc", fontSize: 15, fontWeight: 600, cursor: "pointer", alignItems: "center", justifyContent: "center", gap: 8, textDecoration: "none" }}>
@@ -706,6 +708,9 @@ export default function EcashEscrow({ onSwitchToMarketplace, initialEscrowId, on
   return (
     <div style={{ ...S.root, display: "flex", flexDirection: "column", minHeight: "100vh", overflowX: "hidden" }}>
       <style>{`
+        *, *::before, *::after { -webkit-tap-highlight-color: transparent !important; }
+        button, a, input, select, textarea { -webkit-tap-highlight-color: transparent !important; outline: none !important; }
+        button:focus, a:focus { outline: none !important; }
         @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
@@ -735,7 +740,7 @@ export default function EcashEscrow({ onSwitchToMarketplace, initialEscrowId, on
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
             {["seller", "buyer", "arbiter"].map(r => (
               <button key={r} onClick={() => switchDevIdentity(r)} style={{ ...S.demoRoleBtn, ...(devRole === r ? S.demoRoleBtnActive : {}) }}>
-                {r === "seller" ? "🏠" : r === "buyer" ? "🛒" : "⚖️"} {t(r)}
+                {r === "seller" ? "🏷️" : r === "buyer" ? "🛒" : "⚖️"} {t(r)}
               </button>
             ))}
             <div style={{ width: 1, height: 14, background: "#2d2640" }} />
@@ -851,7 +856,7 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
             {escrows.map(e => (
               <button key={e.id} style={S.escrowCard} onClick={() => onOpen(e.id)}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={S.cardAmount}>{fmtSats(e.amountMsats)} <span style={{ color: "#64748b", fontWeight: 400 }}>{t("sats")}</span></span>
+                  <span style={S.cardAmount}><span style={{ color: "#f7931a", fontWeight: 700 }}>₿</span> {fmtSats(e.amountMsats)}</span>
                   <StatusBadge status={e.status} />
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
@@ -1335,6 +1340,54 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           </div>
         )}
 
+        {/* ═══ PRIMARY ACTION — right after participants/tally ═══ */}
+        {canBuyerVote && !confirmVote && (
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)", margin: "4px 0 12px" }} onClick={() => setConfirmVote("release")} disabled={loading}>
+            {loading ? t("voting") : `✓ ${t("confirm")} — ${t("release")} ➜ ${t("toMe")}`}
+          </button>
+        )}
+        {canBuyerVote && confirmVote === "release" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "0 0 12px" }}>
+            <div style={{ textAlign: "center", padding: "10px 14px", background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.3)", borderRadius: 10, fontSize: 13, fontWeight: 700, color: "#10b981" }}>
+              Confirm: Release sats to you?
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8" }} onClick={cancelConfirm}>Cancel</button>
+              <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>{loading ? t("voting") : "Yes, release"}</button>
+            </div>
+          </div>
+        )}
+        {(canClaim || canReclaimExpired) && !claimRetry && (
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "4px 0 12px", animation: "pulseGreen 2s ease infinite" }} onClick={handleClaim} disabled={loading}>
+            {loading ? t("claiming") : `⚡ ${t("claimSats", { amount: fmtSats(e.amountMsats) })}`}
+          </button>
+        )}
+        {claimRetry && (
+          <div style={{ margin: "4px 0 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ textAlign: "center", padding: "10px 14px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, fontSize: 13, color: "#fbbf24", lineHeight: 1.5 }}>
+              Invoice was rejected. Tap below to try again — you need to approve the invoice in Fedi to receive your sats.
+            </div>
+            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", animation: "pulseGreen 2s ease infinite" }} onClick={() => { setClaimRetry(false); handleClaim(); }} disabled={loading}>
+              {loading ? t("claiming") : `⚡ Retry — ${t("claimSats", { amount: fmtSats(e.amountMsats) })}`}
+            </button>
+          </div>
+        )}
+        {canLock && lockStep === "idle" && (
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", margin: "4px 0 12px" }} onClick={handleLockFetch}>
+            ₿ {t("lockSats", { amount: fmtSats(e.amountMsats) })}
+          </button>
+        )}
+        {canLock && lockStep === "fetching" && (
+          <button style={{ ...S.actionBtn, background: "#1e293b", margin: "4px 0 12px" }} disabled>
+            {t("locking")}
+          </button>
+        )}
+        {canLock && (lockStep === "ready" || lockStep === "paying") && (
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "4px 0 12px" }} onClick={handleLockPay} disabled={lockStep === "paying"}>
+            {lockStep === "paying" ? t("locking") : `⚡ ${t("confirmInFedi")}`}
+          </button>
+        )}
+
         {role && (
           <div style={S.roleBanner}>
             <SvgArbiter size={16} color="#f59e0b" />
@@ -1351,7 +1404,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         )}
         {e.description?.startsWith("Marketplace:") && role === "buyer" && (
           <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12 }}>
-            <strong style={{ color: "#f59e0b" }}>🏠 You're the Seller</strong><br/>
+            <strong style={{ color: "#f59e0b" }}>📦 You're the Seller</strong><br/>
             The buyer locked sats as payment. Ship your item, then both confirm to release payment to you.
           </div>
         )}
@@ -1369,43 +1422,6 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           </div>
         )}
 
-        {/* ═══ PRIMARY ACTION — prominent, right after role ═══ */}
-        {canBuyerVote && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)", margin: "8px 0 16px" }} onClick={() => handleVote("release")} disabled={loading}>
-            {loading ? t("voting") : `✓ ${t("confirm")} — ${t("release")} ➜ ${t("toMe")}`}
-          </button>
-        )}
-        {(canClaim || canReclaimExpired) && !claimRetry && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "8px 0 16px", animation: "pulseGreen 2s ease infinite" }} onClick={handleClaim} disabled={loading}>
-            {loading ? t("claiming") : `⚡ ${t("claimSats", { amount: fmtSats(e.amountMsats) })}`}
-          </button>
-        )}
-        {claimRetry && (
-          <div style={{ margin: "8px 0 16px", display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ textAlign: "center", padding: "10px 14px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, fontSize: 13, color: "#fbbf24", lineHeight: 1.5 }}>
-              Invoice was rejected. Tap below to try again — you need to approve the invoice in Fedi to receive your sats.
-            </div>
-            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", animation: "pulseGreen 2s ease infinite" }} onClick={() => { setClaimRetry(false); handleClaim(); }} disabled={loading}>
-              {loading ? t("claiming") : `⚡ Retry — ${t("claimSats", { amount: fmtSats(e.amountMsats) })}`}
-            </button>
-          </div>
-        )}
-        {canLock && lockStep === "idle" && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", margin: "8px 0 16px" }} onClick={handleLockFetch}>
-            🔒 {t("lockSats", { amount: fmtSats(e.amountMsats) })}
-          </button>
-        )}
-        {canLock && lockStep === "fetching" && (
-          <button style={{ ...S.actionBtn, background: "#1e293b", margin: "8px 0 16px" }} disabled>
-            {t("locking")}
-          </button>
-        )}
-        {canLock && (lockStep === "ready" || lockStep === "paying") && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "8px 0 16px" }} onClick={handleLockPay} disabled={lockStep === "paying"}>
-            {lockStep === "paying" ? t("locking") : `⚡ ${t("confirmInFedi")}`}
-          </button>
-        )}
-
         {e.terms && (<div style={S.section}><div style={S.sectionLabel}>{t("tradeTerms")}</div><div style={S.sectionValue}>{e.terms}</div></div>)}
         {e.description && (<div style={S.section}><div style={S.sectionLabel}>{t("description")}</div><div style={S.sectionValue}>{e.description}</div></div>)}
 
@@ -1413,7 +1429,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {(!isParticipantJoined(e.participants?.buyer) || !isParticipantJoined(e.participants?.arbiter)) ? (
           <div style={{ padding: "14px 16px", background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.15)", borderRadius: 12, marginBottom: 14, animation: "obFadeUp 0.4s ease-out", textAlign: "center" }}>
             <div style={{ fontSize: 13, fontWeight: 600, color: "#a78bfa", marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              📤 {t("shareEscrowTitle")}
+              🔗 {t("shareEscrowTitle")}
             </div>
             <button style={{ ...S.copyRow, width: "100%", marginBottom: 10, justifyContent: "center" }} onClick={() => copy(e.id, t("escrowId"))}>
               <span style={S.mono}>{e.id}</span><I.Copy />
@@ -1527,7 +1543,7 @@ const S = {
   copyRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, width: "100%", padding: "10px 14px", background: "#111827", border: "1px solid #1e293b", borderRadius: 8, color: "#94a3b8" },
   mono: { fontFamily: "monospace", fontSize: 12, color: "#64748b", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 },
   actionBar: { position: "sticky", bottom: 0, left: 0, right: 0, padding: "12px 0 20px", background: "linear-gradient(transparent, #0c0f17 20%)" },
-  actionBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "16px 0", borderRadius: 14, background: "#f59e0b", color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: -0.3 },
+  actionBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "16px 0", borderRadius: 14, background: "#f59e0b", color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: -0.3, border: "none", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
   waitBanner: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 0", color: "#64748b", fontSize: 13, fontWeight: 500 },
   demoBar: { display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "10px 14px 12px", background: "linear-gradient(180deg, #1a1428, #12101d)", borderBottom: "1px solid #2d264080", position: "sticky", top: 0, zIndex: 100, flexShrink: 0 },
   demoLabel: { fontSize: 12, fontWeight: 800, color: "#f59e0b", letterSpacing: 1, textTransform: "uppercase" },

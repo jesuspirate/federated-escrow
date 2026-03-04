@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { t, getLocale, getAvailableLocales, setLocale } from "./i18n";
-import NotificationSettings, { NotifBellIcon } from "./NotificationSettings";
+// FUTURE: Re-enable for PWA/Start9/Umbrel push notifications
+//import NotificationSettings, { NotifBellIcon } from "./NotificationSettings";
 
 // ═══════════════════════════════════════════════════════════════════════
 // Fedi Mini-App: Marketplace v2.0
@@ -70,6 +71,19 @@ async function makeNip98Header(url, method) {
   }
 }
 
+// Cache NIP-98 headers for 30s to avoid re-signing for rapid sequential calls
+const _nip98Cache = new Map();
+const NIP98_CACHE_TTL = 30_000;
+
+async function getCachedNip98Header(url, method) {
+  const key = `${method}:${url}`;
+  const cached = _nip98Cache.get(key);
+  if (cached && Date.now() - cached.ts < NIP98_CACHE_TTL) return cached.header;
+  const header = await makeNip98Header(url, method);
+  if (header) _nip98Cache.set(key, { header, ts: Date.now() });
+  return header;
+}
+
 async function mapi(path, opts = {}, _retries = 1) {
   const method = opts.method || "GET";
   const url = `${location.origin}${MAPI}${path}`;
@@ -80,7 +94,7 @@ async function mapi(path, opts = {}, _retries = 1) {
 
   if (needsAuth) {
     try {
-      const nip98 = await makeNip98Header(url, method);
+      const nip98 = await getCachedNip98Header(url, method);
       if (nip98) headers["Authorization"] = nip98;
       else if (_devPubkey) headers["X-Dev-Pubkey"] = _devPubkey;
     } catch (err) {
@@ -393,12 +407,30 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   // ── Data loading (isolated loading states) ──────────────────────
 
   const loadListings = useCallback(async (query) => {
+    // Show cached listings instantly while fetching fresh data
+    const cacheKey = "sm_listings_cache";
+    if (!query && listings.length === 0) {
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) setListings(JSON.parse(cached));
+      } catch {}
+    }
     setBrowseLoading(true);
     try {
       const path = query ? `/?q=${encodeURIComponent(query)}` : "/";
-      const data = await mapi(path);
+      const [data, myData] = await Promise.all([
+        mapi(path),
+        mapi(`/?seller=${encodeURIComponent(pubkey)}&status=paused`).catch(() => ({ listings: [] })),
+      ]);
       if (data.error) throw new Error(data.error);
-      setListings(data.listings || []);
+      const active = data.listings || [];
+      // Merge seller's own non-active listings (paused/deleted) that aren't already in results
+      const myOwn = (myData.listings || []).filter(l => l.status !== "active" && l.status !== "deleted");
+      const ids = new Set(active.map(l => l.id));
+      const merged = [...active, ...myOwn.filter(l => !ids.has(l.id))];
+      setListings(merged);
+      // Cache for instant display on next visit
+      if (!query) { try { sessionStorage.setItem(cacheKey, JSON.stringify(merged)); } catch {} }
     } catch (err) {
       console.error("[marketplace-ui] loadListings:", err);
       setListings([]);
@@ -425,8 +457,16 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   }, []);
 
   // Re-load listings every time we switch TO browse view
+  // Only refetch if stale (>30s) or empty
+  const lastBrowseLoad = useRef(0);
   useEffect(() => {
-    if (view === "browse") loadListings(searchQuery);
+    if (view === "browse") {
+      const now = Date.now();
+      if (now - lastBrowseLoad.current > 30_000 || listings.length === 0) {
+        lastBrowseLoad.current = now;
+        loadListings(searchQuery);
+      }
+    }
   }, [view]);
 
   const openListing = async (id) => {
@@ -457,7 +497,12 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
 
   const handleUnpause = async (id) => {
     try {
-      const res = await mapi(`/${id}/update`, { method: "POST", body: JSON.stringify({ status: "active" }) });
+      const FEDI_ROOMS = {
+        en: "fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::",
+        fr: "fedi:room:!qHlVxBJBCKqUbetBnA:m1.8fa.in:::",
+        };
+      const body = { status: "active", communityLink: FEDI_ROOMS[getLocale()] || FEDI_ROOMS.en };
+      const res = await mapi(`/${id}/update`, { method: "POST", body: JSON.stringify(body) });
       if (res.error) throw new Error(res.error);
       showToast("▶ Listing resumed");
       loadListings();
@@ -487,6 +532,9 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   return (
     <div style={M.root}>
       <style>{`
+        *, *::before, *::after { -webkit-tap-highlight-color: transparent !important; box-sizing: border-box; }
+        button, a, input, select, textarea, [role="button"] { -webkit-tap-highlight-color: transparent !important; outline: none !important; -webkit-appearance: none; }
+        button:focus, button:active, a:focus, a:active, input:focus { outline: none !important; box-shadow: none !important; }
         @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
@@ -502,7 +550,6 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
           onOpen={openListing}
           onCreate={() => setView("create")}
           onOrders={openOrders}
-          onNotifications={() => setView("notifications")}
           onRefresh={() => loadListings(searchQuery)}
           onSwitchToEscrow={onSwitchToEscrow}
           onProfile={openProfile}
@@ -572,13 +619,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
           showToast={showToast}
         />
       )}
-      {view === "notifications" && (
-        <NotificationSettings
-          pubkey={pubkey}
-          onBack={() => setView("browse")}
-          showToast={showToast}
-        />
-      )}
+      {/* FUTURE: Re-enable notifications for PWA/Start9/Umbrel */}
     </div>
   );
 }
@@ -683,6 +724,8 @@ const CATEGORIES = [
 const LEARN_DISMISSED_KEY = "fedi-mk-learn-dismissed";
 
 function NewToFediBanner() {
+  if (_isFediApp) return null;  // User is already in Fedi
+  // ... rest unchanged
   const [dismissed, setDismissed] = useState(() => {
     try { return localStorage.getItem(LEARN_DISMISSED_KEY) === "1"; } catch { return false; }
   });
@@ -818,11 +861,14 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
 function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
+  const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
 
   const filteredListings = activeCategory === "all"
     ? listings
     : listings.filter(l => {
         if (activeCategory === "sats-for-fiat") return isSatsForFiat(l.category);
+	// Exclude P2P trades from other category matches
+        if (isSatsForFiat(l.category)) return false;
         return l.category?.toLowerCase() === activeCategory;
       });
 
@@ -835,7 +881,10 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <GlobeLangPicker locale={locale} onSwitchLocale={onSwitchLocale} />
-          <NotifBellIcon onClick={onNotifications} style={{ color: "#94a3b8" }} />
+	  {/* FUTURE: Re-enable for PWA/Start9/Umbrel
+	  <NotifBellIcon onClick={onNotifications} style={{ color: "#94a3b8" }} />
+	  */}
+          <button style={M.iconBtn} onClick={() => onProfile(pubkey)} title="My Profile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
           <button style={M.iconBtn} onClick={() => setSearchOpen(!searchOpen)}><Icons.Search /></button>
           <button style={M.iconBtn} onClick={onRefresh}><Icons.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
         </div>
@@ -858,7 +907,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
             </div>
             <div style={{ width: 1, background: "#1e293b" }} />
             <div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: "#a78bfa" }}>{listings.filter(l => isSatsForFiat(l.category)).length}</div>
+	      <div style={{ fontSize: 22, fontWeight: 900, color: "#a78bfa" }}>{p2pCount}</div>
               <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>P2P Trades</div>
             </div>
             <div style={{ width: 1, background: "#1e293b" }} />
@@ -944,18 +993,34 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
             {loading ? t("mkLoading") : searchQuery ? t("mkNoResults") : t("mkNoListings")}
           </p>
         </div>
+      ) : loading && filteredListings.length === 0 ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 20 }}>
+          {[1,2,3,4].map(i => (
+            <div key={i} style={{ ...M.listingCard, pointerEvents: "none", animation: "pulse 1.5s ease-in-out infinite" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ width: "60%", height: 16, borderRadius: 6, background: "#1e293b" }} />
+                <div style={{ width: 60, height: 16, borderRadius: 6, background: "#1e293b" }} />
+              </div>
+              <div style={{ width: "85%", height: 12, borderRadius: 4, background: "#1e293b", marginTop: 8 }} />
+              <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+                <div style={{ width: 50, height: 18, borderRadius: 6, background: "#1e293b" }} />
+                <div style={{ width: 70, height: 18, borderRadius: 6, background: "#1e293b" }} />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 20 }}>
           {filteredListings.map(l => (
             <button key={l.id} style={M.listingCard} onClick={() => onOpen(l.id)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={M.cardTitle}>{l.title}</span>
-                <span style={M.cardPrice}>{fmtSats(l.priceMsats)} <span style={{ color: "#64748b", fontWeight: 400, fontSize: 12 }}>{t("sats")}</span></span>
+		<span style={M.cardPrice}><span style={{ color: "#f7931a", fontSize: 13 }}>₿</span> {fmtSats(l.priceMsats)}</span>
               </div>
               {l.description && <p style={M.cardDesc}>{l.description}</p>}
               <div style={M.cardMeta}>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  {l.condition && <span style={M.conditionBadge}>{t(CONDITION_KEYS[l.condition] || l.condition)}</span>}
+                  {l.condition && !isSatsForFiat(l.category) && <span style={M.conditionBadge}>{t(CONDITION_KEYS[l.condition] || l.condition)}</span>}
                   {l.category && <span style={{
                     ...M.categoryBadge,
                     ...(isSatsForFiat(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : {}),
@@ -1100,8 +1165,8 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
       <div style={{ paddingBottom: 20 }}>
         <div style={{ marginBottom: 16 }}>
           <h2 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", margin: "0 0 8px", lineHeight: 1.3 }}>{l.title}</h2>
-          <div style={{ fontSize: 32, fontWeight: 900, color: "#f59e0b", letterSpacing: -1 }}>
-            {fmtSats(l.priceMsats)} <span style={{ fontSize: 16, fontWeight: 500, color: "#64748b" }}>{t("sats")}</span>
+          <div style={{ fontSize: 32, fontWeight: 900, color: "#f8fafc", letterSpacing: -1 }}>
+	  <span style={{ color: "#f7931a", fontSize: 22 }}>₿</span> {fmtSats(l.priceMsats)}
           </div>
         </div>
 
@@ -1123,8 +1188,8 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
             {loading
               ? (isP2P ? "Starting trade…" : t("mkBuying"))
               : isP2P
-                ? `₿ Start Trade — ${fmtSats(l.priceMsats)} sats`
-                : `⚡ ${t("mkBuyFor", { amount: fmtSats(l.priceMsats) })}`
+		? `₿ Start Trade — ${fmtSats(l.priceMsats)} sats`
+		: `⚡ Buy for ₿ ${fmtSats(l.priceMsats)}`
             }
           </button>
         )}
@@ -1133,7 +1198,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         {canBuy && !isP2P && (
           <div style={{ ...M.infoBanner, borderColor: "rgba(16,185,129,0.2)", background: "rgba(16,185,129,0.04)", marginBottom: 14 }}>
             <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
-              You'll lock <strong style={{ color: "#10b981" }}>{fmtSats(l.priceMsats)} sats</strong> as payment. Once the seller ships and you confirm receipt, the sats release to the seller.
+		You'll lock <strong style={{ color: "#10b981" }}>₿ {fmtSats(l.priceMsats)}</strong> as payment.
             </div>
           </div>
         )}
@@ -1188,7 +1253,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         )}
 
         <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
-          {l.condition && (
+          {l.condition && !isP2P && (
             <div style={{ flex: 1 }}>
               <div style={M.sectionLabel}>{t("mkCondition")}</div>
               <div style={M.sectionValue}>{t(CONDITION_KEYS[l.condition] || l.condition)}</div>
@@ -1491,7 +1556,7 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
                 </div>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-                <span style={{ fontSize: 15, fontWeight: 600, color: "#f59e0b" }}>{fmtSats(o.amountMsats)} {t("sats")}</span>
+		<span style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc" }}><span style={{ color: "#f7931a" }}>₿</span> {fmtSats(o.amountMsats)}</span>
                 <span style={{ fontSize: 11, color: "#475569" }}>
                   {o.buyerPubkey === pubkey ? `🛒 ${t("buyer")}` : `🏠 ${t("seller")}`}
                 </span>
@@ -1586,7 +1651,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             </span>
           )}
           <div style={{ fontSize: 32, fontWeight: 900, color: "#f8fafc", marginTop: 12, letterSpacing: -1 }}>
-            {fmtSats(o.amountMsats)} <span style={{ fontSize: 16, color: "#64748b", fontWeight: 500 }}>{t("sats")}</span>
+	  <span style={{ color: "#f7931a", fontSize: 22 }}>₿</span> {fmtSats(o.amountMsats)}
           </div>
           <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
             {o.listingTitle || detail?.listing?.title || "—"}
@@ -1677,18 +1742,9 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
               </div>
             )}
             {onSwitchToEscrow && status !== "completed" && (
-              <button
-                onClick={() => onSwitchToEscrow(escrow.id)}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
-                  width: "100%", padding: "10px 0", marginTop: 10,
-                  borderRadius: 8, border: "1px solid rgba(139,92,246,0.3)",
-                  background: "rgba(139,92,246,0.1)", color: "#a78bfa",
-                  fontSize: 13, fontWeight: 700, cursor: "pointer",
-                }}
-              >
-                ⚡ Open Escrow — {escrow.status === "FUNDED" ? "Lock Sats" : escrow.status === "LOCKED" ? "Vote" : escrow.status === "APPROVED" ? "Claim Sats" : "View Details"}
-              </button>
+              <div style={{ fontSize: 11, color: "#64748b", marginTop: 8, textAlign: "center" }}>
+                Use the button below to manage this escrow
+              </div>
             )}
           </div>
         )}
@@ -1701,6 +1757,26 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             {o.arbiterPubkey && <div style={M.participantRow}><span style={{ color: "#64748b" }}>⚖️ {t("arbiter")}</span><span style={{ fontFamily: "monospace", fontSize: 11, color: "#475569" }}>{truncPk(o.arbiterPubkey)}</span></div>}
           </div>
         </div>
+
+        {/* ── Primary action: Go to Escrow (right after participants for visibility) ── */}
+        {onSwitchToEscrow && (status === "pending" || status === "active") && (o.escrowId || escrow?.id) && (
+          <button
+            onClick={() => onSwitchToEscrow(escrow?.id || o.escrowId)}
+            style={{
+              ...M.actionBtn,
+              background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
+              boxShadow: "0 4px 24px rgba(124,58,237,0.3)",
+              marginTop: 4, marginBottom: 14,
+            }}
+          >
+            ⚡ {status === "pending"
+              ? (isP2P
+                  ? (isBuyer ? "View Escrow — Send Fiat" : "Lock Sats in Escrow")
+                  : (isBuyer ? "Lock Sats in Escrow" : "View Escrow"))
+              : "Open Escrow — Vote"
+            }
+          </button>
+        )}
 
         {/* ═══ STATUS GUIDANCE ═══ */}
         {status === "pending" && (
@@ -1753,25 +1829,6 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
           </div>
         )}
 
-        {/* ── Primary action: Go to Escrow (for pending/active orders) ── */}
-        {onSwitchToEscrow && (status === "pending" || status === "active") && (o.escrowId || escrow?.id) && (
-          <button
-            onClick={() => onSwitchToEscrow(escrow?.id || o.escrowId)}
-            style={{
-              ...M.actionBtn,
-              background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-              boxShadow: "0 4px 24px rgba(124,58,237,0.3)",
-              marginTop: 8, marginBottom: 8,
-            }}
-          >
-            ⚡ {status === "pending"
-              ? (isP2P
-                  ? (isBuyer ? "View Escrow — Send Fiat" : "Lock Sats in Escrow")
-                  : (isBuyer ? "Lock Sats in Escrow" : "View Escrow"))
-              : "Open Escrow — Vote"
-            }
-          </button>
-        )}
       </div>
     </div>
   );
@@ -1957,10 +2014,10 @@ const M = {
   subtitle: { fontSize: 12, color: "#64748b", margin: "2px 0 0" },
   viewHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0 12px" },
   viewTitle: { fontSize: 17, fontWeight: 600, color: "#f8fafc", margin: 0 },
-  iconBtn: { background: "transparent", color: "#94a3b8", padding: 8, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer" },
-  primaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontWeight: 700, fontSize: 14, padding: "12px 20px", borderRadius: 12, flex: 1, border: "none", cursor: "pointer", boxShadow: "0 2px 12px rgba(245,158,11,0.2)" },
-  secondaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "linear-gradient(145deg, #1e293b, #1a2332)", color: "#e2e8f0", fontWeight: 600, fontSize: 14, padding: "12px 20px", borderRadius: 12, flex: 1, border: "1px solid #334155", cursor: "pointer" },
-  actionBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "16px 0", borderRadius: 14, color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: -0.3, border: "none", cursor: "pointer" },
+  iconBtn: { background: "transparent", color: "#94a3b8", padding: 8, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
+  primaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontWeight: 700, fontSize: 14, padding: "12px 20px", borderRadius: 12, flex: 1, border: "none", cursor: "pointer", boxShadow: "0 2px 12px rgba(245,158,11,0.2)", WebkitTapHighlightColor: "transparent", outline: "none" },
+  secondaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "linear-gradient(145deg, #1e293b, #1a2332)", color: "#e2e8f0", fontWeight: 600, fontSize: 14, padding: "12px 20px", borderRadius: 12, flex: 1, border: "1px solid #334155", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
+  actionBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "16px 0", borderRadius: 14, color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: -0.3, border: "none", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
   input: { width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #1e293b", background: "#111827", color: "#f8fafc", fontSize: 14, outline: "none", boxSizing: "border-box" },
   formGroup: { marginBottom: 16 },
   label: { display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
@@ -1971,12 +2028,12 @@ const M = {
   emptyState: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", textAlign: "center" },
   listingCard: { background: "linear-gradient(145deg, #111827, #0f1320)", border: "1px solid #1e293b", borderRadius: 14, padding: "14px 16px", textAlign: "left", color: "#e2e8f0", width: "100%", cursor: "pointer", transition: "all 0.2s ease" },
   cardTitle: { fontSize: 15, fontWeight: 600, color: "#f8fafc", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 },
-  cardPrice: { fontSize: 15, fontWeight: 700, color: "#f59e0b", whiteSpace: "nowrap", marginLeft: 8 },
+  cardPrice: { fontSize: 15, fontWeight: 700, color: "#f8fafc", whiteSpace: "nowrap", marginLeft: 8 },
   cardDesc: { fontSize: 12, color: "#94a3b8", margin: "6px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   cardMeta: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 },
   conditionBadge: { padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(139,92,246,0.1)", color: "#a78bfa", letterSpacing: 0.3 },
   categoryBadge: { padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: "rgba(100,116,139,0.1)", color: "#94a3b8" },
-  chipBtn: { padding: "6px 12px", borderRadius: 8, background: "#111827", color: "#94a3b8", fontSize: 12, fontWeight: 500, border: "1px solid #1e293b", cursor: "pointer" },
+  chipBtn: { padding: "6px 12px", borderRadius: 8, background: "#111827", color: "#94a3b8", fontSize: 12, fontWeight: 500, border: "1px solid #1e293b", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
   chipBtnActive: { background: "#1e293b", color: "#f8fafc", borderColor: "#f59e0b" },
   infoBanner: { padding: "10px 14px", border: "1px solid", borderRadius: 10, marginBottom: 12 },
   participantRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", fontSize: 13 },
