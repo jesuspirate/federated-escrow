@@ -744,27 +744,6 @@ export default function EcashEscrow({ onSwitchToMarketplace, initialEscrowId, on
         ::-webkit-scrollbar { width: 0; }
       `}</style>
       <Toast {...toast} />
-      {isDevMode() && (
-        <div style={S.demoBar}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", animation: "pulseAmber 2s ease infinite", boxShadow: "0 0 8px rgba(245,158,11,0.4)" }} />
-            <span style={S.demoLabel}>{t("sandbox")}</span>
-            <div style={{ width: 1, height: 14, background: "#2d2640" }} />
-            <span style={{ fontSize: 11, color: "#64748b", fontWeight: 500 }}>{t("playAs")}</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
-            {["seller", "buyer", "arbiter"].map(r => (
-              <button key={r} onClick={() => switchDevIdentity(r)} style={{ ...S.demoRoleBtn, ...(devRole === r ? S.demoRoleBtnActive : {}) }}>
-                {r === "seller" ? "🏷️" : r === "buyer" ? "🛒" : "⚖️"} {t(r)}
-              </button>
-            ))}
-            <div style={{ width: 1, height: 14, background: "#2d2640" }} />
-            <a href={getFediRoomLink(locale)} target="_blank" rel="noopener noreferrer" style={S.demoChatLink}>
-              💬 {t("joinChat")}
-            </a>
-          </div>
-        </div>
-      )}
       {view === "list" && <ListView escrows={escrows} pubkey={pubkey} loading={loading} onOpen={openDetail} onCreate={() => setView("create")} onJoin={() => setView("join")} onRefresh={loadEscrows} locale={locale} onSwitchLocale={switchLocale} onSwitchToMarketplace={onSwitchToMarketplace} />}
       {view === "create" && <CreateView pubkey={pubkey} locale={locale} onBack={() => setView("list")} onCreated={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "join" && <JoinView pubkey={pubkey} onBack={() => setView("list")} onJoined={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
@@ -846,7 +825,6 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
           <p style={S.subtitle}>{isDevMode() ? t("sandboxFooter") : truncPk(pubkey)}</p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <GlobeLangPicker locale={locale} onSwitchLocale={onSwitchLocale} />
           <button style={S.iconBtn} onClick={onRefresh}><I.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
         </div>
       </div>
@@ -868,21 +846,45 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {escrows.map(e => (
-              <button key={e.id} style={S.escrowCard} onClick={() => onOpen(e.id)}>
+            {escrows.slice().sort((a, b) => {
+              // Priority: items needing YOUR action first
+              const rank = (e) => {
+                if (e.status === "FUNDED") return 0;   // needs lock
+                if (e.status === "LOCKED") return 1;   // needs vote
+                if (e.status === "APPROVED") return 2;  // needs claim
+                if (e.status === "CREATED") return 3;   // waiting for parties
+                if (e.status === "CLAIMED") return 4;   // done
+                if (e.status === "COMPLETED") return 5;
+                if (e.status === "EXPIRED") return 6;
+                return 7;
+              };
+              return rank(a) - rank(b);
+            }).map(e => (
+              <button key={e.id} style={{ ...S.escrowCard, ...(e.status === "COMPLETED" || e.status === "EXPIRED" ? { opacity: 0.5 } : {}) }} onClick={() => onOpen(e.id)}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span style={S.cardAmount}><span style={{ color: "#f7931a", fontWeight: 700 }}>₿</span> {fmtSats(e.amountMsats)}</span>
                   <StatusBadge status={e.status} />
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                  <span style={{ fontSize: 11, fontFamily: "monospace", color: "#475569", letterSpacing: 0.3 }}>ID: {e.id}</span>
-                  {isDevMode() && <span style={{ fontSize: 9, padding: "1px 6px", borderRadius: 4, background: "rgba(245,158,11,0.1)", color: "#f59e0b", fontWeight: 600, letterSpacing: 0.3 }}>SANDBOX</span>}
                 </div>
                 {e.description && <p style={S.cardDesc}>{e.description}</p>}
                 <div style={S.cardMeta}>
                   <span style={S.cardRole}>{e.yourRole || "\u2014"}</span>
                   {e.expiresIn && <span style={S.cardExpiry}><I.Clock /> {e.expiresIn}</span>}
                 </div>
+                {e.status === "FUNDED" && e.yourRole === "seller" && (
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(245,158,11,0.1)", fontSize: 11, fontWeight: 600, color: "#f59e0b", textAlign: "center" }}>🔒 Lock your sats to start</div>
+                )}
+                {e.status === "FUNDED" && e.yourRole !== "seller" && (
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>Waiting for seller to lock</div>
+                )}
+                {e.status === "LOCKED" && e.yourRole === "buyer" && (
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.1)", fontSize: 11, fontWeight: 600, color: "#10b981", textAlign: "center" }}>✓ Your turn — vote to release</div>
+                )}
+                {e.status === "LOCKED" && e.yourRole === "seller" && (
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>Waiting for buyer to vote</div>
+                )}
+                {e.status === "APPROVED" && (
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.1)", fontSize: 11, fontWeight: 600, color: "#10b981", textAlign: "center" }}>⚡ Claim your sats!</div>
+                )}
               </button>
             ))}
           </div>
@@ -1412,26 +1414,26 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
         {/* ── Marketplace context — explain the role mapping ── */}
         {e.description?.startsWith("Marketplace:") && role === "seller" && (
-          <div style={{ padding: "10px 14px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12 }}>
+          <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
             <strong style={{ color: "#10b981" }}>🛒 Marketplace Purchase</strong><br/>
             You are locking sats as payment. Once the seller ships and you both confirm, sats release to them.
           </div>
         )}
         {e.description?.startsWith("Marketplace:") && role === "buyer" && (
-          <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12 }}>
+          <div style={{ padding: "12px 16px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
             <strong style={{ color: "#f59e0b" }}>📦 You're the Seller</strong><br/>
             The buyer locked sats as payment. Ship your item, then both confirm to release payment to you.
           </div>
         )}
         {/* ── P2P Trade context ── */}
         {e.description?.startsWith("P2P Trade:") && role === "seller" && (
-          <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12 }}>
+          <div style={{ padding: "12px 16px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
             <strong style={{ color: "#f59e0b" }}>₿ Sats-for-Fiat Trade</strong><br/>
             Lock your sats in escrow. Once the buyer sends fiat and you both confirm, sats release to the buyer.
           </div>
         )}
         {e.description?.startsWith("P2P Trade:") && role === "buyer" && (
-          <div style={{ padding: "10px 14px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12 }}>
+          <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
             <strong style={{ color: "#10b981" }}>₿ Sats-for-Fiat Trade</strong><br/>
             Send fiat to the seller as agreed. Once you both confirm, the sats release to you.
           </div>
@@ -1475,37 +1477,6 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           </div>
         )}
 
-        {/* ═══ POST-TRADE: Rate your counterparty — IMMEDIATELY visible ═══ */}
-        {(status === "COMPLETED" || (status === "CLAIMED" && e.resolvedOutcome)) && onSwitchToMarketplace && (
-          <div style={{
-            margin: "8px 0 16px", padding: 20, borderRadius: 16,
-            background: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0.04))",
-            border: "1px solid rgba(245,158,11,0.25)",
-            textAlign: "center",
-          }}>
-            <div style={{ fontSize: 28, marginBottom: 8 }}>⭐</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>
-              Rate your trade partner
-            </div>
-            <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 14, lineHeight: 1.5 }}>
-              Ratings help build trust in the community. It only takes a moment!
-            </div>
-            <button
-              onClick={() => onSwitchToMarketplace(e.id)}
-              style={{
-                display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                width: "100%", padding: "14px 0",
-                borderRadius: 12, border: "none", cursor: "pointer",
-                background: "linear-gradient(135deg, #f59e0b, #d97706)",
-                color: "#0c0f17", fontSize: 14, fontWeight: 700,
-                boxShadow: "0 4px 16px rgba(245,158,11,0.25)",
-                transition: "all 0.2s ease",
-              }}
-            >
-              ⭐ Go to Order → Rate Trade
-            </button>
-          </div>
-        )}
       </div>
 
       {/* ═══ STATUS BAR ═══ */}

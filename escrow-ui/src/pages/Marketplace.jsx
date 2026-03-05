@@ -891,26 +891,19 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
-  const searchTimer = useRef(null);
-
-  // Debounced live search on typing
-  useEffect(() => {
-    if (!searchOpen) return;
-    if (searchTimer.current) clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(() => {
-      onSearch(searchQuery);
-    }, 400);
-    return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
-  }, [searchQuery, searchOpen]);
-
-  const filteredListings = activeCategory === "all"
+  const filteredListings = (activeCategory === "all"
     ? listings
     : listings.filter(l => {
         if (activeCategory === "sats-for-fiat") return isSatsForFiat(l.category);
 	// Exclude P2P trades from other category matches
         if (isSatsForFiat(l.category)) return false;
         return l.category?.toLowerCase() === activeCategory;
-      });
+      })
+  ).slice().sort((a, b) => {
+    // Urgent (1 left) first, then available, then sold out
+    const rank = (l) => l.quantity === 1 ? 0 : l.quantity > 1 ? 1 : 2;
+    return rank(a) - rank(b);
+  });
 
   return (
     <div style={M.container}>
@@ -961,7 +954,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
 
       {searchOpen && (
         <div style={{ display: "flex", gap: 8, marginBottom: 12, animation: "slideUp 0.2s ease-out" }}>
-          <input style={M.input} placeholder={t("mkSearchPlaceholder") || "Search by title, description, or category..."} value={searchQuery} onChange={e => { setSearchQuery(e.target.value); }} onKeyDown={e => e.key === "Enter" && onSearch(searchQuery)} autoFocus />
+          <input style={M.input} placeholder={t("mkSearchPlaceholder") || "Search by title, description, or category..."} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && onSearch(searchQuery)} autoFocus />
           {searchQuery && <button style={M.iconBtn} onClick={() => { setSearchQuery(""); onSearch(""); }}><Icons.X /></button>}
         </div>
       )}
@@ -1052,7 +1045,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 20 }}>
           {filteredListings.map(l => (
-            <button key={l.id} style={M.listingCard} onClick={() => onOpen(l.id)}>
+            <button key={l.id} style={{ ...M.listingCard, ...(l.status === "paused" ? { opacity: 0.55, borderColor: "#334155" } : {}) }} onClick={() => onOpen(l.id)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={M.cardTitle}>{l.title}</span>
 		<span style={M.cardPrice}><span style={{ color: "#f7931a", fontSize: 13 }}>₿</span> {fmtSats(l.priceMsats)}</span>
@@ -1060,14 +1053,15 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
               {l.description && <p style={M.cardDesc}>{l.description}</p>}
               <div style={M.cardMeta}>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  {l.condition && !isSatsForFiat(l.category) && <span style={M.conditionBadge}>{t(CONDITION_KEYS[l.condition] || l.condition)}</span>}
+                  {l.status === "paused" && <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(100,116,139,0.2)", color: "#94a3b8", border: "1px solid #334155" }}>⏸ {t("mkStatusPaused")}</span>}
+                  {l.condition && !isSatsForFiat(l.category) && l.status !== "paused" && <span style={M.conditionBadge}>{t(CONDITION_KEYS[l.condition] || l.condition)}</span>}
                   {l.category && <span style={{
                     ...M.categoryBadge,
                     ...(isSatsForFiat(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : {}),
                   }}>{isSatsForFiat(l.category) ? "₿ P2P Trade" : l.category}</span>}
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 600, ...(l.quantity > 1 ? { color: "#10b981" } : l.quantity === 1 ? { color: "#f59e0b", animation: "pulse 2s ease infinite" } : { color: "#ef4444" }) }}>
-                  {l.quantity > 1 ? `🟢 ${t("mkQtyAvailable", { qty: l.quantity })}` : l.quantity === 1 ? `🔥 ${t("mkQtyOneLeft")}` : `❌ ${t("mkQtySoldOut")}`}
+                <span style={{ fontSize: 11, fontWeight: 600, ...(l.status === "paused" ? { color: "#64748b" } : l.quantity > 1 ? { color: "#10b981" } : l.quantity === 1 ? { color: "#f59e0b", animation: "pulse 2s ease infinite" } : { color: "#ef4444" }) }}>
+                  {l.status === "paused" ? "⏸ Paused" : l.quantity > 1 ? `🟢 ${t("mkQtyAvailable", { qty: l.quantity })}` : l.quantity === 1 ? `🔥 ${t("mkQtyOneLeft")}` : `❌ ${t("mkQtySoldOut")}`}
                 </span>
               </div>
             </button>
