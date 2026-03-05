@@ -1070,6 +1070,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     matrixBot.notifyJoin({
       id: escrowId,
       amountMsats: listing.price_msats,
+      communityLink: listing.community_link,
       description: isP2PTrade ? `P2P Trade: ${listing.title}` : `Marketplace: ${listing.title}`,
       sellerPubkey: escrowSellerPubkey,
       buyerPubkey: escrowBuyerPubkey,
