@@ -953,6 +953,13 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     if (listing.seller_pubkey === buyerPubkey)
       return res.status(400).json({ error: "You cannot buy your own listing" });
 
+    // Sandbox isolation: prevent cross-contamination between dev and real identities
+    const SANDBOX_PKS = new Set(["aa".repeat(32), "bb".repeat(32), "cc".repeat(32)]);
+    const buyerIsSandbox = SANDBOX_PKS.has(buyerPubkey);
+    const sellerIsSandbox = SANDBOX_PKS.has(listing.seller_pubkey);
+      return res.status(403).json({ error: "Sandbox users cannot buy real listings." });
+      return res.status(403).json({ error: "Real users cannot buy sandbox listings." });
+
     if (!listing.community_link || !isValidCommunityLink(listing.community_link))
       return res.status(400).json({ error: "Listing has no valid community link — seller must update it before purchases are possible" });
 
