@@ -891,6 +891,17 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
+  const searchTimer = useRef(null);
+
+  // Debounced live search on typing
+  useEffect(() => {
+    if (!searchOpen) return;
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      onSearch(searchQuery);
+    }, 400);
+    return () => { if (searchTimer.current) clearTimeout(searchTimer.current); };
+  }, [searchQuery, searchOpen]);
 
   const filteredListings = activeCategory === "all"
     ? listings
@@ -950,8 +961,8 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
 
       {searchOpen && (
         <div style={{ display: "flex", gap: 8, marginBottom: 12, animation: "slideUp 0.2s ease-out" }}>
-          <input style={M.input} placeholder={t("mkSearchPlaceholder")} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && onSearch(searchQuery)} autoFocus />
-          {searchQuery && <button style={M.iconBtn} onClick={() => onSearch("")}><Icons.X /></button>}
+          <input style={M.input} placeholder={t("mkSearchPlaceholder") || "Search by title, description, or category..."} value={searchQuery} onChange={e => { setSearchQuery(e.target.value); }} onKeyDown={e => e.key === "Enter" && onSearch(searchQuery)} autoFocus />
+          {searchQuery && <button style={M.iconBtn} onClick={() => { setSearchQuery(""); onSearch(""); }}><Icons.X /></button>}
         </div>
       )}
 
@@ -1055,8 +1066,8 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                     ...(isSatsForFiat(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : {}),
                   }}>{isSatsForFiat(l.category) ? "₿ P2P Trade" : l.category}</span>}
                 </div>
-                <span style={{ fontSize: 11, color: "#475569" }}>
-                  {l.quantity > 1 ? t("mkQtyAvailable", { qty: l.quantity }) : l.quantity === 1 ? t("mkQtyOneLeft") : t("mkQtySoldOut")}
+                <span style={{ fontSize: 11, fontWeight: 600, ...(l.quantity > 1 ? { color: "#10b981" } : l.quantity === 1 ? { color: "#f59e0b", animation: "pulse 2s ease infinite" } : { color: "#ef4444" }) }}>
+                  {l.quantity > 1 ? `🟢 ${t("mkQtyAvailable", { qty: l.quantity })}` : l.quantity === 1 ? `🔥 ${t("mkQtyOneLeft")}` : `❌ ${t("mkQtySoldOut")}`}
                 </span>
               </div>
             </button>

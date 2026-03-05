@@ -203,13 +203,13 @@ const stmts = {
     VALUES (@id, @seller_pubkey, @title, @description, @price_msats, @currency_display, @category, @condition, @images, @terms, @community_link, 'active', @quantity)
   `),
   getById: db.prepare(`SELECT * FROM listings WHERE id = ?`),
-  listActive: db.prepare(`SELECT * FROM listings WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`),
+  listActive: db.prepare(`SELECT * FROM listings WHERE status = ? ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END, updated_at DESC LIMIT ? OFFSET ?`),
   listBySeller: db.prepare(`SELECT * FROM listings WHERE seller_pubkey = ? ORDER BY created_at DESC`),
   listByCategory: db.prepare(`SELECT * FROM listings WHERE status = 'active' AND category = ? ORDER BY created_at DESC LIMIT ? OFFSET ?`),
   search: db.prepare(`
     SELECT * FROM listings WHERE status = 'active'
     AND (title LIKE ? OR description LIKE ? OR category LIKE ?)
-    ORDER BY created_at DESC LIMIT ? OFFSET ?
+    ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END, updated_at DESC LIMIT ? OFFSET ?
   `),
   decrementQuantity: db.prepare(`UPDATE listings SET quantity = quantity - 1, updated_at = datetime('now') WHERE id = ? AND quantity > 0`),
   markSold: db.prepare(`UPDATE listings SET status = 'sold', updated_at = datetime('now') WHERE id = ? AND quantity <= 0`),
@@ -832,6 +832,13 @@ router.post("/:id/update", ...requireAuth, (req: AuthenticatedRequest, res: Resp
         .run(DEFAULT_COMMUNITY_LINK, req.params.id);
       updated = stmts.getById.get(req.params.id) as ListingRow;
       console.log(`[marketplace] Auto-populated community_link for listing ${req.params.id} on resume`);
+    }
+
+    // Auto-activate: if quantity was increased on a sold listing, set active
+    if (updated.status === "sold" && updated.quantity > 0) {
+      db.prepare(`UPDATE listings SET status = 'active', updated_at = datetime('now') WHERE id = ?`).run(req.params.id);
+      updated = stmts.getById.get(req.params.id) as ListingRow;
+      console.log(`[marketplace] Auto-activated listing \${req.params.id} (quantity: \${updated.quantity})`);
     }
 
     res.json(formatListing(updated));
