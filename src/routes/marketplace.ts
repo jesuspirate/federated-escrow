@@ -515,6 +515,12 @@ router.get("/", (req: AuthenticatedRequest, res: Response) => {
       rows = rows.filter(r => !SANDBOX_PUBKEYS.has(r.seller_pubkey));
     }
 
+    // Sandbox isolation: sandbox users only see sandbox listings
+    const requesterPk = req.pubkey || (req.headers["x-dev-pubkey"] as string);
+    if (requesterPk && SANDBOX_PUBKEYS.has(requesterPk)) {
+      rows = rows.filter(r => SANDBOX_PUBKEYS.has(r.seller_pubkey));
+    }
+
     res.json({
       listings: rows.map(formatListing),
       count: rows.length,
