@@ -908,13 +908,19 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
                   <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.1)", fontSize: 11, fontWeight: 600, color: "#10b981", textAlign: "center" }}>✓ Tap to vote</div>
                 )}
                 {e.status === "LOCKED" && e.yourRole === "seller" && (
-                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>Trade in progress</div>
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>Waiting for votes</div>
                 )}
                 {e.status === "LOCKED" && e.yourRole === "arbiter" && (
-                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>⚖️ May need your vote</div>
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(139,92,246,0.1)", fontSize: 11, fontWeight: 600, color: "#a78bfa", textAlign: "center" }}>⚖️ Dispute — your vote needed</div>
                 )}
-                {e.status === "APPROVED" && (
+                {e.status === "APPROVED" && e.resolvedOutcome === "release" && e.yourRole === "buyer" && (
                   <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.1)", fontSize: 11, fontWeight: 600, color: "#10b981", textAlign: "center" }}>⚡ Claim your sats!</div>
+                )}
+                {e.status === "APPROVED" && e.resolvedOutcome === "refund" && e.yourRole === "seller" && (
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.1)", fontSize: 11, fontWeight: 600, color: "#10b981", textAlign: "center" }}>⚡ Reclaim your sats!</div>
+                )}
+                {e.status === "APPROVED" && ((e.resolvedOutcome === "release" && e.yourRole !== "buyer") || (e.resolvedOutcome === "refund" && e.yourRole !== "seller")) && (
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>Resolved — waiting for claim</div>
                 )}
                 {e.status === "CREATED" && (
                   <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>Waiting for participants</div>
@@ -1470,6 +1476,19 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
             <strong style={{ color: "#10b981" }}>₿ Sats-for-Fiat Trade</strong><br/>
             Send fiat to the seller as agreed. Once you both confirm, the sats release to you.
+          </div>
+        )}
+        {/* ── Lending context ── */}
+        {e.description?.startsWith("Lending:") && role === "seller" && (
+          <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
+            <strong style={{ color: "#10b981" }}>🤝 Community Loan — Lender</strong><br/>
+            Lock your sats as a loan. Once the borrower confirms receipt, sats release to them. They repay you externally per the agreed terms.
+          </div>
+        )}
+        {e.description?.startsWith("Lending:") && role === "buyer" && (
+          <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
+            <strong style={{ color: "#10b981" }}>🤝 Community Loan — Borrower</strong><br/>
+            The lender locked sats for you. Confirm receipt to release the loan. Repay according to the agreed terms.
           </div>
         )}
 

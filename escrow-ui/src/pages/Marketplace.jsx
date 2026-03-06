@@ -130,7 +130,10 @@ function truncPk(hex) {
 
 // ── Trade Type Detection ────────────────────────────────────────────
 const SATS_FOR_FIAT = "sats-for-fiat";
+const LENDING = "lending";
 function isSatsForFiat(category) { return category?.toLowerCase().trim() === SATS_FOR_FIAT; }
+function isLending(category) { return category?.toLowerCase().trim() === LENDING; }
+function isSpecialCategory(category) { return isSatsForFiat(category) || isLending(category); }
 
 // ── Nostr Profile Lookup (client-side, no server relay needed) ────────
 
@@ -751,6 +754,7 @@ function MarketplaceOnboarding({ onComplete }) {
 const CATEGORIES = [
   { key: "all", label: "All", icon: "🏪" },
   { key: "sats-for-fiat", label: "P2P", icon: "₿" },
+  { key: "lending", label: "Lending", icon: "🤝" },
   { key: "electronics", label: "Electronics", icon: "📱" },
   { key: "services", label: "Services", icon: "🛠️" },
   { key: "digital", label: "Digital", icon: "💾" },
@@ -903,12 +907,14 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
+  const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
   const filteredListings = (activeCategory === "all"
     ? listings
     : listings.filter(l => {
         if (activeCategory === "sats-for-fiat") return isSatsForFiat(l.category);
-	// Exclude P2P trades from other category matches
-        if (isSatsForFiat(l.category)) return false;
+        if (activeCategory === "lending") return isLending(l.category);
+	// Exclude special categories from other category matches
+        if (isSpecialCategory(l.category)) return false;
         return l.category?.toLowerCase() === activeCategory;
       })
   ).slice().sort((a, b) => {
@@ -1066,11 +1072,11 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
               <div style={M.cardMeta}>
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   {l.status === "paused" && <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(100,116,139,0.2)", color: "#94a3b8", border: "1px solid #334155" }}>⏸ {t("mkStatusPaused")}</span>}
-                  {l.condition && !isSatsForFiat(l.category) && l.status !== "paused" && <span style={M.conditionBadge}>{t(CONDITION_KEYS[l.condition] || l.condition)}</span>}
+                  {l.condition && !isSatsForFiat(l.category) && !isLending(l.category) && l.status !== "paused" && <span style={M.conditionBadge}>{t(CONDITION_KEYS[l.condition] || l.condition)}</span>}
                   {l.category && <span style={{
                     ...M.categoryBadge,
-                    ...(isSatsForFiat(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : {}),
-                  }}>{isSatsForFiat(l.category) ? "₿ P2P Trade" : l.category}</span>}
+                    ...(isSatsForFiat(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : isLending(l.category) ? { background: "rgba(16,185,129,0.15)", color: "#10b981", fontWeight: 700 } : {}),
+                  }}>{isSatsForFiat(l.category) ? "₿ P2P Trade" : isLending(l.category) ? "🤝 Lending" : l.category}</span>}
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 600, ...(l.status === "paused" ? { color: "#64748b" } : l.quantity > 1 ? { color: "#10b981" } : l.quantity === 1 ? { color: "#f59e0b", animation: "pulse 2s ease infinite" } : { color: "#ef4444" }) }}>
                   {l.status === "paused" ? "⏸ Paused" : l.quantity > 1 ? `🟢 ${t("mkQtyAvailable", { qty: l.quantity })}` : l.quantity === 1 ? `🔥 ${t("mkQtyOneLeft")}` : `❌ ${t("mkQtySoldOut")}`}
@@ -1354,6 +1360,8 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
   const [fiatCurrency, setFiatCurrency] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [ratePremium, setRatePremium] = useState("");
+  const [interestRate, setInterestRate] = useState("");
+  const [repaymentDays, setRepaymentDays] = useState("");
   const locale = getLocale();
   const FEDI_ROOMS = {
     en: "fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::",
@@ -1362,11 +1370,13 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
   const [community, setCommunity] = useState(() => FEDI_ROOMS[locale] || FEDI_ROOMS.en);
 
   const isP2P = isSatsForFiat(category);
+  const isLoan = isLending(category);
+  const isSpecial = isP2P || isLoan;
 
-  // Auto-set condition/qty when P2P is selected
+  // Auto-set condition/qty when P2P or Lending is selected
   useEffect(() => {
-    if (isP2P) { setCondition("service"); setQuantity("1"); }
-  }, [isP2P]);
+    if (isP2P || isLoan) { setCondition("service"); setQuantity("1"); }
+  }, [isP2P, isLoan]);
 
   const handleCreate = async () => {
     const sats = parseInt(price);
@@ -1384,6 +1394,16 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
       if (p2pMeta.length) finalTerms = (finalTerms ? finalTerms + "\n\n" : "") + "--- P2P Details ---\n" + p2pMeta.join("\n");
     }
 
+    // Append Lending metadata to terms
+    if (isLoan) {
+      const loanMeta = [];
+      if (interestRate) loanMeta.push(`Interest: ${interestRate}`);
+      if (repaymentDays) loanMeta.push(`Repayment: ${repaymentDays}`);
+      if (paymentMethod) loanMeta.push(`Repayment method: ${paymentMethod}`);
+      if (fiatCurrency) loanMeta.push(`Currency: ${fiatCurrency}`);
+      if (loanMeta.length) finalTerms = (finalTerms ? finalTerms + "\n\n" : "") + "--- Loan Terms ---\n" + loanMeta.join("\n");
+    }
+
     setLoading(true);
     try {
       const res = await mapi("/", {
@@ -1394,9 +1414,9 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           priceMsats: sats * 1000,
           terms: finalTerms || undefined,
           category: category.trim() || undefined,
-          condition: isP2P ? "service" : condition,
+          condition: isSpecial ? "service" : condition,
           communityLink: community.trim() || undefined,
-          quantity: isP2P ? 1 : (parseInt(quantity) || 1),
+          quantity: isSpecial ? 1 : (parseInt(quantity) || 1),
         }),
       });
       if (res.error) throw new Error(res.error);
@@ -1410,7 +1430,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
     <div style={M.container}>
       <div style={M.viewHeader}>
         <button style={M.iconBtn} onClick={onBack}><Icons.Back /></button>
-        <h2 style={M.viewTitle}>{isP2P ? t("mkP2PSellTitle") : t("mkNewListing")}</h2>
+        <h2 style={M.viewTitle}>{isP2P ? t("mkP2PSellTitle") : isLoan ? "New Loan" : t("mkNewListing")}</h2>
         <div style={{ width: 36 }} />
       </div>
 
@@ -1420,6 +1440,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
           {[
             { value: SATS_FOR_FIAT, label: "₿ Sats for Fiat", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
+            { value: LENDING, label: "🤝 Lending", color: "#10b981", bg: "rgba(16,185,129,0.12)" },
             { value: "electronics", label: "Electronics" },
             { value: "clothing", label: "Clothing" },
             { value: "art", label: "Art" },
@@ -1427,15 +1448,13 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           ].map(cat => {
             const active = category === cat.value;
             const handleCatClick = () => {
-              // P2P is exclusive — selecting it clears all others; selecting any
-              // other category clears P2P if it was active
-              if (cat.value === SATS_FOR_FIAT) {
-                setCategory(active ? "" : SATS_FOR_FIAT);
-                // Clear payment method / fiat currency when toggling off P2P
+              // Special categories (P2P, Lending) are exclusive
+              if (cat.value === SATS_FOR_FIAT || cat.value === LENDING) {
+                setCategory(active ? "" : cat.value);
                 if (active) { setPaymentMethod && setPaymentMethod(""); setFiatCurrency && setFiatCurrency(""); }
               } else {
-                // Deselect P2P if active
-                if (category === SATS_FOR_FIAT) setCategory(cat.value);
+                // Deselect special categories if active
+                if (isSpecialCategory(category)) setCategory(cat.value);
                 else setCategory(active ? "" : cat.value);
               }
             };
@@ -1467,9 +1486,22 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
         </div>
       )}
 
+      {/* ── Lending mode banner ── */}
+      {isLoan && (
+        <div style={{ ...M.infoBanner, borderColor: "rgba(16,185,129,0.3)", background: "rgba(16,185,129,0.06)", marginBottom: 14, borderLeft: "3px solid #10b981" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 15 }}>🤝</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#10b981" }}>Community Lending</span>
+          </div>
+          <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
+            You lock sats in escrow as a loan. The borrower receives them and repays externally (fiat, goods, labor). The community arbiter verifies repayment.
+          </div>
+        </div>
+      )}
+
       {/* ── Common fields: Title + Price ── */}
-      <div style={M.formGroup}><label style={M.label}>{t("mkFieldTitle")} *</label><input style={M.input} placeholder={isP2P ? "e.g., Selling 50,000 sats for USD" : t("mkFieldTitleHint")} value={title} onChange={e => setTitle(e.target.value)} /></div>
-      <div style={M.formGroup}><label style={M.label}>{t("mkFieldPrice")} *</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}</p></div>
+      <div style={M.formGroup}><label style={M.label}>{t("mkFieldTitle")} *</label><input style={M.input} placeholder={isP2P ? "e.g., Selling 50,000 sats for USD" : isLoan ? "e.g., Lending 50,000 sats — 14 day term" : t("mkFieldTitleHint")} value={title} onChange={e => setTitle(e.target.value)} /></div>
+      <div style={M.formGroup}><label style={M.label}>{isLoan ? "LOAN AMOUNT (SATS) *" : t("mkFieldPrice") + " *"}</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}</p></div>
 
       {/* ── P2P-specific fields ── */}
       {isP2P && (
@@ -1519,8 +1551,59 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
         </div>
       )}
 
-      {/* ── Non-P2P fields: Condition + Quantity ── */}
-      {!isP2P && (
+      {/* ── Lending-specific fields ── */}
+      {isLoan && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", gap: 12 }}>
+            <div style={{ flex: 1 }}>
+              <label style={M.label}>INTEREST RATE</label>
+              <input style={M.input} placeholder="e.g., 5%" value={interestRate} onChange={e => setInterestRate(e.target.value)} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={M.label}>REPAYMENT PERIOD</label>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {["7 days", "14 days", "30 days", "60 days", "90 days"].map(d => (
+                  <button key={d} onClick={() => setRepaymentDays(d)} style={{
+                    ...M.chipBtn, padding: "6px 10px", fontSize: 11,
+                    ...(repaymentDays === d ? { ...M.chipBtnActive, borderColor: "#10b981", color: "#10b981", background: "rgba(16,185,129,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
+                  }}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div style={M.formGroup}>
+            <label style={M.label}>REPAYMENT METHOD</label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {["Sats", "Fiat", "Goods/Labor", "Mixed"].map(rm => (
+                <button key={rm} onClick={() => setPaymentMethod(rm)} style={{
+                  ...M.chipBtn, padding: "6px 12px", fontSize: 12,
+                  ...(paymentMethod === rm ? { ...M.chipBtnActive, borderColor: "#10b981", color: "#10b981", background: "rgba(16,185,129,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
+                }}>
+                  {rm}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={M.formGroup}>
+            <label style={M.label}>{t("mkFiatCurrency")}</label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {["USD", "EUR", "CFA", "KES", "NGN", "BRL", "ARS"].map(cur => (
+                <button key={cur} onClick={() => setFiatCurrency(cur)} style={{
+                  ...M.chipBtn, padding: "6px 12px", fontSize: 12, fontWeight: 600,
+                  ...(fiatCurrency === cur ? { ...M.chipBtnActive, borderColor: "#10b981", color: "#10b981", background: "rgba(16,185,129,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
+                }}>
+                  {cur}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Non-P2P/Lending fields: Condition + Quantity ── */}
+      {!isP2P && !isLoan && (
         <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
           <div style={{ flex: 1 }}>
             <label style={M.label}>{t("mkCondition")}</label>

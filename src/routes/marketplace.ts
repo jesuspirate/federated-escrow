@@ -270,6 +270,14 @@ function isSatsForFiat(category: string | null): boolean {
   return category?.toLowerCase().trim() === SATS_FOR_FIAT_CATEGORY;
 }
 
+function isLenderTrade(category: string | null): boolean {
+  return category?.toLowerCase().trim() === "lending";
+}
+
+function isP2PStyle(category: string | null): boolean {
+  return isSatsForFiat(category) || isLenderTrade(category);
+}
+
 function isValidCommunityLink(l: string): boolean {
   return /^fedi:room:![a-zA-Z0-9]+:[a-zA-Z0-9.-]+:::$/.test(l.trim());
 }
@@ -581,7 +589,7 @@ router.get("/orders/:orderId", ...requireAuth, (req: AuthenticatedRequest, res: 
         lockedAt: escrow.locked_at,
         resolvedOutcome: escrow.resolved_outcome,
       } : null,
-      tradeType: listing && isSatsForFiat(listing.category) ? "sats-for-fiat" : "marketplace",
+      tradeType: listing && isP2PStyle(listing.category) ? (isLenderTrade(listing.category) ? "lending" : "sats-for-fiat") : "marketplace",
     });
   } catch (err: any) {
     console.error("[marketplace] GET /orders/:id error:", err);
@@ -997,7 +1005,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     //   Flow: Buyer locks sats → Seller ships item → Both confirm → Seller gets sats
 
     const escrowId = DB.getNextId();
-    const isP2PTrade = isSatsForFiat(listing.category);
+    const isP2PTrade = isP2PStyle(listing.category);
 
     // Who takes which escrow role?
     const escrowSellerPubkey = isP2PTrade ? listing.seller_pubkey : buyerPubkey;
@@ -1006,7 +1014,9 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     DB.createEscrow({
       id: escrowId,
       amountMsats: listing.price_msats,
-      description: isP2PTrade 
+      description: isLenderTrade(listing.category)
+        ? `Lending: ${listing.title}`
+        : isP2PTrade
         ? `P2P Trade: ${listing.title}`
         : `Marketplace: ${listing.title}`,
       terms: listing.terms || "Standard marketplace terms apply.",
