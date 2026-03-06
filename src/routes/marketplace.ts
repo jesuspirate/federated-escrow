@@ -510,15 +510,13 @@ router.get("/", (req: AuthenticatedRequest, res: Response) => {
       rows = stmts.listActive.all(status, limit, offset) as ListingRow[];
     }
 
-    // Filter sandbox data from production browse
-    if (IS_PRODUCTION) {
-      rows = rows.filter(r => !SANDBOX_PUBKEYS.has(r.seller_pubkey));
-    }
-
-    // Sandbox isolation: sandbox users only see sandbox listings
+    // Sandbox isolation: sandbox sees only sandbox, production sees only real
     const requesterPk = req.pubkey || (req.headers["x-dev-pubkey"] as string);
-    if (requesterPk && SANDBOX_PUBKEYS.has(requesterPk)) {
+    const isSandboxUser = requesterPk && SANDBOX_PUBKEYS.has(requesterPk);
+    if (isSandboxUser) {
       rows = rows.filter(r => SANDBOX_PUBKEYS.has(r.seller_pubkey));
+    } else if (IS_PRODUCTION) {
+      rows = rows.filter(r => !SANDBOX_PUBKEYS.has(r.seller_pubkey));
     }
 
     res.json({
@@ -963,7 +961,9 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     const SANDBOX_PKS = new Set(["aa".repeat(32), "bb".repeat(32), "cc".repeat(32)]);
     const buyerIsSandbox = SANDBOX_PKS.has(buyerPubkey);
     const sellerIsSandbox = SANDBOX_PKS.has(listing.seller_pubkey);
+    if (buyerIsSandbox && !sellerIsSandbox)
       return res.status(403).json({ error: "Sandbox users cannot buy real listings." });
+    if (!buyerIsSandbox && sellerIsSandbox)
       return res.status(403).json({ error: "Real users cannot buy sandbox listings." });
 
     if (!listing.community_link || !isValidCommunityLink(listing.community_link))
@@ -975,7 +975,10 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
 
     // ── Pick arbiter ──────────────────────────────────────────────────
 
-    const arbiterPubkey = pickArbiter([listing.seller_pubkey, buyerPubkey]);
+    // Sandbox isolation: use sandbox arbiter for sandbox trades
+    const SANDBOX_ARBS = new Set(["aa".repeat(32), "bb".repeat(32), "cc".repeat(32)]);
+    const isSandboxTrade = SANDBOX_ARBS.has(buyerPubkey) || SANDBOX_ARBS.has(listing.seller_pubkey);
+    const arbiterPubkey = isSandboxTrade ? "cc".repeat(32) : pickArbiter([listing.seller_pubkey, buyerPubkey]);
     if (!arbiterPubkey)
       return res.status(503).json({ error: "No eligible arbiter available. Try again later or contact the community." });
 
@@ -1087,7 +1090,8 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     });
 
   // ── Matrix bot: notify all participants about the new trade ──
-    matrixBot.notifyJoin({
+    // Skip notifications for sandbox trades
+    if (!isSandboxTrade) matrixBot.notifyJoin({
       id: escrowId,
       amountMsats: listing.price_msats,
       communityLink: listing.community_link,

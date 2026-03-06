@@ -3,58 +3,12 @@ import EcashEscrow from "./EcashEscrow";
 import Marketplace from "./Marketplace";
 
 // ═══════════════════════════════════════════════════════════════════════
-// App Shell — Switches between Escrow and Marketplace
+// App Shell — Single source of truth for auth, sandbox mode, and routing
 //
-// This wraps both components and provides bi-directional navigation.
-// EcashEscrow gets an onSwitchToMarketplace prop.
-// Marketplace gets an onSwitchToEscrow prop.
-//
-// In your main.jsx, replace:
-//   import EcashEscrow from "./pages/EcashEscrow";
-// with:
-//   import App from "./pages/App";
-// and render <App /> instead of <EcashEscrow />
+// The sandbox bar lives HERE and wraps both Escrow and Marketplace.
+// Both child components receive pubkey/devRole as props — they never
+// touch window.nostr in sandbox mode.
 // ═══════════════════════════════════════════════════════════════════════
-
-export default function App() {
-  const [activeApp, setActiveApp] = useState("marketplace"); // "escrow" | "marketplace"
-  const [initialEscrowId, setInitialEscrowId] = useState(null);
-  const [sharedPubkey, setSharedPubkey] = useState(null); // shared across both apps — avoids double NIP-98 prompt
-
-  const switchToEscrow = useCallback((escrowId) => {
-    setInitialEscrowId(escrowId || null);
-    setActiveApp("escrow");
-  }, []);
-
-  const [initialMarketplaceEscrowId, setInitialMarketplaceEscrowId] = useState(null);
-
-  const switchToMarketplace = useCallback((escrowId = null) => {
-    setInitialEscrowId(null);
-    setInitialMarketplaceEscrowId(escrowId || null);
-    setActiveApp("marketplace");
-  }, []);
-
-  return (
-    <>
-      {activeApp === "escrow" && (
-        <EcashEscrow
-          onSwitchToMarketplace={switchToMarketplace}
-          initialEscrowId={initialEscrowId}
-          onEscrowOpened={() => setInitialEscrowId(null)}
-          sharedPubkey={sharedPubkey}
-          onPubkeyResolved={setSharedPubkey}
-        />
-      )}
-      {activeApp === "marketplace" && (
-        <MarketplaceShell onSwitchToEscrow={switchToEscrow} initialEscrowId={initialMarketplaceEscrowId} onOpened={() => setInitialMarketplaceEscrowId(null)} sharedPubkey={sharedPubkey} onPubkeyResolved={setSharedPubkey} />
-      )}
-    </>
-  );
-}
-
-// ── MarketplaceShell — handles auth before rendering Marketplace ──────
-// Replicates the same auth flow as EcashEscrow so both components
-// share the same pubkey and dev mode state.
 
 const DEV_IDENTITIES = {
   seller:  "aa".repeat(32),
@@ -62,6 +16,7 @@ const DEV_IDENTITIES = {
   arbiter: "cc".repeat(32),
 };
 
+// ── Fedi detection (runs once at module load) ─────────────────────────
 function _detectFediApp() {
   if (typeof window === "undefined") return false;
   if (!window.webln) return false;
@@ -75,40 +30,65 @@ function _detectFediApp() {
 }
 
 const _isFediApp = _detectFediApp();
-const _forceDevMode = typeof location !== "undefined"
-  && (!_isFediApp || new URLSearchParams(location.search).has("dev"));
+const _isSandbox = !_isFediApp || (typeof location !== "undefined" && new URLSearchParams(location.search).has("dev"));
 
-function isDevMode() { return _forceDevMode || !_isFediApp; }
+// ═══════════════════════════════════════════════════════════════════════
 
-function MarketplaceShell({ onSwitchToEscrow, initialEscrowId, onOpened, sharedPubkey, onPubkeyResolved }) {
-  const [pubkey, setPubkey] = useState(sharedPubkey || null);
+export default function App() {
+  const [activeApp, setActiveApp] = useState("marketplace");
+  const [initialEscrowId, setInitialEscrowId] = useState(null);
+  const [initialMarketplaceEscrowId, setInitialMarketplaceEscrowId] = useState(null);
+
+  // ── Auth state (single source of truth) ─────────────────────────
+  const [pubkey, setPubkey] = useState(_isSandbox ? DEV_IDENTITIES["seller"] : null);
   const [devRole, setDevRole] = useState("seller");
 
+  // Resolve pubkey once on mount
   useEffect(() => {
-    if (sharedPubkey) { setPubkey(sharedPubkey); return; } // skip re-auth if already known
+    if (_isSandbox) {
+      setPubkey(DEV_IDENTITIES[devRole]);
+      return;
+    }
+    // Fedi: get real Nostr pubkey
     (async () => {
-      if (_forceDevMode || !_isFediApp) {
-        setPubkey(DEV_IDENTITIES[devRole]);
-        return;
-      }
+      // Try sessionStorage first (fast, no prompt)
+      try {
+        const cached = sessionStorage.getItem("nostr_pubkey");
+        if (cached) { setPubkey(cached); return; }
+      } catch {}
+      // Ask Fedi for pubkey
       try {
         const pk = await window.nostr?.getPublicKey();
         if (pk) {
           setPubkey(pk);
-          if (onPubkeyResolved) onPubkeyResolved(pk);
           try { sessionStorage.setItem("nostr_pubkey", pk); } catch {}
           return;
         }
       } catch {}
+      // Fallback to sandbox if all else fails
       setPubkey(DEV_IDENTITIES[devRole]);
     })();
-  }, [sharedPubkey]);
+  }, []);
 
+  // Sandbox role switch
   const switchDevIdentity = useCallback((role) => {
     setDevRole(role);
     setPubkey(DEV_IDENTITIES[role]);
   }, []);
 
+  // ── Navigation ──────────────────────────────────────────────────
+  const switchToEscrow = useCallback((escrowId) => {
+    setInitialEscrowId(escrowId || null);
+    setActiveApp("escrow");
+  }, []);
+
+  const switchToMarketplace = useCallback((escrowId = null) => {
+    setInitialEscrowId(null);
+    setInitialMarketplaceEscrowId(escrowId || null);
+    setActiveApp("marketplace");
+  }, []);
+
+  // ── Loading state ───────────────────────────────────────────────
   if (!pubkey) {
     return (
       <div style={{ background: "#0c0f17", color: "#e2e8f0", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -119,14 +99,15 @@ function MarketplaceShell({ onSwitchToEscrow, initialEscrowId, onOpened, sharedP
 
   return (
     <div style={{ background: "#0c0f17", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Dev mode sandbox bar */}
-      {isDevMode() && (
+      {/* ── Sandbox bar — always visible, fixed at top ── */}
+      {_isSandbox && (
         <div style={{
           display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
           padding: "10px 14px 12px",
           background: "linear-gradient(180deg, #1a1428, #12101d)",
           borderBottom: "1px solid #2d264080",
-          position: "sticky", top: 0, zIndex: 100,
+          position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999,
+          flexShrink: 0,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b" }} />
@@ -141,8 +122,9 @@ function MarketplaceShell({ onSwitchToEscrow, initialEscrowId, onOpened, sharedP
                 background: devRole === r ? "rgba(245,158,11,0.12)" : "#111827",
                 color: devRole === r ? "#fbbf24" : "#64748b",
                 fontSize: 12, fontWeight: 600,
-                border: devRole === r ? "1px solid rgba(245,158,11,0.3)" : "1px solid #1e293b",
+                border: devRole === r ? "1px solid rgba(245,158,11,0.3)" : "1px solid transparent",
                 cursor: "pointer", textTransform: "capitalize",
+                WebkitTapHighlightColor: "rgba(0,0,0,0)",
               }}>
                 {r === "seller" ? "🏠" : r === "buyer" ? "🛒" : "⚖️"} {r}
               </button>
@@ -150,7 +132,28 @@ function MarketplaceShell({ onSwitchToEscrow, initialEscrowId, onOpened, sharedP
           </div>
         </div>
       )}
-      <Marketplace pubkey={pubkey} devRole={devRole} onSwitchToEscrow={onSwitchToEscrow} initialEscrowId={initialEscrowId} onOpened={onOpened} />
+
+      {/* ── Active view ── */}
+      <div style={_isSandbox ? { paddingTop: 72 } : {}}>
+      {activeApp === "escrow" && (
+        <EcashEscrow
+          pubkey={pubkey}
+          devRole={devRole}
+          onSwitchToMarketplace={switchToMarketplace}
+          initialEscrowId={initialEscrowId}
+          onEscrowOpened={() => setInitialEscrowId(null)}
+        />
+      )}
+      {activeApp === "marketplace" && (
+        <Marketplace
+          pubkey={pubkey}
+          devRole={devRole}
+          onSwitchToEscrow={switchToEscrow}
+          initialEscrowId={initialMarketplaceEscrowId}
+          onOpened={() => setInitialMarketplaceEscrowId(null)}
+        />
+      )}
+      </div>
     </div>
   );
 }

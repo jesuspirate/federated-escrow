@@ -600,13 +600,13 @@ function OnboardingSplash({ onComplete, locale }) {
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════════════
 
-export default function EcashEscrow({ onSwitchToMarketplace, initialEscrowId, onEscrowOpened, sharedPubkey, onPubkeyResolved }) {
+export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, onSwitchToMarketplace, initialEscrowId, onEscrowOpened, sharedPubkey, onPubkeyResolved }) {
   const [onboarded, setOnboarded] = useState(() => {
     try { return localStorage.getItem(ONBOARDING_KEY) === "1"; } catch { return false; }
   });
   const [locale, setLocaleState] = useState(getLocale);
-  const [pubkey, setPubkey] = useState(null);
-  const [devRole, setDevRole] = useState("seller");
+  const [pubkey, setPubkey] = useState(propPubkey || null);
+  const [devRole, setDevRole] = useState(propDevRole || "seller");
   const [view, setView] = useState("list");
   const [escrows, setEscrows] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -620,21 +620,38 @@ export default function EcashEscrow({ onSwitchToMarketplace, initialEscrowId, on
     toastTimer.current = setTimeout(() => setToast(t => ({ ...t, visible: false })), 3000);
   }, []);
 
-	// Browser = sandbox identities. Fedi = real Nostr auth.
+  // Sync pubkey/devRole from parent App.jsx when they change
   useEffect(() => {
+    if (propPubkey) {
+      // Set module-level _devPubkey BEFORE React state update
+      if (isDevMode()) { _devPubkey = propPubkey; }
+      else { _devPubkey = null; }
+      // Clear stale data from previous role
+      setEscrows([]);
+      setSelected(null);
+      setView("list");
+      setPubkey(propPubkey);
+    }
+  }, [propPubkey]);
+
+  useEffect(() => {
+    if (propDevRole) setDevRole(propDevRole);
+  }, [propDevRole]);
+
+	// Browser = sandbox identities. Fedi = real Nostr auth.
+	// Only runs if pubkey wasn't provided by parent
+  useEffect(() => {
+    if (propPubkey) return; // Parent controls auth
     if (_forceDevMode) {
       _devPubkey = DEV_IDENTITIES[devRole];
       setPubkey(_devPubkey);
       return;
     }
-    // 1. Try sharedPubkey prop (React state from App)
     if (sharedPubkey) { _devPubkey = null; setPubkey(sharedPubkey); return; }
-    // 2. Try sessionStorage (synchronous — set by MarketplaceShell on first auth)
     try {
       const cached = sessionStorage.getItem("nostr_pubkey");
       if (cached) { _devPubkey = null; setPubkey(cached); return; }
     } catch {}
-    // 3. Last resort — call getNostrPubkey (may prompt user in Fedi)
     (async () => {
       const pk = await getNostrPubkey();
       if (pk) {
@@ -647,7 +664,7 @@ export default function EcashEscrow({ onSwitchToMarketplace, initialEscrowId, on
         setPubkey(_devPubkey);
       }
     })();
-  }, [sharedPubkey]);
+  }, [sharedPubkey, propPubkey]);
 
 	// FIX: Removed `if (!isDevMode()) return;` guard — it prevented switching
 	// when Nostr auth succeeded on mount but ?dev is in the URL
@@ -748,7 +765,18 @@ export default function EcashEscrow({ onSwitchToMarketplace, initialEscrowId, on
       {view === "create" && <CreateView pubkey={pubkey} locale={locale} onBack={() => setView("list")} onCreated={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "join" && <JoinView pubkey={pubkey} onBack={() => setView("list")} onJoined={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "detail" && selected && <DetailView escrow={selected} pubkey={pubkey} onBack={() => { setSelected(null); setView("list"); loadEscrows(); }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} onSwitchToMarketplace={onSwitchToMarketplace} />}
-      {view === "detail" && !selected && <div style={{ display: "flex", justifyContent: "center", paddingTop: "30vh" }}><div style={{ width: 20, height: 20, border: "2px solid #1e293b", borderTopColor: "#475569", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /></div>}
+      {view === "detail" && !selected && (
+        <div style={S.container}>
+          <div style={S.viewHeader}>
+            <button style={S.iconBtn} onClick={() => { setView("list"); loadEscrows(); }}><I.Back /></button>
+            <h2 style={S.viewTitle}>{t("escrow")}</h2>
+            <div style={{ width: 36 }} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: "20vh" }}>
+            <div style={{ width: 20, height: 20, border: "2px solid #1e293b", borderTopColor: "#475569", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -877,13 +905,19 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
                   <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>Waiting for seller to lock</div>
                 )}
                 {e.status === "LOCKED" && e.yourRole === "buyer" && (
-                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.1)", fontSize: 11, fontWeight: 600, color: "#10b981", textAlign: "center" }}>✓ Your turn — vote to release</div>
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.1)", fontSize: 11, fontWeight: 600, color: "#10b981", textAlign: "center" }}>✓ Tap to vote</div>
                 )}
                 {e.status === "LOCKED" && e.yourRole === "seller" && (
-                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>Waiting for buyer to vote</div>
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>Trade in progress</div>
+                )}
+                {e.status === "LOCKED" && e.yourRole === "arbiter" && (
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>⚖️ May need your vote</div>
                 )}
                 {e.status === "APPROVED" && (
                   <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.1)", fontSize: 11, fontWeight: 600, color: "#10b981", textAlign: "center" }}>⚡ Claim your sats!</div>
+                )}
+                {e.status === "CREATED" && (
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>Waiting for participants</div>
                 )}
               </button>
             ))}
@@ -1050,8 +1084,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     if (amountSats > FED_LIMITS.MAX_TX_SATS) {
       return showToast(`Exceeds ${FED_LIMITS.MAX_TX_SATS.toLocaleString()} sats federation limit`, "error");
     }
-    if (!window.webln) {
-      // Dev/sandbox mode
+    if (isDevMode() || !window.webln) {
+      // Dev/sandbox mode — skip WebLN, use manual lock
       setLocking(true);
       try {
         const notes = `ECASH_DEV_${Date.now()}`;
@@ -1159,7 +1193,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         let claimed = false;
         while (!claimed) {
           let invoice;
-          if (window.webln) {
+          if (isDevMode()) {
+            invoice = `SANDBOX_INVOICE_${e.id}_${Date.now()}`;
+          } else if (window.webln) {
             try {
               await window.webln.enable();
               showToast("Create an invoice in Fedi to receive sats…", "ok");
@@ -1173,8 +1209,6 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
               onRefresh();
               return;
             }
-          } else if (isDevMode()) {
-            invoice = `SANDBOX_INVOICE_${e.id}_${Date.now()}`;
           } else {
             invoice = prompt(`Paste a BOLT-11 invoice for ${amountSats} sats:`);
             if (!invoice) { setLoading(false); setClaimRetry(true); onRefresh(); return; }
@@ -1391,7 +1425,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         )}
         {canLock && lockStep === "idle" && (
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", margin: "4px 0 12px" }} onClick={handleLockFetch}>
-            ₿ {t("lockSats", { amount: fmtSats(e.amountMsats) })}
+            🔒 {t("lockSats", { amount: fmtSats(e.amountMsats) })}
           </button>
         )}
         {canLock && lockStep === "fetching" && (

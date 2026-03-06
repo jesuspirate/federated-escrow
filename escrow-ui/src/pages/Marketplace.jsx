@@ -403,7 +403,12 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   const toastTimer = useRef(null);
 
   useEffect(() => {
-    if (devRole && isDevMode()) _devPubkey = DEV_IDENTITIES[devRole];
+    if (devRole && isDevMode()) {
+      _devPubkey = DEV_IDENTITIES[devRole];
+      // Reload data for new role
+      loadListings();
+      loadOrders();
+    }
   }, [devRole]);
 
   const showToast = useCallback((msg, type = "ok") => {
@@ -610,8 +615,15 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
         />
       )}
       {view === "detail" && !selected && (
-        <div style={{ display: "flex", justifyContent: "center", paddingTop: "30vh" }}>
-          <div style={{ width: 20, height: 20, border: "2px solid #1e293b", borderTopColor: "#475569", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+        <div style={M.container}>
+          <div style={M.viewHeader}>
+            <button style={M.iconBtn} onClick={() => setView("browse")}><Icons.Back /></button>
+            <h2 style={M.viewTitle}>{t("mkListing")}</h2>
+            <div style={{ width: 36 }} />
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: "20vh" }}>
+            <div style={{ width: 20, height: 20, border: "2px solid #1e293b", borderTopColor: "#475569", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+          </div>
         </div>
       )}
       {view === "create" && (
@@ -1045,7 +1057,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 20 }}>
           {filteredListings.map(l => (
-            <button key={l.id} style={{ ...M.listingCard, ...(l.status === "paused" ? { opacity: 0.55, borderColor: "#334155" } : {}) }} onClick={() => onOpen(l.id)}>
+            <button key={l.id} style={{ ...M.listingCard, ...(l.status === "paused" ? { opacity: 0.55, borderColor: "#334155" } : l.quantity <= 0 ? { opacity: 0.45, borderColor: "#334155" } : {}) }} onClick={() => onOpen(l.id)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={M.cardTitle}>{l.title}</span>
 		<span style={M.cardPrice}><span style={{ color: "#f7931a", fontSize: 13 }}>₿</span> {fmtSats(l.priceMsats)}</span>
