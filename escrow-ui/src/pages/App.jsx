@@ -98,7 +98,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ background: "#0c0f17", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div style={{ background: "#0c0f17", height: "100dvh", maxHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {/* ── Sandbox bar — always visible, fixed at top ── */}
       {_isSandbox && (
         <div style={{
@@ -106,8 +106,8 @@ export default function App() {
           padding: "10px 14px 12px",
           background: "linear-gradient(180deg, #1a1428, #12101d)",
           borderBottom: "1px solid #2d264080",
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 9999,
           flexShrink: 0,
+          zIndex: 200,
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b" }} />
@@ -134,7 +134,7 @@ export default function App() {
       )}
 
       {/* ── Active view ── */}
-      <div style={_isSandbox ? { paddingTop: 72 } : {}}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
       {activeApp === "escrow" && (
         <EcashEscrow
           pubkey={pubkey}

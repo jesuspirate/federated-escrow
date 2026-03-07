@@ -4,7 +4,6 @@ dist/
 .vite/
 .vitest/
 *.log
-.bitcoin/
 
 # Runtime data
 data/

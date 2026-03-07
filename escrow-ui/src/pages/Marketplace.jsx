@@ -709,52 +709,53 @@ function MarketplaceOnboarding({ onComplete }) {
   };
 
   return (
-    <div style={{ ...M.root, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "40px 24px", textAlign: "center", minHeight: "100vh" }}>
+    <div style={{ ...M.root, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 24px", textAlign: "center", height: "100dvh", maxHeight: "100vh", overflow: "hidden" }}>
       <style>{`@keyframes obFadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
-      {isBrowser && (
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: 99, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", marginBottom: 24 }}>
-          <span style={{ fontSize: 12 }}>🧪</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b", letterSpacing: 0.5 }}>SANDBOX MODE</span>
-        </div>
-      )}
-
-      <div style={{ display: "flex", gap: 8, marginBottom: 48 }}>
-        {steps.map((_, i) => (
-          <div key={i} style={{ width: i === step ? 24 : 8, height: 8, borderRadius: 4, background: i <= step ? "#f59e0b" : "#1e293b", transition: "all 0.3s ease" }} />
-        ))}
-      </div>
-
-      <div key={step} style={{ fontSize: 56, marginBottom: 24, animation: "obFadeUp 0.4s ease-out" }}>{s.icon}</div>
-
-      <div key={`t-${step}`} style={{ animation: "obFadeUp 0.4s ease-out 0.1s both", maxWidth: 320 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", margin: "0 0 12px", letterSpacing: -0.5 }}>{s.title}</h1>
-        <p style={{ fontSize: 14, color: "#94a3b8", lineHeight: 1.7, margin: 0 }}>{s.desc}</p>
-      </div>
-
-      <div style={{ marginTop: 48, width: "100%", maxWidth: 320 }}>
-        <button onClick={handleNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: isLast ? "#f59e0b" : "transparent", border: isLast ? "none" : "1.5px solid #334155", color: isLast ? "#0c0f17" : "#f8fafc", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          {isLast ? (isBrowser ? "🧪 Explore Demo" : "🏪 Enter Market") : "Next →"}
-        </button>
-        {!isLast && (
-          <button onClick={() => { try { localStorage.setItem(MK_ONBOARDING_KEY, "1"); } catch {} onComplete(); }}
-            style={{ width: "100%", padding: "12px 0", marginTop: 8, background: "transparent", border: "none", color: "#475569", fontSize: 13, cursor: "pointer" }}>
-            Skip
-          </button>
+      {/* ── Center content ── */}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", flex: 1, width: "100%", maxWidth: 340, minHeight: 0 }}>
+        {isBrowser && (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: 99, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", marginBottom: 16 }}>
+            <span style={{ fontSize: 12 }}>🧪</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b", letterSpacing: 0.5 }}>SANDBOX MODE</span>
+          </div>
         )}
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+          {steps.map((_, i) => (
+            <div key={i} style={{ width: i === step ? 24 : 8, height: 8, borderRadius: 4, background: i <= step ? "#f59e0b" : "#1e293b", transition: "all 0.3s ease" }} />
+          ))}
+        </div>
+
+        <div key={step} style={{ fontSize: 44, marginBottom: 14, animation: "obFadeUp 0.4s ease-out" }}>{s.icon}</div>
+
+        <div key={`t-${step}`} style={{ animation: "obFadeUp 0.4s ease-out 0.1s both" }}>
+          <h1 style={{ fontSize: 19, fontWeight: 700, color: "#f8fafc", margin: "0 0 8px", letterSpacing: -0.5 }}>{s.title}</h1>
+          <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, margin: 0 }}>{s.desc}</p>
+        </div>
+
+        {/* ── Buttons right under content ── */}
+        <div style={{ width: "100%", marginTop: 28 }}>
+          <button onClick={handleNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: isLast ? "#f59e0b" : "transparent", border: isLast ? "none" : "1.5px solid #334155", color: isLast ? "#0c0f17" : "#f8fafc", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            {isLast ? (isBrowser ? "🧪 Explore Demo" : "🏪 Enter Market") : "Next →"}
+          </button>
+          {!isLast && (
+            <button onClick={() => { try { localStorage.setItem(MK_ONBOARDING_KEY, "1"); } catch {} onComplete(); }}
+              style={{ width: "100%", padding: "8px 0", marginTop: 4, background: "transparent", border: "none", color: "#475569", fontSize: 13, cursor: "pointer" }}>
+              Skip
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ── Genesis mark on splash ── */}
-      <div style={{ position: "absolute", bottom: 24, left: 0, right: 0, textAlign: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
-          <span style={{ fontSize: 10 }}>⚡</span>
-          <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: 1.5 }}>EST. BLOCK 934,669</span>
-          <span style={{ fontSize: 10 }}>🥜</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          <span style={{ fontSize: 9, color: "#334155" }}>Free & open source</span>
-          <a href="https://github.com/jesuspirate/federated-escrow" target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#6d28d9", textDecoration: "none", fontWeight: 600 }}>GitHub ↗</a>
-        </div>
+      {/* ── Genesis mark — pinned at bottom ── */}
+      <div style={{ flexShrink: 0, padding: "10px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+        <span style={{ fontSize: 9 }}>⚡</span>
+        <span style={{ fontSize: 8, fontWeight: 600, color: "#334155", letterSpacing: 1.2 }}>EST. BLOCK 934,669</span>
+        <span style={{ fontSize: 9 }}>🥜</span>
+        <span style={{ color: "#1e293b" }}>·</span>
+        <span style={{ fontSize: 8, color: "#1e293b" }}>Open source</span>
+        <a href="https://github.com/jesuspirate/federated-escrow" target="_blank" rel="noopener noreferrer" style={{ fontSize: 8, color: "#4c1d95", textDecoration: "none", fontWeight: 600 }}>GitHub ↗</a>
       </div>
     </div>
   );
@@ -937,7 +938,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   });
 
   return (
-    <div style={{ ...M.container, display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+    <div style={{ ...M.container, display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
       {/* ══ PINNED HEADER SECTION ══ */}
       <div style={{ flexShrink: 0 }}>
         <div style={M.header}>
@@ -946,7 +947,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <GlobeLangPicker locale={locale} onSwitchLocale={onSwitchLocale} />
-            <button style={M.iconBtn} onClick={() => onProfile(pubkey)} title="My Profile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
+            <button style={M.iconBtn} onClick={() => onProfile(pubkey)} title="My Profile"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
             <button style={M.iconBtn} onClick={() => setSearchOpen(!searchOpen)}><Icons.Search /></button>
             <button style={M.iconBtn} onClick={onRefresh}><Icons.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
           </div>
@@ -954,9 +955,9 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
 
         {/* ── Compact stats row ── */}
         {!searchOpen && listings.length > 0 && (
-          <div style={{ display: "flex", gap: 12, padding: "0 0 10px", fontSize: 11, color: "#64748b" }}>
-            <span><span style={{ fontWeight: 800, color: "#f59e0b" }}>{listings.length}</span> listings</span>
-            {p2pCount > 0 && <span><span style={{ fontWeight: 800, color: "#a78bfa" }}>{p2pCount}</span> P2P</span>}
+          <div style={{ display: "flex", gap: 12, padding: "0 0 10px", fontSize: 12, color: "#64748b" }}>
+            <span><span style={{ fontWeight: 800, color: "#a78bfa" }}>{listings.length - p2pCount - lendingCount}</span> listings</span>
+            {p2pCount > 0 && <span><span style={{ fontWeight: 800, color: "#f59e0b" }}>{p2pCount}</span> P2P</span>}
             {lendingCount > 0 && <span><span style={{ fontWeight: 800, color: "#10b981" }}>{lendingCount}</span> loans</span>}
             <span style={{ marginLeft: "auto", color: "#475569" }}>2-of-3 escrow</span>
           </div>
@@ -1065,7 +1066,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
             <button key={l.id} style={{ ...M.listingCard, ...(l.status === "paused" ? { opacity: 0.55, borderColor: "#334155" } : l.quantity <= 0 ? { opacity: 0.45, borderColor: "#334155" } : {}) }} onClick={() => onOpen(l.id)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={M.cardTitle}>{l.title}</span>
-		<span style={M.cardPrice}><span style={{ color: "#f7931a", fontSize: 13 }}>₿</span> {fmtSats(l.priceMsats)}</span>
+		<span style={M.cardPrice}><span style={{ color: "#f7931a", fontSize: 14 }}>₿</span> {fmtSats(l.priceMsats)}</span>
               </div>
               {l.description && <p style={M.cardDesc}>{l.description}</p>}
               <div style={M.cardMeta}>
@@ -1077,7 +1078,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                     ...(isSatsForFiat(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : isLending(l.category) ? { background: "rgba(16,185,129,0.15)", color: "#10b981", fontWeight: 700 } : {}),
                   }}>{isSatsForFiat(l.category) ? "₿ P2P Trade" : isLending(l.category) ? "🤝 Lending" : l.category}</span>}
                 </div>
-                <span style={{ fontSize: 11, fontWeight: 600, ...(l.status === "paused" ? { color: "#64748b" } : l.quantity > 1 ? { color: "#10b981" } : l.quantity === 1 ? { color: "#f59e0b", animation: "pulse 2s ease infinite" } : { color: "#ef4444" }) }}>
+                <span style={{ fontSize: 12, fontWeight: 600, ...(l.status === "paused" ? { color: "#64748b" } : l.quantity > 1 ? { color: "#10b981" } : l.quantity === 1 ? { color: "#f59e0b", animation: "pulse 2s ease infinite" } : { color: "#ef4444" }) }}>
                   {l.status === "paused" ? "⏸ Paused" : l.quantity > 1 ? `🟢 ${t("mkQtyAvailable", { qty: l.quantity })}` : l.quantity === 1 ? `🔥 ${t("mkQtyOneLeft")}` : `❌ ${t("mkQtySoldOut")}`}
                 </span>
               </div>
@@ -1086,31 +1087,23 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         </div>
       )}
 
-      {/* ── Genesis footer ── */}
+      </div>{/* end scrollable */}
+
+      {/* ── Genesis footer — pinned at bottom ── */}
       <div style={{
-        marginTop: 24, padding: "14px 16px", textAlign: "center",
-        background: "linear-gradient(180deg, #0c0f17, #1a1428)",
-        borderTop: "1px solid #2d264080",
+        flexShrink: 0, padding: "8px 16px", textAlign: "center",
+        background: "#0c0f17",
+        borderTop: "1px solid #1e293b20",
       }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
-          <span style={{ fontSize: 12 }}>⚡</span>
-          <span style={{ fontSize: 11, fontWeight: 800, color: "#f59e0b", letterSpacing: 1.5 }}>EST. BLOCK 934,669</span>
-          <span style={{ fontSize: 12 }}>🥜</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
-          <span style={{ fontSize: 10, color: "#64748b", fontWeight: 500 }}>Free & open source</span>
-          <span style={{ color: "#2d2640" }}>·</span>
-          <a
-            href="https://github.com/jesuspirate/federated-escrow"
-            target="_blank" rel="noopener noreferrer"
-            style={{ fontSize: 10, color: "#8b5cf6", textDecoration: "none", fontWeight: 600 }}
-          >
-            GitHub ↗
-          </a>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <span style={{ fontSize: 10 }}>⚡</span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: 1.2 }}>EST. BLOCK 934,669</span>
+          <span style={{ fontSize: 10 }}>🥜</span>
+          <span style={{ color: "#1e293b" }}>·</span>
+          <span style={{ fontSize: 9, color: "#334155" }}>Open source</span>
+          <a href="https://github.com/jesuspirate/federated-escrow" target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#6d28d9", textDecoration: "none", fontWeight: 600 }}>GitHub ↗</a>
         </div>
       </div>
-
-      </div>{/* end scrollable */}
     </div>
   );
 }
@@ -2161,14 +2154,14 @@ function SellerProfileView({ pubkey: pk, myPubkey, onBack, onOpen, showToast }) 
 // ═══════════════════════════════════════════════════════════════════════
 
 const M = {
-  root: { background: "#0c0f17", color: "#e2e8f0", minHeight: "100vh", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 14, lineHeight: 1.5 },
-  container: { width: "100%", maxWidth: 480, margin: "0 auto", padding: "0 16px 20px", overflowX: "hidden" },
+  root: { background: "#0c0f17", color: "#e2e8f0", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 14, lineHeight: 1.5 },
+  container: { width: "100%", maxWidth: 480, margin: "0 auto", padding: "0 16px 20px", overflowX: "hidden", flex: 1, overflowY: "auto" },
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0 16px" },
   title: { fontSize: 24, fontWeight: 700, color: "#f8fafc", margin: 0, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: "#64748b", margin: "2px 0 0" },
   viewHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0 12px" },
   viewTitle: { fontSize: 17, fontWeight: 600, color: "#f8fafc", margin: 0 },
-  iconBtn: { background: "transparent", color: "#94a3b8", padding: 8, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
+  iconBtn: { background: "rgba(30,41,59,0.5)", color: "#cbd5e1", padding: 9, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(51,65,85,0.3)", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none", minWidth: 36, minHeight: 36 },
   primaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontWeight: 700, fontSize: 14, padding: "12px 20px", borderRadius: 12, flex: 1, border: "none", cursor: "pointer", boxShadow: "0 2px 12px rgba(245,158,11,0.2)", WebkitTapHighlightColor: "transparent", outline: "none" },
   secondaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "linear-gradient(145deg, #1e293b, #1a2332)", color: "#e2e8f0", fontWeight: 600, fontSize: 14, padding: "12px 20px", borderRadius: 12, flex: 1, border: "1px solid #334155", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
   actionBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "16px 0", borderRadius: 14, color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: -0.3, border: "none", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
@@ -2180,13 +2173,13 @@ const M = {
   sectionLabel: { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 },
   sectionValue: { fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 },
   emptyState: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", textAlign: "center" },
-  listingCard: { background: "linear-gradient(145deg, #111827, #0f1320)", border: "1px solid #1e293b", borderRadius: 14, padding: "14px 16px", textAlign: "left", color: "#e2e8f0", width: "100%", cursor: "pointer", transition: "all 0.2s ease" },
-  cardTitle: { fontSize: 15, fontWeight: 600, color: "#f8fafc", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 },
-  cardPrice: { fontSize: 15, fontWeight: 700, color: "#f8fafc", whiteSpace: "nowrap", marginLeft: 8 },
-  cardDesc: { fontSize: 12, color: "#94a3b8", margin: "6px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  cardMeta: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 },
-  conditionBadge: { padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(139,92,246,0.1)", color: "#a78bfa", letterSpacing: 0.3 },
-  categoryBadge: { padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: "rgba(100,116,139,0.1)", color: "#94a3b8" },
+  listingCard: { background: "linear-gradient(145deg, #111827, #0f1320)", border: "1px solid #1e293b", borderRadius: 14, padding: "16px 18px", textAlign: "left", color: "#e2e8f0", width: "100%", cursor: "pointer", transition: "all 0.2s ease" },
+  cardTitle: { fontSize: 16, fontWeight: 600, color: "#f8fafc", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 },
+  cardPrice: { fontSize: 16, fontWeight: 700, color: "#f8fafc", whiteSpace: "nowrap", marginLeft: 8 },
+  cardDesc: { fontSize: 13, color: "#94a3b8", margin: "6px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  cardMeta: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 },
+  conditionBadge: { padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: "rgba(139,92,246,0.1)", color: "#a78bfa", letterSpacing: 0.3 },
+  categoryBadge: { padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: "rgba(100,116,139,0.1)", color: "#94a3b8" },
   chipBtn: { padding: "6px 12px", borderRadius: 8, background: "#111827", color: "#94a3b8", fontSize: 12, fontWeight: 500, border: "1px solid transparent", cursor: "pointer", WebkitTapHighlightColor: "rgba(0,0,0,0)", outline: "none" },
   chipBtnActive: { background: "#1e293b", color: "#f8fafc", borderColor: "#f59e0b" },
   infoBanner: { padding: "10px 14px", border: "1px solid", borderRadius: 10, marginBottom: 12 },
