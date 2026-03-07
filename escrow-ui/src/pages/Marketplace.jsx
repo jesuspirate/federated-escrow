@@ -743,6 +743,19 @@ function MarketplaceOnboarding({ onComplete }) {
           </button>
         )}
       </div>
+
+      {/* ── Genesis mark on splash ── */}
+      <div style={{ position: "absolute", bottom: 24, left: 0, right: 0, textAlign: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 6 }}>
+          <span style={{ fontSize: 10 }}>⚡</span>
+          <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: 1.5 }}>EST. BLOCK 934,669</span>
+          <span style={{ fontSize: 10 }}>🥜</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          <span style={{ fontSize: 9, color: "#334155" }}>Free & open source</span>
+          <a href="https://github.com/jesuspirate/federated-escrow" target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#6d28d9", textDecoration: "none", fontWeight: 600 }}>GitHub ↗</a>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1086,6 +1099,30 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
           ))}
         </div>
       )}
+
+      {/* ── Genesis footer ── */}
+      <div style={{
+        marginTop: 24, padding: "14px 16px", textAlign: "center",
+        background: "linear-gradient(180deg, #0c0f17, #1a1428)",
+        borderTop: "1px solid #2d264080",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 8 }}>
+          <span style={{ fontSize: 12 }}>⚡</span>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "#f59e0b", letterSpacing: 1.5 }}>EST. BLOCK 934,669</span>
+          <span style={{ fontSize: 12 }}>🥜</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
+          <span style={{ fontSize: 10, color: "#64748b", fontWeight: 500 }}>Free & open source</span>
+          <span style={{ color: "#2d2640" }}>·</span>
+          <a
+            href="https://github.com/jesuspirate/federated-escrow"
+            target="_blank" rel="noopener noreferrer"
+            style={{ fontSize: 10, color: "#8b5cf6", textDecoration: "none", fontWeight: 600 }}
+          >
+            GitHub ↗
+          </a>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1468,7 +1505,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
             );
           })}
         </div>
-        {!isP2P && (
+        {!isP2P && !isLoan && (
           <input style={M.input} placeholder={t("mkFieldCategoryHint")} value={category} onChange={e => setCategory(e.target.value)} />
         )}
       </div>
