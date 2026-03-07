@@ -937,67 +937,46 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   });
 
   return (
-    <div style={M.container}>
-      <div style={M.header}>
-        <div>
-          <h1 style={M.title}>🏪 {t("mkTitle")}</h1>
-          <p style={M.subtitle}>{t("mkListingCount", { count: listings.length })}</p>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <GlobeLangPicker locale={locale} onSwitchLocale={onSwitchLocale} />
-	  {/* FUTURE: Re-enable for PWA/Start9/Umbrel
-	  <NotifBellIcon onClick={onNotifications} style={{ color: "#94a3b8" }} />
-	  */}
-          <button style={M.iconBtn} onClick={() => onProfile(pubkey)} title="My Profile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
-          <button style={M.iconBtn} onClick={() => setSearchOpen(!searchOpen)}><Icons.Search /></button>
-          <button style={M.iconBtn} onClick={onRefresh}><Icons.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
-        </div>
-      </div>
-
-      {/* ── New to Bitcoin / Fedi? — prominent for newcomers, dismissable ── */}
-      <NewToFediBanner />
-
-      {/* ── Hero banner — community vibe ── */}
-      {!searchOpen && listings.length > 0 && (
-        <div style={{
-          padding: "16px 18px", marginBottom: 14, borderRadius: 14,
-          background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(139,92,246,0.06))",
-          border: "1px solid rgba(245,158,11,0.12)",
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-around", textAlign: "center" }}>
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: "#f59e0b" }}>{listings.length}</div>
-              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>Listings</div>
-            </div>
-            <div style={{ width: 1, background: "#1e293b" }} />
-            <div>
-	      <div style={{ fontSize: 22, fontWeight: 900, color: "#a78bfa" }}>{p2pCount}</div>
-              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>P2P Trades</div>
-            </div>
-            <div style={{ width: 1, background: "#1e293b" }} />
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: "#10b981" }}>2-of-3</div>
-              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>Escrow</div>
-            </div>
+    <div style={{ ...M.container, display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}>
+      {/* ══ PINNED HEADER SECTION ══ */}
+      <div style={{ flexShrink: 0 }}>
+        <div style={M.header}>
+          <div>
+            <h1 style={M.title}>🏪 {t("mkTitle")}</h1>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <GlobeLangPicker locale={locale} onSwitchLocale={onSwitchLocale} />
+            <button style={M.iconBtn} onClick={() => onProfile(pubkey)} title="My Profile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></button>
+            <button style={M.iconBtn} onClick={() => setSearchOpen(!searchOpen)}><Icons.Search /></button>
+            <button style={M.iconBtn} onClick={onRefresh}><Icons.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
           </div>
         </div>
-      )}
 
-      {searchOpen && (
-        <div style={{ display: "flex", gap: 8, marginBottom: 12, animation: "slideUp 0.2s ease-out" }}>
-          <input style={M.input} placeholder={t("mkSearchPlaceholder") || "Search by title, description, or category..."} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && onSearch(searchQuery)} autoFocus />
-          {searchQuery && <button style={M.iconBtn} onClick={() => { setSearchQuery(""); onSearch(""); }}><Icons.X /></button>}
+        {/* ── Compact stats row ── */}
+        {!searchOpen && listings.length > 0 && (
+          <div style={{ display: "flex", gap: 12, padding: "0 0 10px", fontSize: 11, color: "#64748b" }}>
+            <span><span style={{ fontWeight: 800, color: "#f59e0b" }}>{listings.length}</span> listings</span>
+            {p2pCount > 0 && <span><span style={{ fontWeight: 800, color: "#a78bfa" }}>{p2pCount}</span> P2P</span>}
+            {lendingCount > 0 && <span><span style={{ fontWeight: 800, color: "#10b981" }}>{lendingCount}</span> loans</span>}
+            <span style={{ marginLeft: "auto", color: "#475569" }}>2-of-3 escrow</span>
+          </div>
+        )}
+
+        {searchOpen && (
+          <div style={{ display: "flex", gap: 8, marginBottom: 10, animation: "slideUp 0.2s ease-out" }}>
+            <input style={M.input} placeholder={t("mkSearchPlaceholder") || "Search by title, description, or category..."} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && onSearch(searchQuery)} autoFocus />
+            {searchQuery && <button style={M.iconBtn} onClick={() => { setSearchQuery(""); onSearch(""); }}><Icons.X /></button>}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          <button style={{ ...M.primaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={onCreate}><Icons.Plus /> {t("mkSell")}</button>
+          <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={onOrders}><Icons.Package /> {t("mkOrders")}</button>
+          <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={() => onSwitchToEscrow()}>⚖️ {t("escrow")}</button>
         </div>
-      )}
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-        <button style={{ ...M.primaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={onCreate}><Icons.Plus /> {t("mkSell")}</button>
-        <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={onOrders}><Icons.Package /> {t("mkOrders")}</button>
-        <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={() => onSwitchToEscrow()}>⚖️ {t("escrow")}</button>
-      </div>
-
-      {/* ── Category quick-filters ── */}
-      <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 12, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
+        {/* ── Category quick-filters ── */}
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 10, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
         {CATEGORIES.map(c => (
           <button
             key={c.key}
@@ -1013,7 +992,14 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
             {c.icon} {c.label}
           </button>
         ))}
+        </div>
       </div>
+
+      {/* ══ SCROLLABLE LISTINGS AREA ══ */}
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch" }}>
+
+      {/* ── New to Bitcoin / Fedi? ── */}
+      <NewToFediBanner />
 
       {/* ── Browser sandbox banner ── */}
       {isDevMode() && listings.length === 0 && (
@@ -1123,6 +1109,8 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
           </a>
         </div>
       </div>
+
+      </div>{/* end scrollable */}
     </div>
   );
 }

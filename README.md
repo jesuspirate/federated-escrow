@@ -1,210 +1,161 @@
-# ⚡ Federated Escrow
+# SatoshiMarket ⚡🥜
 
-**Trustless P2P escrow powered by Fedimint e-cash, Lightning Network, and Nostr identity.**
+**A Bitcoin-native marketplace, P2P exchange, and community lending platform — powered by Fedimint e-cash and 2-of-3 escrow.**
 
-A 2-of-3 multisig escrow system where a Buyer, Seller, and community Arbiter vote to release or refund sats — no single party can steal funds. Built as a [Fedi Mini-App](https://www.fedi.xyz/) for federated Bitcoin communities.
+Built for [Fedi](https://fedi.xyz) communities. No KYC. No middlemen. Just trust-minimized trade.
 
-> **Live:** [satoshimarket.app](https://satoshimarket.app)
+> ⚡ est. block 934,669
 
 ---
+
+## What is SatoshiMarket?
+
+SatoshiMarket is a peer-to-peer marketplace that runs inside Fedi as a Mini-App. Community members can:
+
+- **Buy & sell anything** — electronics, services, digital goods, clothing — with Bitcoin escrow protection
+- **Trade sats for fiat** — P2P exchange with support for USD, EUR, CFA, KES, NGN, BRL, ARS, INR and more
+- **Lend to your community** — lock sats as loans, with community arbiters verifying repayment (digital tontines!)
+- **Resolve disputes** — 2-of-3 multisig voting between buyer, seller, and community arbiter
+
+Every trade is protected by federated e-cash escrow. No trust required.
 
 ## How It Works
 
 ```
-Seller creates escrow → Buyer + Arbiter join → Seller locks sats
-    │
-    ├─ Happy path: Buyer + Seller agree → sats release to Buyer ✓
-    ├─ Dispute:    Buyer + Arbiter agree → sats release to Buyer ✓
-    └─ Refund:     Seller + Arbiter agree → sats refund to Seller ↩
+Seller lists item → Buyer accepts → Sats locked in escrow
+→ Trade happens externally → Both vote to release → Sats delivered
 ```
 
-**No party can act alone.** Two of three participants must agree on the outcome. The Arbiter only votes when Buyer and Seller disagree.
+**Three trade types:**
+
+| Type | Flow | Use Case |
+|------|------|----------|
+| **P2P Sats-for-Fiat** | Seller locks sats → Buyer sends fiat → Both confirm → Buyer gets sats | Exchange Bitcoin without KYC |
+| **Marketplace** | Buyer locks sats as payment → Seller ships → Both confirm → Seller gets sats | Buy/sell goods and services |
+| **Community Lending** | Lender locks sats → Borrower confirms receipt → Repays externally per terms | Microfinance, tontines, community credit |
+
+If there's a dispute, a pre-approved community arbiter casts the deciding vote.
 
 ## Features
 
-- **2-of-3 voting** — Trustless escrow resolution without a central authority
-- **Fedimint e-cash** — Lock and payout through your federation's Lightning gateway
-- **Nostr authentication** — NIP-98 signed requests, no passwords or accounts
-- **Arbiter allowlist** — Only pre-approved community members can arbitrate
-- **Encrypted at rest** — All escrow data encrypted with AES-256
-- **i18n** — English, French, and Spanish
-- **WebLN integration** — Seamless payments inside the Fedi app
-- **Expiring escrows** — Auto-expire with seller reclaim after timeout
-- **Federation limits** — Built-in safeguards for per-transaction and balance limits
+### Marketplace
+- Create, browse, search, and purchase listings
+- Category filters: P2P, Lending, Electronics, Services, Digital, Clothing
+- Smart sorting: urgent (1 left) → available → sold out
+- Seller management: edit, pause, resume, delete listings
+- Auto-activate sold listings when restocked
+- Seller profiles with trade stats and ratings
+
+### Escrow
+- 2-of-3 voting: buyer + seller + arbiter
+- WebLN lock/claim via Fedi wallet
+- Buyer votes first → Seller confirms or disputes → Arbiter breaks ties
+- Action hints on escrow cards showing what YOU need to do
+- Priority sorting: actionable trades first
+
+### Notifications
+- Matrix bot posts to community rooms (EN + FR)
+- Multilingual: routes to correct room based on listing's community link
+- Trade lifecycle: join → lock → resolve notifications
+- Sandbox trades excluded from production notifications
+
+### Lending
+- Community-backed loans via escrow
+- Configurable interest rate, repayment period (7-90 days), repayment method
+- Lender locks sats → Borrower receives → Repays externally
+- Community arbiter verifies repayment
+- Borrower ratings = community credit score
+
+### Security
+- NIP-98 Nostr authentication
+- Sandbox isolation: dev trades never mix with production
+- Arbiter allowlist (pre-approved community members only)
+- Federation-scoped trades via community links
+
+### i18n
+- English and French
+- Language picker in marketplace controls both views
+- Notifications post in the correct language per community room
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Backend | Node.js / Express / TypeScript (tsx) |
+| Frontend | React / Vite (single-page Mini-App) |
+| Database | SQLite (better-sqlite3) |
+| Payments | Fedimint (e-cash via fedimint-cli) |
+| Auth | Nostr (NIP-98 signed events) |
+| Notifications | Matrix (community room posts) |
+| Proxy | Caddy |
+| Process | systemd |
+| Platform | Fedi Mini-App (WebView) |
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│  Frontend (React SPA)                       │
-│  EcashEscrow.jsx — single-file component    │
-│  Nostr auth · WebLN payments · i18n         │
-├─────────────────────────────────────────────┤
-│  Backend (Express + TypeScript)             │
-│  NIP-98 middleware · SQLite · AES encryption│
-├─────────────────────────────────────────────┤
-│  Fedimint Integration                       │
-│  fedimint-cli ↔ Federation guardians        │
-│  Lightning invoices · e-cash notes          │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────┐
+│  Fedi App (WebView)                     │
+│  ┌───────────────┐ ┌─────────────────┐  │
+│  │  Marketplace  │ │  Escrow Detail  │  │
+│  │  (React SPA)  │ │  (React SPA)    │  │
+│  └───────┬───────┘ └────────┬────────┘  │
+│          │    NIP-98 Auth    │           │
+└──────────┼──────────────────┼───────────┘
+           │                  │
+     ┌─────▼──────────────────▼─────┐
+     │  Express API (Node.js/tsx)   │
+     │  /api/marketplace/listings   │
+     │  /api/ecash-escrows          │
+     ├─────────────────────────────-┤
+     │  SQLite DB                   │
+     │  Fedimint CLI (e-cash)       │
+     │  Matrix Bot (notifications)  │
+     └─────────────────────────────-┘
 ```
 
-## Project Structure
-
-```
-federated-escrow/
-├── src/
-│   ├── server.ts              # Express entry point
-│   ├── routes/
-│   │   └── ecash-escrow.ts    # All API routes + auth middleware
-│   ├── db.ts                  # SQLite schema + prepared statements
-│   └── fedimint.ts            # fedimint-cli wrapper with retry logic
-├── escrow-ui/
-│   └── src/pages/
-│       └── EcashEscrow.jsx    # Complete frontend (single file)
-├── deploy-vps.sh              # Ubuntu 24.04 hardened deployment script
-├── .env.example               # Environment template
-└── README.md
-```
-
-## Quick Start
+## Development
 
 ### Prerequisites
-
 - Node.js 20+
-- `fedimint-cli` (for Lightning lock/payout — optional for dev mode)
-- A Nostr browser extension (Alby, nos2x) for authentication
+- Fedimint CLI (for e-cash operations)
+- Matrix homeserver access (for notifications)
 
-### Development
-
+### Setup
 ```bash
 git clone https://github.com/jesuspirate/federated-escrow.git
 cd federated-escrow
-
-# Install dependencies
 npm install
-cd escrow-ui && npm install && cd ..
-
-# Configure environment
-cp .env.example .env
-# Edit .env — generate an encryption key:
-#   openssl rand -hex 32
-
-# Start dev server (includes dev mode identity switcher)
-npm run dev
+cd escrow-ui && npm install && npm run build && cd ..
 ```
 
-Open `http://localhost:3000?dev=1` to use the built-in dev identity switcher (Seller / Buyer / Arbiter) without needing a Nostr extension.
+### Environment (.env)
+```
+MATRIX_ACCESS_TOKEN=syt_...
+MATRIX_HOMESERVER=https://m1.8fa.in
+MATRIX_ROOM_ID=!roomId:m1.8fa.in
+ALLOWED_ARBITERS=hex_pubkey1,hex_pubkey2
+ALLOW_DEV_PUBKEY=true
+```
 
-### Production Deployment
-
-The included `deploy-vps.sh` handles a full Ubuntu 24.04 deployment:
-
-1. System hardening (UFW, fail2ban, SSH key-only)
-2. Node.js 20 LTS installation
-3. Caddy reverse proxy with automatic HTTPS
-4. systemd service with auto-restart
-5. Log rotation
-
+### Run
 ```bash
-# On a fresh Ubuntu 24.04 VPS:
-scp deploy-vps.sh user@your-server:~
-ssh user@your-server
-chmod +x deploy-vps.sh && sudo ./deploy-vps.sh
+npx tsx src/server.ts
 ```
 
-## API Reference
+### Sandbox Mode
+Open in any browser — sandbox mode activates automatically (no Fedi required). Switch between seller/buyer/arbiter roles to test the full trade flow.
 
-All endpoints require NIP-98 authentication (Nostr-signed HTTP requests).
+Visit: [satoshimarket.app](https://satoshimarket.app)
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/ecash-escrows/` | Create escrow (seller) |
-| `POST` | `/api/ecash-escrows/:id/join` | Join as buyer or arbiter |
-| `GET` | `/api/ecash-escrows/:id/invoice` | Get BOLT-11 lock invoice |
-| `POST` | `/api/ecash-escrows/:id/lock` | Confirm lock (WebLN or manual) |
-| `POST` | `/api/ecash-escrows/:id/approve` | Cast vote (release or refund) |
-| `POST` | `/api/ecash-escrows/:id/claim` | Claim resolved escrow |
-| `POST` | `/api/ecash-escrows/:id/payout` | Submit invoice for payout |
-| `GET` | `/api/ecash-escrows/` | List escrows for current user |
-| `GET` | `/api/ecash-escrows/:id` | Get escrow details |
-| `GET` | `/api/ecash-escrows/arbiter-check` | Check if current user is approved arbiter |
-| `GET` | `/api/ecash-escrows/health` | Server health + federation status |
+## Live
 
-## Escrow Lifecycle
-
-```
-CREATED → FUNDED → LOCKED → APPROVED → CLAIMED → COMPLETED
-                                │
-                                └→ EXPIRED (seller can reclaim)
-```
-
-| Status | Meaning |
-|--------|---------|
-| `CREATED` | Seller created, waiting for buyer + arbiter |
-| `FUNDED` | All 3 participants joined |
-| `LOCKED` | Seller paid the escrow invoice — sats are held |
-| `APPROVED` | 2-of-3 vote reached consensus |
-| `CLAIMED` | Winner initiated claim |
-| `COMPLETED` | Payout delivered |
-| `EXPIRED` | Timeout reached, seller can reclaim |
-
-## Security
-
-- **NIP-98 authentication** — Every API call is signed by the user's Nostr key
-- **Arbiter allowlist** — Hex pubkeys in `ALLOWED_ARBITERS` env var; unauthorized arbiters get 403
-- **Encryption at rest** — Escrow data encrypted with AES-256 via `ESCROW_ENCRYPTION_KEY`
-- **Dev mode disabled in production** — `X-Dev-Pubkey` header rejected when `NODE_ENV=production`
-- **SSH hardening** — deploy script configures key-only auth, fail2ban, UFW
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React (single-file JSX), Tailwind-inspired inline styles |
-| Backend | Express, TypeScript, tsx |
-| Database | SQLite (better-sqlite3) |
-| Payments | Fedimint (fedimint-cli), Lightning Network (WebLN) |
-| Identity | Nostr (NIP-98 HTTP auth) |
-| Hosting | Ubuntu 24.04, Caddy, systemd |
-| Domain | Njalla (privacy-first registrar) |
-| VPS | 1984 Hosting (Iceland, privacy-focused) |
-
-## Roadmap
-
-### ✅ Completed
-- [x] Nostr NIP-98 authentication (Schnorr signatures, pubkey identity)
-- [x] SQLite persistence (better-sqlite3, durable across restarts)
-- [x] Real WebLN integration (fedimint-cli lock/payout via Lightning)
-- [x] Community chat links (Fedi room integration, EN/FR)
-- [x] Production hardening (rate limiting, arbiter allowlist, auto-lock on payment)
-- [x] Browser sandbox mode (safe onboarding, no real sats at risk)
-- [x] Cross-federation support (standard Lightning, any wallet can trade)
-- [x] Auto-refresh polling (5s detail, 10s list, visibility-aware)
-- [x] i18n (English + French)
-- [x] Deploy as Fedi Mini-App (live in production)
-
-### 🔜 Next
-- [ ] Nostr DM notifications between participants
-- [ ] Marketplace layer (listings, search, categories)
-- [ ] Reputation system (trade history on Nostr)
-- [ ] Multi-federation gateway discovery
-- [ ] Mobile-optimized PWA
-
-### 🔮 Future
-- [ ] E-cash direct transfers (skip Lightning for same-federation trades)
-- [ ] Encrypted dispute evidence (NIP-04 between parties)
-- [ ] Arbiter staking (skin in the game for fair resolution)
-- [ ] Multi-language expansion (Spanish, Portuguese, Swahili)
-
-## Contributing
-
-Contributions welcome. The codebase is intentionally compact — the entire frontend is a single React component, and the backend is a single route file. This makes it easy to understand the full system.
+🌍 **Production:** [satoshimarket.app](https://satoshimarket.app)
+📱 **Fedi Mini-App:** Available in Fedi communities with SatoshiMarket enabled
+🧪 **Sandbox:** Open the site in any browser to explore
 
 ## License
 
-MIT
+Open source — built for the people, by the people.
 
----
-
-*Built for the federated future. Sats flow, trust is distributed.*
+⚡ est. block 934,669 🥜
