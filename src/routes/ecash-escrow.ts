@@ -141,12 +141,14 @@ function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunct
   }
 
   const devPubkey = req.headers["x-dev-pubkey"] as string;
-  if (devPubkey && (process.env.ALLOW_DEV_PUBKEY === "true" || process.env.ALLOW_DEV_PUBKEY === "true")) {
-    if (typeof devPubkey === "string" && devPubkey.length === 64) {
+  if (devPubkey && process.env.ALLOW_DEV_PUBKEY === "true") {
+    // SECURITY: Only accept sandbox identities, never arbitrary pubkeys
+    const SANDBOX_IDS = new Set(["aa".repeat(32), "bb".repeat(32), "cc".repeat(32)]);
+    if (typeof devPubkey === "string" && devPubkey.length === 64 && SANDBOX_IDS.has(devPubkey)) {
       req.pubkey = devPubkey;
       return next();
     }
-    return res.status(401).json({ error: "Invalid dev pubkey (must be 64 hex chars)" });
+    return res.status(401).json({ error: "Invalid dev pubkey — only sandbox identities accepted" });
   }
 
   return res.status(401).json({ error: "Authentication required. Send NIP-98 Authorization header or X-Dev-Pubkey (dev mode only)." });
