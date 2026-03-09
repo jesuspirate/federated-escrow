@@ -124,6 +124,13 @@ async function mapi(path, opts = {}, _retries = 1) {
 
 function fmtSats(msats) { return Math.floor(msats / 1000).toLocaleString(); }
 function fmtVolume(msats) {
+  const sats = Math.floor(msats / 1000);
+  if (sats >= 1_000_000_000) return (sats / 1_000_000_000).toFixed(1) + "B";
+  if (sats >= 1_000_000) return (sats / 1_000_000).toFixed(1) + "M";
+  if (sats >= 100_000) return (sats / 1_000).toFixed(0) + "K";
+  if (sats >= 1_000) return (sats / 1_000).toFixed(1) + "K";
+  return sats.toLocaleString();
+}
 
 // ── BTC Price Hook — fetches from mempool.space + forex conversion ──
 let _btcPrices = null; // { USD, EUR, GBP, ... }
@@ -182,14 +189,6 @@ function fmtFiat(msats, btcPrices, currency = "USD") {
   return `${sym}${local.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 }
 
-  const sats = Math.floor(msats / 1000);
-  if (sats >= 1_000_000_000) return `${(sats / 1_000_000_000).toFixed(1)}B`;
-  if (sats >= 1_000_000) return `${(sats / 1_000_000).toFixed(1)}M`;
-  if (sats >= 100_000) return `${(sats / 1_000).toFixed(0)}K`;
-  if (sats >= 10_000) return `${(sats / 1_000).toFixed(1)}K`;
-  if (sats >= 1_000) return `${(sats / 1_000).toFixed(1)}K`;
-  return sats.toLocaleString();
-}
 function truncPk(hex) {
   if (!hex || hex.length < 16) return hex || "";
   return hex.slice(0, 8) + "\u2026" + hex.slice(-8);
