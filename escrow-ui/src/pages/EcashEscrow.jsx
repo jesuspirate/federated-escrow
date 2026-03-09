@@ -1166,39 +1166,6 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     onRefresh();
   };
 
-  // ── Arbiter fee claim handler ──
-  const handleClaimArbiterFee = async () => {
-    setLoading(true);
-    try {
-      const feeSats = Math.floor((e.arbiterFeeMsats || 0) / 1000);
-      if (feeSats <= 0) throw new Error("No fee to claim");
-
-      let invoice;
-      if (isDevMode()) {
-        invoice = "SANDBOX_FEE_" + e.id + "_" + Date.now();
-      } else if (window.webln) {
-        await window.webln.enable();
-        showToast("Create an invoice in Fedi for " + feeSats + " sats...", "ok");
-        const result = await window.webln.makeInvoice({ amount: feeSats });
-        invoice = result.paymentRequest;
-      } else {
-        invoice = prompt("Paste a BOLT-11 invoice for " + feeSats + " sats:");
-        if (!invoice) { setLoading(false); return; }
-      }
-
-      const res = await api("/" + e.id + "/payout", {
-        method: "POST",
-        body: JSON.stringify({ invoice, type: "arbiter_fee" }),
-      });
-      if (res.error) throw new Error(res.error);
-      showToast("\u2696\ufe0f Arbiter fee claimed: " + feeSats + " sats!");
-      onRefresh();
-    } catch (err) {
-      showToast(err.message, "error");
-    }
-    setLoading(false);
-  };
-
   // ── 2-step confirmation for critical votes ──────────────────────
   const [confirmVote, setConfirmVote] = useState(null); // null | "release" | "refund"
 
@@ -1301,7 +1268,6 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const canArbiterVote = status === "LOCKED" && role === "arbiter" && !hasVoted && buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome;
   const canClaim = (status === "APPROVED" || status === "CLAIMED") && ((e.resolvedOutcome === "release" && role === "buyer") || (e.resolvedOutcome === "refund" && role === "seller"));
   const canReclaimExpired = status === "EXPIRED" && role === "seller" && e.lockedAt;
-  const canClaimArbiterFee = role === "arbiter" && (status === "APPROVED" || status === "CLAIMED" || status === "COMPLETED") && e.arbiterFeeMsats && e.arbiterFeeMsats > 0;
 
   // Helper to get participant pubkey display
   const getPkDisplay = (participant) => {
@@ -1450,24 +1416,24 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
         {/* ═══ PRIMARY ACTION — right after participants/tally ═══ */}
         {canBuyerVote && !confirmVote && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)", margin: "4px 0 12px" }} onClick={() => setConfirmVote("release")} disabled={loading}>
-            {loading ? t("voting") : `✓ ${t("confirm")} — ${t("release")} ➜ ${t("toMe")}`}
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)", margin: "4px 0 12px", fontSize: 16, padding: "16px 20px" }} onClick={() => setConfirmVote("release")} disabled={loading}>
+            {loading ? t("voting") : "✓ I received what I paid for"}
           </button>
         )}
         {canBuyerVote && confirmVote === "release" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "0 0 12px" }}>
-            <div style={{ textAlign: "center", padding: "10px 14px", background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.3)", borderRadius: 10, fontSize: 13, fontWeight: 700, color: "#10b981" }}>
-              Confirm: Release sats to you?
+            <div style={{ textAlign: "center", padding: "12px 14px", background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.3)", borderRadius: 10, fontSize: 14, fontWeight: 700, color: "#10b981" }}>
+              Release sats to you?
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8" }} onClick={cancelConfirm}>Cancel</button>
-              <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>{loading ? t("voting") : "Yes, release"}</button>
+              <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8", fontSize: 15, padding: "14px" }} onClick={cancelConfirm}>Cancel</button>
+              <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)", fontSize: 15, padding: "14px" }} onClick={() => handleVote("release")} disabled={loading}>{loading ? t("voting") : "Yes, release ⚡"}</button>
             </div>
           </div>
         )}
         {(canClaim || canReclaimExpired) && !claimRetry && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "4px 0 12px", animation: "pulseGreen 2s ease infinite" }} onClick={handleClaim} disabled={loading}>
-            {loading ? t("claiming") : `⚡ ${t("claimSats", { amount: fmtSats(e.amountMsats) })}`}
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "4px 0 12px", animation: "pulseGreen 2s ease infinite", fontSize: 16, padding: "16px 20px" }} onClick={handleClaim} disabled={loading}>
+            {loading ? t("claiming") : `⚡ Receive ${fmtSats(e.amountMsats)} sats`}
           </button>
         )}
         {claimRetry && (
@@ -1475,26 +1441,15 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             <div style={{ textAlign: "center", padding: "10px 14px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, fontSize: 13, color: "#fbbf24", lineHeight: 1.5 }}>
               Your sats are ready! Tap below and approve the invoice in Fedi to receive them.
             </div>
-            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", animation: "pulseGreen 2s ease infinite" }} onClick={() => { setClaimRetry(false); handleClaim(); }} disabled={loading}>
+            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", animation: "pulseGreen 2s ease infinite", fontSize: 16, padding: "16px 20px" }} onClick={() => { setClaimRetry(false); handleClaim(); }} disabled={loading}>
               {loading ? t("claiming") : `⚡ Receive ${fmtSats(e.amountMsats)} sats`}
             </button>
           </div>
         )}
         {canLock && lockStep === "idle" && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", margin: "4px 0 12px" }} onClick={handleLockFetch}>
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", margin: "4px 0 12px", fontSize: 16, padding: "16px 20px" }} onClick={handleLockFetch}>
             🔒 {t("lockSats", { amount: fmtSats(e.amountMsats) })}
           </button>
-        )}
-        {/* ── Arbiter fee claim ── */}
-        {canClaimArbiterFee && (
-          <div style={{ margin: "4px 0 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ textAlign: "center", padding: "10px 14px", background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: 10, fontSize: 13, color: "#a78bfa", lineHeight: 1.5 }}>
-              You resolved a dispute! Claim your 1% arbiter fee below.
-            </div>
-            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #8b5cf6, #7c3aed)", boxShadow: "0 4px 24px rgba(139,92,246,0.3)" }} onClick={handleClaimArbiterFee} disabled={loading}>
-              {loading ? "Claiming..." : "\u2696\ufe0f Claim " + fmtSats((e.arbiterFeeMsats || 0)) + " sats fee"}
-            </button>
-          </div>
         )}
         {canLock && lockStep === "fetching" && (
           <button style={{ ...S.actionBtn, background: "#1e293b", margin: "4px 0 12px" }} disabled>
@@ -1502,7 +1457,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           </button>
         )}
         {canLock && (lockStep === "ready" || lockStep === "paying") && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "4px 0 12px" }} onClick={handleLockPay} disabled={lockStep === "paying"}>
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "4px 0 12px", fontSize: 16, padding: "16px 20px" }} onClick={handleLockPay} disabled={lockStep === "paying"}>
             {lockStep === "paying" ? t("locking") : `⚡ ${t("confirmInFedi")}`}
           </button>
         )}
