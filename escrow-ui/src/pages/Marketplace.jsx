@@ -123,6 +123,15 @@ async function mapi(path, opts = {}, _retries = 1) {
 // ── Helpers ──────────────────────────────────────────────────────────
 
 function fmtSats(msats) { return Math.floor(msats / 1000).toLocaleString(); }
+function fmtVolume(msats) {
+  const sats = Math.floor(msats / 1000);
+  if (sats >= 1_000_000_000) return `${(sats / 1_000_000_000).toFixed(1)}B`;
+  if (sats >= 1_000_000) return `${(sats / 1_000_000).toFixed(1)}M`;
+  if (sats >= 100_000) return `${(sats / 1_000).toFixed(0)}K`;
+  if (sats >= 10_000) return `${(sats / 1_000).toFixed(1)}K`;
+  if (sats >= 1_000) return `${(sats / 1_000).toFixed(1)}K`;
+  return sats.toLocaleString();
+}
 function truncPk(hex) {
   if (!hex || hex.length < 16) return hex || "";
   return hex.slice(0, 8) + "\u2026" + hex.slice(-8);
@@ -2084,7 +2093,7 @@ function SellerProfileView({ pubkey: pk, myPubkey, onBack, onOpen, showToast }) 
             {/* Volume + Active */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
               <div style={{ padding: "12px 14px", background: "rgba(30,41,59,0.5)", borderRadius: 10, border: "1px solid #1e293b" }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#f59e0b" }}>{fmtSats(ts.sellVolumeMsats || 0)}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#f59e0b" }}>₿ {fmtVolume(ts.sellVolumeMsats || 0)}</div>
                 <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>Volume (sats)</div>
               </div>
               <div style={{ padding: "12px 14px", background: "rgba(30,41,59,0.5)", borderRadius: 10, border: "1px solid #1e293b" }}>
