@@ -1,14 +1,12 @@
 // src/notifications.ts — Notification Templates & Trigger Logic
 //
-// Phase 5: Maps escrow and marketplace state transitions to DM messages.
+// Maps escrow and marketplace state transitions to Nostr DM messages.
 //
 // Design principles:
 //   1. Fire-and-forget — notifications never block the main request
 //   2. Respect opt-outs — check preferences table before sending
-//   3. No sensitive data — messages contain IDs and status, not amounts/descriptions
+//   3. Rich details in DMs — amounts, descriptions, next steps (encrypted via NIP-17)
 //   4. Idempotent — duplicate sends are harmless (each Nostr event has unique ID)
-//
-// Uses the same `db` (better-sqlite3) instance from src/db.ts.
 
 import { sendDM, sendDMBatch } from "./nostr-dm";
 import db from "./db";
@@ -68,6 +66,8 @@ export function setPreferences(prefs: NotificationPrefs): void {
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
+const APP = "https://satoshimarket.app";
+
 function shouldNotify(pubkey: string, category: "escrow" | "order" | "listing"): boolean {
   const prefs = getPreferences(pubkey);
   if (!prefs.dmEnabled) return false;
@@ -77,15 +77,17 @@ function shouldNotify(pubkey: string, category: "escrow" | "order" | "listing"):
   return true;
 }
 
+function fmtSats(msats: number): string {
+  const sats = Math.floor(msats / 1000);
+  return sats >= 1_000_000 ? `${(sats / 1_000_000).toFixed(1)}M` : sats.toLocaleString();
+}
+
 function truncPk(hex: string): string {
-  return hex.slice(0, 8) + "…" + hex.slice(-4);
+  return hex.slice(0, 8) + "…";
 }
 
 // ══════════════════════════════════════════════════════════════════════════
 // ESCROW NOTIFICATION TRIGGERS
-//
-// Called from src/routes/ecash-escrow.ts at each state transition.
-// All are fire-and-forget (async but not awaited by the caller).
 // ══════════════════════════════════════════════════════════════════════════
 
 /** Someone joined an escrow — notify the other participants. */
@@ -96,39 +98,59 @@ export function notifyEscrowJoin(
     .filter(pk => pk && pk !== joinerPubkey && shouldNotify(pk, "escrow"))
     .map(pk => ({
       pubkey: pk,
-      message: `🤝 A ${joinerRole} (${truncPk(joinerPubkey)}) joined escrow ${escrowId}. Check your trades at satoshimarket.app`,
+      message: `🤝 SatoshiMarket — New participant\n\nA ${joinerRole} joined your trade ${escrowId}.\n\nOpen your Fedi app to continue.`,
     }));
   if (recipients.length > 0) sendDMBatch(recipients).catch(() => {});
 }
 
 /** All 3 participants joined — escrow is FUNDED. */
 export function notifyEscrowFunded(
-  escrowId: string, sellerPk: string, buyerPk: string, arbiterPk: string
+  escrowId: string, sellerPk: string, buyerPk: string, arbiterPk: string,
+  amountMsats?: number, description?: string
 ): void {
+  const amt = amountMsats ? `\n₿ ${fmtSats(amountMsats)} sats` : "";
+  const desc = description ? `\n"${description}"` : "";
   const all = [sellerPk, buyerPk, arbiterPk];
   const recipients = all
     .filter(pk => pk && shouldNotify(pk, "escrow"))
-    .map(pk => ({
-      pubkey: pk,
-      message: `✅ Escrow ${escrowId} is fully funded — all 3 participants joined. Seller: lock your sats to proceed. satoshimarket.app`,
-    }));
+    .map(pk => {
+      const isSeller = pk === sellerPk;
+      return {
+        pubkey: pk,
+        message: isSeller
+          ? `✅ SatoshiMarket — All parties joined!\n\nTrade ${escrowId}${amt}${desc}\n\n🔒 Open Fedi and lock your sats to start the trade.`
+          : `✅ SatoshiMarket — All parties joined!\n\nTrade ${escrowId}${amt}${desc}\n\nWaiting for the seller to lock sats.`,
+      };
+    });
   if (recipients.length > 0) sendDMBatch(recipients).catch(() => {});
 }
 
-/** Sats locked in escrow — notify buyer + arbiter. */
+/** Sats locked in escrow — trade is live. */
 export function notifyEscrowLocked(
-  escrowId: string, sellerPk: string, buyerPk: string, arbiterPk: string
+  escrowId: string, sellerPk: string, buyerPk: string, arbiterPk: string,
+  amountMsats?: number, description?: string
 ): void {
-  const recipients = [buyerPk, arbiterPk]
-    .filter(pk => pk && shouldNotify(pk, "escrow"))
-    .map(pk => ({
-      pubkey: pk,
-      message: `🔒 Sats locked in escrow ${escrowId}. The trade is live — fulfill obligations and vote when ready. satoshimarket.app`,
-    }));
+  const amt = amountMsats ? ` (₿ ${fmtSats(amountMsats)})` : "";
+  const desc = description ? `\n"${description}"` : "";
+
+  const recipients: Array<{ pubkey: string; message: string }> = [];
+
+  if (buyerPk && shouldNotify(buyerPk, "escrow")) {
+    recipients.push({
+      pubkey: buyerPk,
+      message: `🔒 SatoshiMarket — Sats locked!\n\nTrade ${escrowId}${amt}${desc}\n\nThe seller locked sats in escrow. Complete your side of the deal, then open Fedi to vote and release the sats.`,
+    });
+  }
+  if (arbiterPk && shouldNotify(arbiterPk, "escrow")) {
+    recipients.push({
+      pubkey: arbiterPk,
+      message: `🔒 SatoshiMarket — Trade is live\n\nTrade ${escrowId}${amt}${desc}\n\nSats are locked. You'll be notified if the parties disagree and need your vote.`,
+    });
+  }
   if (recipients.length > 0) sendDMBatch(recipients).catch(() => {});
 }
 
-/** Vote cast — notify the other participants (don't reveal the vote). */
+/** Vote cast — notify the other participants. */
 export function notifyEscrowVote(
   escrowId: string, voterPk: string, voterRole: string, otherPubkeys: string[]
 ): void {
@@ -136,7 +158,7 @@ export function notifyEscrowVote(
     .filter(pk => pk && pk !== voterPk && shouldNotify(pk, "escrow"))
     .map(pk => ({
       pubkey: pk,
-      message: `🗳️ The ${voterRole} voted on escrow ${escrowId}. Check status at satoshimarket.app`,
+      message: `🗳️ SatoshiMarket — Vote cast\n\nThe ${voterRole} voted on trade ${escrowId}.\n\nOpen Fedi to check the status and vote if needed.`,
     }));
   if (recipients.length > 0) sendDMBatch(recipients).catch(() => {});
 }
@@ -144,57 +166,60 @@ export function notifyEscrowVote(
 /** 2-of-3 consensus reached — escrow resolved. */
 export function notifyEscrowResolved(
   escrowId: string, outcome: "release" | "refund",
-  sellerPk: string, buyerPk: string, arbiterPk: string
+  sellerPk: string, buyerPk: string, arbiterPk: string,
+  amountMsats?: number
 ): void {
   const winnerPk = outcome === "release" ? buyerPk : sellerPk;
+  const amt = amountMsats ? ` (₿ ${fmtSats(amountMsats)})` : "";
   const all = [sellerPk, buyerPk, arbiterPk];
   const recipients = all
     .filter(pk => pk && shouldNotify(pk, "escrow"))
     .map(pk => ({
       pubkey: pk,
       message: pk === winnerPk
-        ? `🎉 Escrow ${escrowId} resolved: ${outcome}. Claim your sats at satoshimarket.app`
-        : `📋 Escrow ${escrowId} resolved: ${outcome}. Details at satoshimarket.app`,
+        ? `🎉 SatoshiMarket — You won!\n\nTrade ${escrowId}${amt} resolved: ${outcome}.\n\n⚡ Open Fedi now to claim your sats!`
+        : `📋 SatoshiMarket — Trade resolved\n\nTrade ${escrowId}${amt} resolved: ${outcome}.\n\nThe winning party can now claim their sats.`,
     }));
   if (recipients.length > 0) sendDMBatch(recipients).catch(() => {});
 }
 
 /** Payout complete — winner got their sats. */
-export function notifyEscrowCompleted(escrowId: string, winnerPk: string): void {
+export function notifyEscrowCompleted(escrowId: string, winnerPk: string, amountMsats?: number): void {
+  const amt = amountMsats ? ` ₿ ${fmtSats(amountMsats)}` : "";
   if (winnerPk && shouldNotify(winnerPk, "escrow")) {
-    sendDM(winnerPk, `⚡ Payout complete for escrow ${escrowId}. Sats sent to your Lightning invoice. satoshimarket.app`).catch(() => {});
+    sendDM(winnerPk, `⚡ SatoshiMarket — Payout complete!\n\nTrade ${escrowId}:${amt} sent to your Lightning wallet.\n\nCheck your Fedi balance. Thank you for trading! 🥜`).catch(() => {});
   }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
 // MARKETPLACE NOTIFICATION TRIGGERS
-//
-// Called from src/routes/marketplace.ts at purchase, order sync, and rating.
 // ══════════════════════════════════════════════════════════════════════════
 
 /** Listing purchased — notify seller + buyer. */
 export function notifyListingPurchased(
   listingId: string, listingTitle: string,
-  sellerPk: string, buyerPk: string, escrowId: string
+  sellerPk: string, buyerPk: string, escrowId: string,
+  amountMsats?: number
 ): void {
-  const title = listingTitle.length > 40 ? listingTitle.slice(0, 37) + "…" : listingTitle;
+  const title = listingTitle.length > 50 ? listingTitle.slice(0, 47) + "…" : listingTitle;
+  const amt = amountMsats ? `\n₿ ${fmtSats(amountMsats)} sats` : "";
 
   if (sellerPk && shouldNotify(sellerPk, "listing")) {
-    sendDM(sellerPk, `🛒 "${title}" purchased! Escrow ${escrowId} created. Lock your sats to begin the trade. satoshimarket.app`).catch(() => {});
+    sendDM(sellerPk, `🛒 SatoshiMarket — Item sold!\n\n"${title}"${amt}\nEscrow: ${escrowId}\n\n🔒 Open Fedi and lock your sats to start the trade.`).catch(() => {});
   }
   if (buyerPk && shouldNotify(buyerPk, "order")) {
-    sendDM(buyerPk, `✅ Purchase confirmed: "${title}". Escrow ${escrowId} — waiting for seller to lock sats. satoshimarket.app`).catch(() => {});
+    sendDM(buyerPk, `✅ SatoshiMarket — Purchase confirmed!\n\n"${title}"${amt}\nEscrow: ${escrowId}\n\nWaiting for the seller to lock sats. You'll be notified when it's time to vote.`).catch(() => {});
   }
 }
 
-/** Order status changed (from sync with escrow state). */
+/** Order status changed. */
 export function notifyOrderStatusChange(
   orderId: string, newStatus: string, buyerPk: string, sellerPk: string
 ): void {
   const msgs: Record<string, string> = {
-    active: "🔒 Sats locked — trade is live.",
-    completed: "🎉 Trade completed! Leave a rating for your partner.",
-    expired: "⏰ Trade expired.",
+    active: "🔒 Sats locked — the trade is live. Open Fedi to continue.",
+    completed: "🎉 Trade completed! Open Fedi to leave a rating for your partner.",
+    expired: "⏰ Trade expired. The escrow has been auto-refunded.",
     cancelled: "❌ Order cancelled.",
   };
   const msg = msgs[newStatus];
@@ -202,9 +227,9 @@ export function notifyOrderStatusChange(
 
   const recipients: Array<{ pubkey: string; message: string }> = [];
   if (buyerPk && shouldNotify(buyerPk, "order"))
-    recipients.push({ pubkey: buyerPk, message: `Order ${orderId}: ${msg} satoshimarket.app` });
+    recipients.push({ pubkey: buyerPk, message: `📦 SatoshiMarket — Order ${orderId}\n\n${msg}` });
   if (sellerPk && shouldNotify(sellerPk, "order"))
-    recipients.push({ pubkey: sellerPk, message: `Order ${orderId}: ${msg} satoshimarket.app` });
+    recipients.push({ pubkey: sellerPk, message: `📦 SatoshiMarket — Order ${orderId}\n\n${msg}` });
   if (recipients.length > 0) sendDMBatch(recipients).catch(() => {});
 }
 
@@ -212,6 +237,6 @@ export function notifyOrderStatusChange(
 export function notifyNewRating(ratedPk: string, score: number, raterPk: string): void {
   if (ratedPk && shouldNotify(ratedPk, "order")) {
     const stars = "⭐".repeat(score);
-    sendDM(ratedPk, `${stars} New ${score}/5 rating from ${truncPk(raterPk)}. View profile at satoshimarket.app`).catch(() => {});
+    sendDM(ratedPk, `${stars} SatoshiMarket — New rating!\n\nYou received a ${score}/5 rating from ${truncPk(raterPk)}.\n\nOpen Fedi to view your profile.`).catch(() => {});
   }
 }

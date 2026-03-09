@@ -76,6 +76,7 @@ function isArbiterAllowed(pubkey: string): boolean {
 import { Router, Request, Response, NextFunction } from "express";
 import { verifyEvent } from "nostr-tools/pure";
 import * as DB from "../db";
+import * as Notify from "../notifications";
 import * as FM from "../fedimint";
 import { matrixBot } from "./matrix-bot";
 
@@ -338,7 +339,7 @@ if (!sellerIsDev && joinerIsDev) {
         const otherPks = [updated.seller_pubkey, updated.buyer_pubkey, updated.arbiter_pubkey].filter(Boolean);
         Notify.notifyEscrowJoin(updated.id, pk, role, otherPks);
         if (updated.status === "FUNDED") {
-          Notify.notifyEscrowFunded(updated.id, updated.seller_pubkey, updated.buyer_pubkey, updated.arbiter_pubkey);
+          Notify.notifyEscrowFunded(updated.id, updated.seller_pubkey, updated.buyer_pubkey, updated.arbiter_pubkey, updated.amount_msats, updated.description);
         }
       }
     }
@@ -525,7 +526,7 @@ router.post("/:id/lock", async (req: AuthenticatedRequest, res: Response) => {
       if (!isDevPubkey(updated.seller_pubkey)) matrixBot.notifyLocked({ id: updated.id, amountMsats: updated.amount_msats, description: updated.description, communityLink: updated.community_link, sellerPubkey: updated.seller_pubkey, buyerPubkey: updated.buyer_pubkey, arbiterPubkey: updated.arbiter_pubkey });
       // Nostr DM: notify buyer + arbiter that sats are locked
       if (!isDevPubkey(updated.seller_pubkey)) {
-        Notify.notifyEscrowLocked(updated.id, updated.seller_pubkey, updated.buyer_pubkey, updated.arbiter_pubkey);
+        Notify.notifyEscrowLocked(updated.id, updated.seller_pubkey, updated.buyer_pubkey, updated.arbiter_pubkey, updated.amount_msats, updated.description);
       }
     }
 
@@ -586,7 +587,7 @@ router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
         const voterPks = [row.seller_pubkey, row.buyer_pubkey, row.arbiter_pubkey].filter(Boolean);
         Notify.notifyEscrowVote(row.id, pk, role, voterPks);
         if (tally.outcome) {
-          Notify.notifyEscrowResolved(row.id, tally.outcome, row.seller_pubkey, row.buyer_pubkey, row.arbiter_pubkey);
+          Notify.notifyEscrowResolved(row.id, tally.outcome, row.seller_pubkey, row.buyer_pubkey, row.arbiter_pubkey, row.amount_msats);
         }
       }
     }
@@ -734,7 +735,7 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
     // Nostr DM: payout complete
     if (!isDevPubkey(row.seller_pubkey)) {
       const winnerPk = row.resolved_outcome === "release" ? row.buyer_pubkey : row.seller_pubkey;
-      Notify.notifyEscrowCompleted(row.id, winnerPk);
+      Notify.notifyEscrowCompleted(row.id, winnerPk, row.amount_msats);
     }
 
 

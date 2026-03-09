@@ -1,48 +1,41 @@
-// src/nostr-dm.ts — Nostr DM Notification System (NIP-44)
+// src/nostr-dm.ts — Nostr DM Notification System (NIP-17 Gift Wrap)
 //
-// Phase 5: Server-side encrypted DM notifications via Nostr relays.
+// Uses NIP-17 (Gift Wrap) with NIP-44 encryption for private DMs.
+// This is the modern standard supported by all major Nostr clients:
+//   Amethyst, 0xchat, Primal, Damus, Yakihonne, etc.
 //
-// Uses NIP-44 (ChaCha20 + HMAC-SHA256) per Fedi's recommendation:
-//   "We strongly recommend you use NIP-44 since NIP-04 is NOT considered
-//    secure for production usage."
-//   — https://fedibtc.github.io/fedi-docs/docs/miniapps/developers/miniapp-integration
+// Protocol: kind:14 (sealed DM) wrapped in kind:1059 (gift wrap)
+// Encryption: NIP-44 (ChaCha20 + HMAC-SHA256) — per Fedi's recommendation
 //
 // The server holds a dedicated notification bot keypair (NOSTR_BOT_PRIVKEY).
-// When escrow/marketplace events occur, this module encrypts a message
-// using NIP-44 and publishes a kind:4 event to configured relays.
+// When escrow/marketplace events occur, this module wraps a message
+// using NIP-17 Gift Wrap and publishes the kind:1059 event to relays.
 //
-// Users receive DMs in any Nostr client that supports NIP-44 decryption
-// (Damus, Amethyst, Primal, Fedi, etc.)
+// Users receive DMs in any Nostr client that supports NIP-17.
 
-import { finalizeEvent, getPublicKey } from "nostr-tools/pure";
-import { v2 as nip44 } from "nostr-tools/nip44";
+import { getPublicKey } from "nostr-tools/pure";
+import { wrapEvent } from "nostr-tools/nip17";
 import WebSocket from "ws";
 
 // ── Configuration ─────────────────────────────────────────────────────────
 
 const BOT_PRIVKEY_HEX = process.env.NOSTR_BOT_PRIVKEY || "";
-const RELAY_URLS = (process.env.NOSTR_RELAYS || "wss://relay.damus.io,wss://relay.primal.net,wss://nos.lol")
+const RELAY_URLS = (process.env.NOSTR_RELAYS || "wss://relay.primal.net,wss://nos.lol,wss://relay.nostr.band")
   .split(",").map(s => s.trim()).filter(Boolean);
 const DM_ENABLED = BOT_PRIVKEY_HEX.length === 64;
 
-// Derive bot keypair from hex privkey
-// nostr-tools: generateSecretKey() returns Uint8Array(32)
-//              getPublicKey() takes Uint8Array, returns hex string
-//              finalizeEvent() takes Uint8Array sk
-//              nip44.utils.getConversationKey() takes Uint8Array sk + hex pubkey
-
+// Derive bot keypair
 let BOT_SK: Uint8Array = new Uint8Array(32);
 let BOT_PUBKEY = "";
 
 if (DM_ENABLED) {
   try {
-    // Convert hex privkey to Uint8Array
     BOT_SK = new Uint8Array(32);
     for (let i = 0; i < 64; i += 2) {
       BOT_SK[i / 2] = parseInt(BOT_PRIVKEY_HEX.substring(i, i + 2), 16);
     }
     BOT_PUBKEY = getPublicKey(BOT_SK);
-    console.log(`📨 Nostr DM notifications enabled (NIP-44) — bot: ${BOT_PUBKEY.slice(0, 12)}…`);
+    console.log(`📨 Nostr DM notifications enabled (NIP-17 Gift Wrap) — bot: ${BOT_PUBKEY.slice(0, 12)}…`);
     console.log(`📡 Relays: ${RELAY_URLS.join(", ")}`);
   } catch (err) {
     console.error("❌ Invalid NOSTR_BOT_PRIVKEY — DM notifications disabled");
@@ -54,55 +47,14 @@ if (!DM_ENABLED) {
 }
 
 // ── Dev pubkey filter ─────────────────────────────────────────────────────
-// Same sandbox pubkeys used in ecash-escrow.ts and Marketplace.jsx
 
 const DEV_PUBKEYS = new Set([
-  "aa".repeat(32),  // seller
-  "bb".repeat(32),  // buyer
-  "cc".repeat(32),  // arbiter
+  "aa".repeat(32),
+  "bb".repeat(32),
+  "cc".repeat(32),
 ]);
 
-// ── NIP-44 Encryption ─────────────────────────────────────────────────────
-//
-// NIP-44 uses ChaCha20 + HMAC-SHA256, replacing NIP-04's AES-256-CBC.
-// Benefits over NIP-04:
-//   - Authenticated encryption (HMAC prevents tampering)
-//   - Message length padding (reduces metadata leakage)
-//   - Audited spec (Cure53 audit, Dec 2023)
-//   - ~5x faster than NIP-04 in benchmarks
-//
-// nostr-tools API:
-//   const convKey = nip44.utils.getConversationKey(privkeyBytes, pubkeyHex)
-//   const ciphertext = nip44.encrypt(plaintext, convKey)
-//   const plaintext = nip44.decrypt(ciphertext, convKey)
-
-function nip44Encrypt(recipientPubkeyHex: string, plaintext: string): string {
-  const conversationKey = nip44.utils.getConversationKey(BOT_SK, recipientPubkeyHex);
-  return nip44.encrypt(plaintext, conversationKey);
-}
-
-// ── Event Construction & Signing ──────────────────────────────────────────
-//
-// Uses nostr-tools/pure.finalizeEvent() which:
-//   1. Serializes the event per NIP-01
-//   2. SHA256 hashes to get the event ID
-//   3. Schnorr-signs with the bot's private key
-//   4. Returns a complete, publishable NostrEvent
-
-function createSignedDMEvent(recipientPubkeyHex: string, encryptedContent: string) {
-  return finalizeEvent({
-    kind: 4,
-    created_at: Math.floor(Date.now() / 1000),
-    tags: [["p", recipientPubkeyHex]],
-    content: encryptedContent,
-  }, BOT_SK);
-}
-
 // ── Relay Publishing ──────────────────────────────────────────────────────
-//
-// Publishes events directly via WebSocket (ws package).
-// Each relay gets an 8-second timeout. We publish to all relays in parallel
-// and consider the send successful if at least 1 relay accepts.
 
 const RELAY_TIMEOUT_MS = 8000;
 
@@ -139,7 +91,6 @@ function publishToRelay(relayUrl: string, event: NostrEvent): Promise<boolean> {
     ws.on("message", (data: Buffer) => {
       try {
         const msg = JSON.parse(data.toString());
-        // Nostr relay response: ["OK", event_id, accepted, message]
         if (msg[0] === "OK" && msg[1] === event.id) {
           clearTimeout(timeout);
           ws.close();
@@ -181,7 +132,8 @@ async function publishToRelays(event: NostrEvent): Promise<{ successes: number; 
 // ── Public API ────────────────────────────────────────────────────────────
 
 /**
- * Send a NIP-44 encrypted DM to a Nostr pubkey.
+ * Send a NIP-17 Gift Wrapped DM to a Nostr pubkey.
+ * Creates kind:14 (sealed) inside kind:1059 (gift wrap).
  * Fire-and-forget: failures are logged but never throw.
  */
 export async function sendDM(recipientPubkey: string, message: string): Promise<boolean> {
@@ -192,11 +144,16 @@ export async function sendDM(recipientPubkey: string, message: string): Promise<
   if (DEV_PUBKEYS.has(recipientPubkey)) return false;
 
   try {
-    const encrypted = nip44Encrypt(recipientPubkey, message);
-    const event = createSignedDMEvent(recipientPubkey, encrypted);
+    // NIP-17 Gift Wrap: creates kind:1059 event with NIP-44 encrypted kind:14 inside
+    const wrappedEvent = wrapEvent(
+      BOT_SK,
+      { publicKey: recipientPubkey },
+      message,
+      "SatoshiMarket" // conversationTitle
+    );
 
-    console.log(`📨 DM → ${recipientPubkey.slice(0, 8)}… (${message.length} chars, NIP-44)`);
-    const { successes, failures } = await publishToRelays(event);
+    console.log(`📨 DM → ${recipientPubkey.slice(0, 8)}… (${message.length} chars, NIP-17 Gift Wrap)`);
+    const { successes, failures } = await publishToRelays(wrappedEvent as unknown as NostrEvent);
     console.log(`  ✅ ${successes}/${successes + failures} relays accepted`);
 
     return successes > 0;
@@ -207,8 +164,8 @@ export async function sendDM(recipientPubkey: string, message: string): Promise<
 }
 
 /**
- * Send DMs to multiple recipients (e.g., all escrow participants).
- * Each recipient gets their own encrypted event (NIP-44 is per-recipient).
+ * Send DMs to multiple recipients.
+ * Each recipient gets their own Gift Wrapped event.
  */
 export async function sendDMBatch(
   recipients: Array<{ pubkey: string; message: string }>
