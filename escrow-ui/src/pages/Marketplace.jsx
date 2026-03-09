@@ -124,6 +124,64 @@ async function mapi(path, opts = {}, _retries = 1) {
 
 function fmtSats(msats) { return Math.floor(msats / 1000).toLocaleString(); }
 function fmtVolume(msats) {
+
+// ── BTC Price Hook — fetches from mempool.space + forex conversion ──
+let _btcPrices = null; // { USD, EUR, GBP, ... }
+let _forexRates = null; // { CFA: 615, KES: 129, ... } per 1 USD
+let _btcPriceLastFetch = 0;
+
+// Approximate forex rates (USD → local currency) — updated periodically
+const FALLBACK_FOREX = {
+  CFA: 615, KES: 129, TZS: 2650, NGN: 1550, BRL: 5.0, ARS: 900, INR: 83, ZAR: 18.5,
+  EUR: 0.92, GBP: 0.79, CAD: 1.36, CHF: 0.88, AUD: 1.53, JPY: 150,
+};
+
+async function fetchBtcPrice() {
+  const now = Date.now();
+  if (_btcPrices && now - _btcPriceLastFetch < 5 * 60 * 1000) return _btcPrices;
+  try {
+    const res = await fetch("https://mempool.space/api/v1/prices");
+    const data = await res.json();
+    _btcPrices = data;
+    _btcPriceLastFetch = now;
+    // Update forex from mempool's own rates where available
+    if (data.EUR && data.USD) FALLBACK_FOREX.EUR = data.EUR / data.USD;
+    if (data.GBP && data.USD) FALLBACK_FOREX.GBP = data.GBP / data.USD;
+    if (data.CAD && data.USD) FALLBACK_FOREX.CAD = data.CAD / data.USD;
+    if (data.CHF && data.USD) FALLBACK_FOREX.CHF = data.CHF / data.USD;
+    if (data.AUD && data.USD) FALLBACK_FOREX.AUD = data.AUD / data.USD;
+    if (data.JPY && data.USD) FALLBACK_FOREX.JPY = data.JPY / data.USD;
+    return _btcPrices;
+  } catch { return _btcPrices; }
+}
+
+function useBtcPrice() {
+  const [prices, setPrices] = useState(_btcPrices);
+  useEffect(() => { fetchBtcPrice().then(p => { if (p) setPrices(p); }); }, []);
+  return prices;
+}
+
+const CURRENCY_SYMBOLS = {
+  USD: "$", EUR: "€", GBP: "£", CFA: "CFA ", KES: "KSh ", TZS: "TSh ", NGN: "₦",
+  BRL: "R$", ARS: "ARS ", INR: "₹", ZAR: "R", CAD: "CA$", CHF: "CHF ", AUD: "A$", JPY: "¥",
+};
+
+function fmtFiat(msats, btcPrices, currency = "USD") {
+  if (!btcPrices || !btcPrices.USD) return null;
+  const sats = Math.floor(msats / 1000);
+  const usd = (sats / 100_000_000) * btcPrices.USD;
+  const rate = FALLBACK_FOREX[currency] || 1;
+  const local = usd * rate;
+  const sym = CURRENCY_SYMBOLS[currency] || currency + " ";
+  if (currency === "USD") {
+    if (local < 0.01) return "< $0.01";
+    return local < 1000 ? `$${local.toFixed(2)}` : `$${local.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+  }
+  if (local < 1) return `${sym}${local.toFixed(2)}`;
+  if (local < 1000) return `${sym}${local.toFixed(local < 100 ? 2 : 0)}`;
+  return `${sym}${local.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
   const sats = Math.floor(msats / 1000);
   if (sats >= 1_000_000_000) return `${(sats / 1_000_000_000).toFixed(1)}B`;
   if (sats >= 1_000_000) return `${(sats / 1_000_000).toFixed(1)}M`;
@@ -929,6 +987,7 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
 function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
+  const btcPrice = useBtcPrice();
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
   const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
   const filteredListings = (activeCategory === "all"
@@ -1074,7 +1133,10 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
             <button key={l.id} style={{ ...M.listingCard, ...(l.status === "paused" ? { opacity: 0.55, borderColor: "#334155" } : l.quantity <= 0 ? { opacity: 0.45, borderColor: "#334155" } : {}) }} onClick={() => onOpen(l.id)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={M.cardTitle}>{l.title}</span>
-		<span style={M.cardPrice}><span style={{ color: "#f7931a", fontSize: 14 }}>₿</span> {fmtSats(l.priceMsats)}</span>
+		<span style={M.cardPrice}>
+                  <span style={{ color: "#f7931a", fontSize: 14 }}>₿</span> {fmtSats(l.priceMsats)}
+                  {btcPrice && <span style={{ fontSize: 11, color: "#64748b", marginLeft: 6 }}>≈ {fmtFiat(l.priceMsats, btcPrice)}</span>}
+                </span>
               </div>
               {l.description && <p style={M.cardDesc}>{l.description}</p>}
               <div style={M.cardMeta}>
@@ -1206,6 +1268,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
   const isSeller = l.sellerPubkey === pubkey;
   const canBuy = !isSeller && l.status === "active" && l.quantity > 0;
   const isP2P = isSatsForFiat(l.category);
+  const btcPrice = useBtcPrice();
 
   const handleBuy = async () => {
     setLoading(true);
@@ -1247,6 +1310,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
           <div style={{ fontSize: 32, fontWeight: 900, color: "#f8fafc", letterSpacing: -1 }}>
 	  <span style={{ color: "#f7931a", fontSize: 22 }}>₿</span> {fmtSats(l.priceMsats)}
           </div>
+          {btcPrice && <div style={{ fontSize: 14, color: "#64748b", marginTop: 4 }}>≈ {fmtFiat(l.priceMsats, btcPrice)} USD</div>}
         </div>
 
         {/* Trade type indicator */}
@@ -1380,6 +1444,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [price, setPrice] = useState("");
+  const btcPrice = useBtcPrice();
   const [terms, setTerms] = useState("");
   const [category, setCategory] = useState("");
   const [condition, setCondition] = useState("new");
@@ -1528,7 +1593,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
 
       {/* ── Common fields: Title + Price ── */}
       <div style={M.formGroup}><label style={M.label}>{t("mkFieldTitle")} *</label><input style={M.input} placeholder={isP2P ? "e.g., Selling 50,000 sats for USD" : isLoan ? "e.g., Lending 50,000 sats — 14 day term" : t("mkFieldTitleHint")} value={title} onChange={e => setTitle(e.target.value)} /></div>
-      <div style={M.formGroup}><label style={M.label}>{isLoan ? "LOAN AMOUNT (SATS) *" : t("mkFieldPrice") + " *"}</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}</p></div>
+      <div style={M.formGroup}><label style={M.label}>{isLoan ? "LOAN AMOUNT (SATS) *" : t("mkFieldPrice") + " *"}</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}{price && btcPrice ? ` · ≈ ${fmtFiat(Number(price) * 1000, btcPrice, fiatCurrency || "USD")}` : ""}</p></div>
 
       {/* ── P2P-specific fields ── */}
       {isP2P && (

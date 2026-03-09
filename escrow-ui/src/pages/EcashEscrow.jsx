@@ -1066,6 +1066,12 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const [locking, setLocking] = useState(false);
   const prevStatus = useRef(status);
 
+  // Trade type detection from escrow description prefix
+  const isP2PTrade = e.description?.startsWith("P2P Trade:");
+  const isLending = e.description?.startsWith("Lending:");
+  const isMarketplace = e.description?.startsWith("Marketplace:");
+  const tradeType = isP2PTrade ? "p2p" : isLending ? "lending" : isMarketplace ? "marketplace" : "manual";
+
   useEffect(() => {
     if (prevStatus.current !== "LOCKED" && status === "LOCKED") {
       setShowBurst(true);
@@ -1291,6 +1297,19 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         <button style={S.iconBtn} onClick={onRefresh}><I.Refresh /></button>
       </div>
 
+      {/* ── Trade type badge — bold, impossible to miss ── */}
+      <div style={{ textAlign: "center", marginBottom: 12 }}>
+        <span style={{
+          display: "inline-block", padding: "6px 16px", borderRadius: 99, fontSize: 13, fontWeight: 800, letterSpacing: 0.5,
+          ...(isP2PTrade ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }
+            : isLending ? { background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }
+            : isMarketplace ? { background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }
+            : { background: "rgba(100,116,139,0.15)", color: "#94a3b8", border: "1px solid rgba(100,116,139,0.3)" }),
+        }}>
+          {isP2PTrade ? "₿ P2P SATS FOR FIAT" : isLending ? "🤝 COMMUNITY LOAN" : isMarketplace ? "📦 MARKETPLACE" : "⚖️ MANUAL ESCROW"}
+        </span>
+      </div>
+
       <div style={{ paddingBottom: 100 }}>
         {/* ═══ THE VAULT ═══ */}
         <Vault status={status} amountMsats={e.amountMsats} showBurst={showBurst} resolvedOutcome={e.resolvedOutcome} />
@@ -1359,7 +1378,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
                   {confirmVote ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ textAlign: "center", padding: "8px 12px", background: confirmVote === "release" ? "rgba(5,150,105,0.1)" : "rgba(180,83,9,0.1)", border: `1px solid ${confirmVote === "release" ? "rgba(5,150,105,0.3)" : "rgba(180,83,9,0.3)"}`, borderRadius: 10, fontSize: 13, fontWeight: 700, color: confirmVote === "release" ? "#10b981" : "#f59e0b" }}>
-                        {confirmVote === "release" ? "Confirm: Release sats to buyer?" : `Confirm: Dispute — refund to ${role === "seller" ? t("toMe") : t("seller")}?`}
+                        {confirmVote === "release"
+                          ? (isP2PTrade ? "Confirm: Buyer sent fiat? Release sats to them." : isLending ? "Confirm: Release loan to borrower?" : "Confirm: Release sats to buyer?")
+                          : `Confirm: Dispute — refund to ${role === "seller" ? t("toMe") : t("seller")}?`}
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8" }} onClick={cancelConfirm}>Cancel</button>
@@ -1417,17 +1438,17 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {/* ═══ PRIMARY ACTION — right after participants/tally ═══ */}
         {canBuyerVote && !confirmVote && (
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)", margin: "4px 0 12px", fontSize: 16, padding: "16px 20px" }} onClick={() => setConfirmVote("release")} disabled={loading}>
-            {loading ? t("voting") : "✓ I received what I paid for"}
+            {loading ? t("voting") : isP2PTrade ? "✓ I sent the fiat payment" : isLending ? "✓ I received the loan" : "✓ I received what I paid for"}
           </button>
         )}
         {canBuyerVote && confirmVote === "release" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "0 0 12px" }}>
             <div style={{ textAlign: "center", padding: "12px 14px", background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.3)", borderRadius: 10, fontSize: 14, fontWeight: 700, color: "#10b981" }}>
-              Release sats to you?
+              {isP2PTrade ? "Confirm: You sent fiat? Sats will release to you." : isLending ? "Confirm: You received the loan?" : "Release sats to you?"}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8", fontSize: 15, padding: "14px" }} onClick={cancelConfirm}>Cancel</button>
-              <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)", fontSize: 15, padding: "14px" }} onClick={() => handleVote("release")} disabled={loading}>{loading ? t("voting") : "Yes, release ⚡"}</button>
+              <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)", fontSize: 15, padding: "14px" }} onClick={() => handleVote("release")} disabled={loading}>{loading ? t("voting") : "Yes, confirm ⚡"}</button>
             </div>
           </div>
         )}
