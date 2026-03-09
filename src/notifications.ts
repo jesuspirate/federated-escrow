@@ -192,6 +192,37 @@ export function notifyEscrowCompleted(escrowId: string, winnerPk: string, amount
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// ARBITER DISPUTE NOTIFICATIONS
+// ══════════════════════════════════════════════════════════════════════════
+
+/** Urgent: dispute detected, arbiter must vote within 4 hours. */
+export function notifyArbiterDispute(
+  escrowId: string, arbiterPk: string, amountMsats: number, description: string, communityLink: string
+): void {
+  if (!arbiterPk || !shouldNotify(arbiterPk, "escrow")) return;
+  const amt = fmtSats(amountMsats);
+  const desc = description ? `\n"\${description.length > 50 ? description.slice(0, 47) + "…" : description}"` : "";
+  sendDM(arbiterPk, `⚖️ SatoshiMarket — DISPUTE ALERT\n\nTrade \${escrowId} (₿ \${amt})\${desc}\n\nBuyer and seller disagree. You have 4 HOURS to cast your vote.\n\nIf you cannot respond in time, the trade will be reassigned to another arbiter.\n\n👉 Open Fedi now to review and vote.\nFor details, message the community room in Fedi.`).catch(() => {});
+}
+
+/** Arbiter was replaced due to timeout. */
+export function notifyArbiterReplaced(
+  escrowId: string, oldArbiterPk: string, newArbiterPk: string, amountMsats: number, communityLink: string
+): void {
+  const amt = fmtSats(amountMsats);
+
+  // Notify old arbiter
+  if (oldArbiterPk && shouldNotify(oldArbiterPk, "escrow")) {
+    sendDM(oldArbiterPk, `⏰ SatoshiMarket — You've been replaced\n\nTrade \${escrowId} (₿ \${amt}): you did not vote within 4 hours.\n\nAnother arbiter has been assigned. Please stay responsive for future disputes.`).catch(() => {});
+  }
+
+  // Notify new arbiter
+  if (newArbiterPk && shouldNotify(newArbiterPk, "escrow")) {
+    sendDM(newArbiterPk, `⚖️ SatoshiMarket — URGENT: Dispute reassigned to you\n\nTrade \${escrowId} (₿ \${amt})\n\nThe previous arbiter did not respond. You have 4 HOURS to review and vote.\n\n👉 Open Fedi now.\nFor dispute details, message the community room in Fedi.`).catch(() => {});
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // MARKETPLACE NOTIFICATION TRIGGERS
 // ══════════════════════════════════════════════════════════════════════════
 

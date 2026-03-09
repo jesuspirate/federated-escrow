@@ -112,6 +112,14 @@ function rateLimit(req: AuthenticatedRequest, res: Response, next: NextFunction)
 
 function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   DB.processExpiredEscrows();
+  // Process arbiter dispute timeouts (4h rotation)
+  const arbiterList = ALLOWED_ARBITERS ? [...ALLOWED_ARBITERS] : [];
+  DB.processDisputeTimeouts(arbiterList, (escrow, oldArbiter, newArbiter) => {
+    // Notify old arbiter they've been replaced
+    if (!isDevPubkey(escrow.seller_pubkey)) {
+      Notify.notifyArbiterReplaced(escrow.id, oldArbiter, newArbiter, escrow.amount_msats, escrow.community_link || "");
+    }
+  });
 
   const authHeader = req.headers.authorization;
 
@@ -391,6 +399,10 @@ router.get("/:id", (req: AuthenticatedRequest, res: Response) => {
     createdAt: row.created_at, updatedAt: row.updated_at, expiresIn: formatExpiry(row.expires_at),
     ...(role && { yourRole: role }),
     ...(role && { canClaim: row.status === "APPROVED" && ((row.resolved_outcome === "release" && role === "buyer") || (row.resolved_outcome === "refund" && role === "seller")) }),
+    disputeStartedAt: row.dispute_started_at || null,
+    arbiterFeeMsats: row.arbiter_fee_msats || 0,
+    arbiterFeeSats: Math.floor((row.arbiter_fee_msats || 0) / 1000),
+    arbiterRotations: row.arbiter_rotations || 0,
   });
 });
 
@@ -577,6 +589,23 @@ router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
     const updatedVotes = DB.getVotes(row.id);
     const tally = tallyVotes(updatedVotes);
 
+    // Detect dispute: both voted but disagree → start arbiter timer + set fee
+    if (!tally.outcome && updatedVotes.length >= 2) {
+      const bv = updatedVotes.find(v => v.role === "buyer");
+      const sv = updatedVotes.find(v => v.role === "seller");
+      if (bv && sv && bv.outcome !== sv.outcome && !row.dispute_started_at) {
+        DB.startDispute(row.id);
+        // 1% arbiter fee
+        const feeMsats = Math.floor(row.amount_msats * 0.01);
+        DB.setArbiterFee(row.id, feeMsats);
+        console.log(`  ⚖️ Dispute started: \${row.id} — arbiter has 4h to vote (fee: \${feeMsats} msats)`);
+        // Notify arbiter urgently
+        if (!isDevPubkey(row.seller_pubkey) && row.arbiter_pubkey) {
+          Notify.notifyArbiterDispute(row.id, row.arbiter_pubkey, row.amount_msats, row.description || "", row.community_link || "");
+        }
+      }
+    }
+
     if (tally.outcome) DB.resolveEscrow(row.id, tally.outcome);
 
     const allPks = [row.seller_pubkey, row.buyer_pubkey, row.arbiter_pubkey].filter(Boolean) as string[];
@@ -653,8 +682,14 @@ router.post("/:id/claim", (req: AuthenticatedRequest, res: Response) => {
     if (isWebln) {
       return res.json({
         id: row.id, status: "CLAIMED", claimedBy: role,
-        payoutReady: true, amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
-        message: "Escrow resolved in your favor! Tap Receive to generate an invoice — server pays you immediately.",
+        payoutReady: true,
+        amountMsats: row.arbiter_fee_msats ? row.amount_msats - row.arbiter_fee_msats : row.amount_msats,
+        amountSats: Math.floor((row.arbiter_fee_msats ? row.amount_msats - row.arbiter_fee_msats : row.amount_msats) / 1000),
+        arbiterFeeMsats: row.arbiter_fee_msats || 0,
+        arbiterFeeSats: Math.floor((row.arbiter_fee_msats || 0) / 1000),
+        message: row.arbiter_fee_msats
+          ? `Escrow resolved! \${Math.floor((row.arbiter_fee_msats || 0) / 1000)} sats arbiter fee deducted. Tap Receive for your payout.`
+          : "Escrow resolved in your favor! Tap Receive to generate an invoice — server pays you immediately.",
         nextStep: "POST /:id/payout with { invoice: '<BOLT-11>' }",
       });
     }
@@ -731,6 +766,11 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
 
     // Mark COMPLETED immediately to prevent duplicate payouts
     DB.completeEscrow(row.id);
+
+    // Arbiter fee: log if dispute occurred
+    if (row.arbiter_fee_msats && row.arbiter_fee_msats > 0) {
+      console.log(`  💰 Arbiter fee for ${row.id}: ${row.arbiter_fee_msats} msats (${Math.floor(row.arbiter_fee_msats / 1000)} sats)`);
+    }
 
     // Nostr DM: payout complete
     if (!isDevPubkey(row.seller_pubkey)) {

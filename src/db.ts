@@ -114,6 +114,21 @@ const applyMigrations = db.transaction(() => {
     }
   }
 });
+
+// ── Migration: Add arbiter dispute columns ──
+try {
+  db.exec(`ALTER TABLE escrows ADD COLUMN dispute_started_at INTEGER`);
+  console.log("[db] Added dispute_started_at column");
+} catch {} // column already exists
+try {
+  db.exec(`ALTER TABLE escrows ADD COLUMN arbiter_fee_msats INTEGER DEFAULT 0`);
+  console.log("[db] Added arbiter_fee_msats column");
+} catch {} // column already exists
+try {
+  db.exec(`ALTER TABLE escrows ADD COLUMN arbiter_rotations INTEGER DEFAULT 0`);
+  console.log("[db] Added arbiter_rotations column");
+} catch {} // column already exists
+
 applyMigrations();
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -128,6 +143,9 @@ export interface EscrowRow {
   resolved_outcome: string | null; resolved_at: number | null;
   claimed_by: string | null; claimed_at: number | null;
   expires_at: number | null;
+  dispute_started_at: number | null;
+  arbiter_fee_msats: number;
+  arbiter_rotations: number;
 }
 
 export interface VoteRow {
@@ -158,6 +176,10 @@ const stmts = {
   getVotes: db.prepare(`SELECT * FROM votes WHERE escrow_id = ? ORDER BY timestamp ASC`),
   countEscrows: db.prepare(`SELECT COUNT(*) as count FROM escrows`),
   getExpired: db.prepare(`SELECT * FROM escrows WHERE status IN ('CREATED', 'FUNDED', 'LOCKED') AND expires_at IS NOT NULL AND expires_at <= ?`),
+  getDisputes: db.prepare(`SELECT * FROM escrows WHERE status = 'LOCKED' AND dispute_started_at IS NOT NULL AND dispute_started_at > 0`),
+  setDisputeStarted: db.prepare(`UPDATE escrows SET dispute_started_at = @dispute_started_at, updated_at = @updated_at WHERE id = @id`),
+  setArbiterFee: db.prepare(`UPDATE escrows SET arbiter_fee_msats = @fee, updated_at = @updated_at WHERE id = @id`),
+  reassignArbiter: db.prepare(`UPDATE escrows SET arbiter_pubkey = @new_arbiter, arbiter_rotations = arbiter_rotations + 1, updated_at = @updated_at WHERE id = @id`),
   updateStatus: db.prepare(`UPDATE escrows SET status = @status, updated_at = @updated_at WHERE id = @id`),
   expireEscrow: db.prepare(`UPDATE escrows SET status = 'EXPIRED', resolved_outcome = 'refund', resolved_at = @now, updated_at = @now WHERE id = @id AND status IN ('CREATED', 'FUNDED', 'LOCKED')`),
 };
@@ -166,6 +188,60 @@ const stmts = {
 
 export const EXPIRY_UNFUNDED_MS = Number(process.env.ESCROW_EXPIRY_UNFUNDED_MS) || 24 * 60 * 60 * 1000;   // 24h
 export const EXPIRY_LOCKED_MS   = Number(process.env.ESCROW_EXPIRY_LOCKED_MS)   || 72 * 60 * 60 * 1000;   // 72h
+
+// ── Dispute Management ─────────────────────────────────────────────────
+
+export function startDispute(id: string): void {
+  stmts.setDisputeStarted.run({ id, dispute_started_at: Date.now(), updated_at: Date.now() });
+}
+
+export function setArbiterFee(id: string, feeMsats: number): void {
+  stmts.setArbiterFee.run({ id, fee: feeMsats, updated_at: Date.now() });
+}
+
+export function reassignArbiter(id: string, newArbiterPk: string): void {
+  // Remove old arbiter's vote if any
+  try { db.prepare(`DELETE FROM votes WHERE escrow_id = ? AND role = 'arbiter'`).run(id); } catch {}
+  stmts.reassignArbiter.run({ id, new_arbiter: newArbiterPk, updated_at: Date.now() });
+}
+
+export function getActiveDisputes(): EscrowRow[] {
+  return stmts.getDisputes.all() as EscrowRow[];
+}
+
+export const ARBITER_TIMEOUT_MS = Number(process.env.ARBITER_TIMEOUT_MS) || 4 * 60 * 60 * 1000; // 4 hours
+
+export function processDisputeTimeouts(allowedArbiters: string[], onReassign: (escrow: EscrowRow, oldArbiter: string, newArbiter: string) => void): number {
+  const now = Date.now();
+  const disputes = getActiveDisputes();
+  let count = 0;
+  for (const e of disputes) {
+    if (!e.dispute_started_at) continue;
+    const elapsed = now - e.dispute_started_at;
+    if (elapsed < ARBITER_TIMEOUT_MS) continue;
+
+    // Find next available arbiter (not buyer, seller, or current arbiter)
+    const exclude = new Set([e.seller_pubkey, e.buyer_pubkey, e.arbiter_pubkey].filter(Boolean).map(pk => pk!.toLowerCase()));
+    const eligible = allowedArbiters.filter(pk => !exclude.has(pk.toLowerCase()));
+
+    if (eligible.length > 0) {
+      const newArbiter = eligible[Math.floor(Math.random() * eligible.length)];
+      const oldArbiter = e.arbiter_pubkey!;
+      reassignArbiter(e.id, newArbiter);
+      // Reset dispute timer for new arbiter
+      startDispute(e.id);
+      onReassign(e, oldArbiter, newArbiter);
+      count++;
+      console.log(`  ⚖️ Arbiter timeout: \${e.id} — rotated \${oldArbiter.slice(0,8)}… → \${newArbiter.slice(0,8)}… (rotation #\${(e.arbiter_rotations || 0) + 1})`);
+    } else {
+      // No more arbiters available — auto-refund to seller (safest default)
+      stmts.resolve.run({ id: e.id, resolved_outcome: "refund", resolved_at: now, updated_at: now });
+      count++;
+      console.log(`  ⚠️ All arbiters exhausted for \${e.id} — auto-refund to seller`);
+    }
+  }
+  return count;
+}
 
 export function processExpiredEscrows(): number {
   const now = Date.now();
