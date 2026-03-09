@@ -1527,7 +1527,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           <div style={M.formGroup}>
             <label style={M.label}>{t("mkFiatCurrency")}</label>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {["USD", "EUR", "GBP", "CFA", "KES", "NGN", "BRL", "ARS", "INR"].map(cur => (
+              {["USD", "EUR", "GBP", "CFA", "KES", "TZS", "NGN", "BRL", "ARS", "INR"].map(cur => (
                 <button key={cur} onClick={() => setFiatCurrency(cur)} style={{
                   ...M.chipBtn, padding: "6px 12px", fontSize: 12, fontWeight: 600,
                   ...(fiatCurrency === cur ? { ...M.chipBtnActive, borderColor: "#f59e0b", color: "#f59e0b", background: "rgba(245,158,11,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
@@ -1607,7 +1607,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           <div style={M.formGroup}>
             <label style={M.label}>{t("mkFiatCurrency")}</label>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {["USD", "EUR", "CFA", "KES", "NGN", "BRL", "ARS"].map(cur => (
+              {["USD", "EUR", "CFA", "KES", "TZS", "NGN", "BRL", "ARS"].map(cur => (
                 <button key={cur} onClick={() => setFiatCurrency(cur)} style={{
                   ...M.chipBtn, padding: "6px 12px", fontSize: 12, fontWeight: 600,
                   ...(fiatCurrency === cur ? { ...M.chipBtnActive, borderColor: "#10b981", color: "#10b981", background: "rgba(16,185,129,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
@@ -1727,7 +1727,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
   const [detail, setDetail] = useState(null);
   const [rateScore, setRateScore] = useState(0);
   const [rateComment, setRateComment] = useState("");
-  const [rated, setRated] = useState(() => o.myRating != null);
+  const [rated, setRated] = useState(false);
   const isBuyer = o.buyerPubkey === pubkey;
   const canCancel = isBuyer && (o.status === "pending");
 
@@ -1737,8 +1737,8 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
         const data = await mapi(`/orders/${o.id}`);
         if (!data.error) {
           setDetail(data);
-          // If API says we already rated, mark it
-          if (data.order?.myRating) setRated(true);
+          // API is source of truth for rating status
+          if (data.order?.myRating != null) setRated(true);
         }
       } catch {}
     })();
@@ -1775,7 +1775,9 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
 
   const escrow = detail?.escrow;
   const status = detail?.order?.status || o.status;
-  const needsRating = status === "completed" && !rated;
+  // Only show rating prompt AFTER detail loads AND confirms no rating exists
+  const detailLoaded = detail != null;
+  const needsRating = detailLoaded && status === "completed" && !rated;
   const otherPubkey = isBuyer ? o.sellerPubkey : o.buyerPubkey;
   const otherRole = isBuyer ? t("seller") : t("buyer");
   const isP2P = detail?.tradeType === "sats-for-fiat" || isSatsForFiat(detail?.listing?.category);
@@ -2156,7 +2158,7 @@ function SellerProfileView({ pubkey: pk, myPubkey, onBack, onOpen, showToast }) 
 const M = {
   root: { background: "#0c0f17", color: "#e2e8f0", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 14, lineHeight: 1.5 },
   container: { width: "100%", maxWidth: 480, margin: "0 auto", padding: "0 16px 20px", overflowX: "hidden", flex: 1, overflowY: "auto" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0 16px" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0 12px", minHeight: 52 },
   title: { fontSize: 24, fontWeight: 700, color: "#f8fafc", margin: 0, letterSpacing: -0.5 },
   subtitle: { fontSize: 12, color: "#64748b", margin: "2px 0 0" },
   viewHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0 12px" },

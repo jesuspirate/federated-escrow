@@ -895,6 +895,7 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
                 </div>
                 {e.description && <p style={S.cardDesc}>{e.description}</p>}
                 <div style={S.cardMeta}>
+                  <span style={{ fontSize: 10, color: "#475569", fontFamily: "monospace" }}>{e.id}</span>
                   <span style={S.cardRole}>{e.yourRole || "\u2014"}</span>
                   {e.expiresIn && <span style={S.cardExpiry}><I.Clock /> {e.expiresIn}</span>}
                 </div>
@@ -1083,7 +1084,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   // ── WebLN Lock (seller) ─────────────────────────────────────────
   const [lockInvoice, setLockInvoice] = useState(null); // { invoice, bolt11 }
   const [lockStep, setLockStep] = useState("idle"); // idle | fetching | ready | paying | done
-  const [claimRetry, setClaimRetry] = useState(false); // true when user rejected invoice, shows retry button
+  const [claimRetry, setClaimRetry] = useState(() => status === "CLAIMED"); // auto-detect if escrow is already claimed (user rejected invoice on prior attempt)
 
   const handleLockFetch = async () => {
     const amountSats = Math.floor((e.amountMsats || 0) / 1000);
@@ -1140,8 +1141,18 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       await window.webln.enable();
       await window.webln.sendPayment(lockInvoice);
     } catch (err) {
+      // User rejected OR payment failed — check backend to see if it went through anyway
+      try {
+        const check = await api(`/${e.id}`, {}, 0);
+        if (check.status === "LOCKED") {
+          // Payment actually succeeded despite the error
+          showToast(t("satsLocked"));
+          setLockStep("done");
+          onRefresh();
+          return;
+        }
+      } catch {}
       showToast("Payment cancelled — tap to try again", "error");
-      // Stay on "ready" so user can tap Pay again
       setLockStep("ready");
       return;
     }
@@ -1284,8 +1295,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {/* ═══ THE VAULT ═══ */}
         <Vault status={status} amountMsats={e.amountMsats} showBurst={showBurst} resolvedOutcome={e.resolvedOutcome} />
 
-        {/* ═══ POST-TRADE CTA — right after vault, impossible to miss ═══ */}
-        {(status === "CLAIMED" || status === "COMPLETED") && onSwitchToMarketplace && (
+        {/* ═══ POST-TRADE CTA — only after full completion (COMPLETED), not during claim ═══ */}
+        {status === "COMPLETED" && onSwitchToMarketplace && e.description?.startsWith("Marketplace:") && (
           <div style={{ margin: "0 0 16px", padding: "16px 20px", borderRadius: 16, background: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0.04))", border: "1px solid rgba(245,158,11,0.25)", textAlign: "center" }}>
             <div style={{ fontSize: 24, marginBottom: 6 }}>⭐</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>Trade complete!</div>
@@ -1293,6 +1304,12 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             <button onClick={() => onSwitchToMarketplace(e.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontSize: 14, fontWeight: 700, boxShadow: "0 4px 16px rgba(245,158,11,0.25)" }}>
               ⭐ Go Rate Your Trade Partner
             </button>
+          </div>
+        )}
+        {/* ═══ P2P/Lending complete — no marketplace rating needed ═══ */}
+        {status === "COMPLETED" && !e.description?.startsWith("Marketplace:") && (
+          <div style={{ margin: "0 0 16px", padding: "12px 16px", borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", textAlign: "center" }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "#10b981" }}>✅ Trade complete</div>
           </div>
         )}
 
@@ -1422,10 +1439,10 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {claimRetry && (
           <div style={{ margin: "4px 0 12px", display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ textAlign: "center", padding: "10px 14px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, fontSize: 13, color: "#fbbf24", lineHeight: 1.5 }}>
-              Invoice was rejected. Tap below to try again — you need to approve the invoice in Fedi to receive your sats.
+              Your sats are ready! Tap below and approve the invoice in Fedi to receive them.
             </div>
             <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", animation: "pulseGreen 2s ease infinite" }} onClick={() => { setClaimRetry(false); handleClaim(); }} disabled={loading}>
-              {loading ? t("claiming") : `⚡ Retry — ${t("claimSats", { amount: fmtSats(e.amountMsats) })}`}
+              {loading ? t("claiming") : `⚡ Receive ${fmtSats(e.amountMsats)} sats`}
             </button>
           </div>
         )}
