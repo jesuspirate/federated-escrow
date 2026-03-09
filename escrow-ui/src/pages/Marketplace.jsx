@@ -982,7 +982,6 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <button style={{ ...M.primaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={onCreate}><Icons.Plus /> {t("mkSell")}</button>
           <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={onOrders}><Icons.Package /> {t("mkOrders")}</button>
-          <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={() => onSwitchToEscrow()}>⚖️ {t("escrow")}</button>
         </div>
 
         {/* ── Category quick-filters ── */}
@@ -1109,7 +1108,8 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
           <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: 1.2 }}>EST. BLOCK 934,669</span>
           <span style={{ fontSize: 10 }}>🥜</span>
           <span style={{ color: "#1e293b" }}>·</span>
-          <span style={{ fontSize: 9, color: "#334155" }}>Open source</span>
+          <button onClick={() => onSwitchToEscrow()} style={{ fontSize: 9, color: "#334155", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "none" }}>⚖️ Advanced</button>
+          <span style={{ color: "#1e293b" }}>·</span>
           <a href="https://github.com/jesuspirate/federated-escrow" target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#6d28d9", textDecoration: "none", fontWeight: 600 }}>GitHub ↗</a>
         </div>
       </div>
@@ -2173,8 +2173,8 @@ const M = {
   viewHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0 12px" },
   viewTitle: { fontSize: 17, fontWeight: 600, color: "#f8fafc", margin: 0 },
   iconBtn: { background: "rgba(30,41,59,0.5)", color: "#cbd5e1", padding: 9, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(51,65,85,0.3)", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none", minWidth: 36, minHeight: 36 },
-  primaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontWeight: 700, fontSize: 14, padding: "12px 20px", borderRadius: 12, flex: 1, border: "none", cursor: "pointer", boxShadow: "0 2px 12px rgba(245,158,11,0.2)", WebkitTapHighlightColor: "transparent", outline: "none" },
-  secondaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, background: "linear-gradient(145deg, #1e293b, #1a2332)", color: "#e2e8f0", fontWeight: 600, fontSize: 14, padding: "12px 20px", borderRadius: 12, flex: 1, border: "1px solid #334155", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
+  primaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontWeight: 700, fontSize: 15, padding: "14px 24px", borderRadius: 14, flex: 1, border: "none", cursor: "pointer", boxShadow: "0 2px 12px rgba(245,158,11,0.2)", WebkitTapHighlightColor: "transparent", outline: "none" },
+  secondaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: "linear-gradient(145deg, #1e293b, #1a2332)", color: "#e2e8f0", fontWeight: 600, fontSize: 15, padding: "14px 24px", borderRadius: 14, flex: 1, border: "1px solid #334155", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
   actionBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "16px 0", borderRadius: 14, color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: -0.3, border: "none", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
   input: { width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #1e293b", background: "#111827", color: "#f8fafc", fontSize: 14, outline: "none", boxSizing: "border-box" },
   formGroup: { marginBottom: 16 },
