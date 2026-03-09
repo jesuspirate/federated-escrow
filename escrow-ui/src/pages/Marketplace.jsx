@@ -137,11 +137,30 @@ let _btcPrices = null; // { USD, EUR, GBP, ... }
 let _forexRates = null; // { CFA: 615, KES: 129, ... } per 1 USD
 let _btcPriceLastFetch = 0;
 
-// Approximate forex rates (USD → local currency) — updated periodically
+// Approximate forex rates (USD → local) — updated from ExchangeRate-API
 const FALLBACK_FOREX = {
-  CFA: 615, KES: 129, TZS: 2650, NGN: 1550, BRL: 5.0, ARS: 900, INR: 83, ZAR: 18.5,
+  XOF: 615, KES: 129, TZS: 2650, NGN: 1550, BRL: 5.0, ARS: 900, INR: 83, ZAR: 18.5,
   EUR: 0.92, GBP: 0.79, CAD: 1.36, CHF: 0.88, AUD: 1.53, JPY: 150,
 };
+// Map our display codes to ISO codes
+const FOREX_CODE_MAP = { CFA: "XOF" };
+let _forexFetched = false;
+
+async function fetchForexRates() {
+  if (_forexFetched) return;
+  try {
+    const res = await fetch("https://open.er-api.com/v6/latest/USD");
+    const data = await res.json();
+    if (data.result === "success" && data.rates) {
+      for (const [code, fallbackRate] of Object.entries(FALLBACK_FOREX)) {
+        const isoCode = FOREX_CODE_MAP[code] || code;
+        if (data.rates[isoCode]) FALLBACK_FOREX[code] = data.rates[isoCode];
+      }
+      _forexFetched = true;
+      console.log("[forex] Updated rates from ExchangeRate-API");
+    }
+  } catch { /* use fallback rates */ }
+}
 
 async function fetchBtcPrice() {
   const now = Date.now();
@@ -164,7 +183,10 @@ async function fetchBtcPrice() {
 
 function useBtcPrice() {
   const [prices, setPrices] = useState(_btcPrices);
-  useEffect(() => { fetchBtcPrice().then(p => { if (p) setPrices(p); }); }, []);
+  useEffect(() => {
+    fetchBtcPrice().then(p => { if (p) setPrices(p); });
+    fetchForexRates();
+  }, []);
   return prices;
 }
 
@@ -177,7 +199,7 @@ function fmtFiat(msats, btcPrices, currency = "USD") {
   if (!btcPrices || !btcPrices.USD) return null;
   const sats = Math.floor(msats / 1000);
   const usd = (sats / 100_000_000) * btcPrices.USD;
-  const rate = FALLBACK_FOREX[currency] || 1;
+  const rate = FALLBACK_FOREX[FOREX_CODE_MAP[currency] || currency] || FALLBACK_FOREX[currency] || 1;
   const local = usd * rate;
   const sym = CURRENCY_SYMBOLS[currency] || currency + " ";
   if (currency === "USD") {
@@ -1758,6 +1780,8 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
             <button key={o.id} style={{
               ...M.listingCard,
               ...(o.needsRating ? { borderColor: "rgba(245,158,11,0.3)", boxShadow: "0 0 12px rgba(245,158,11,0.08)" } : {}),
+              ...(o.status === "completed" && !o.needsRating ? { opacity: 0.45 } : {}),
+              ...(o.status === "expired" || o.status === "cancelled" ? { opacity: 0.35 } : {}),
             }} onClick={() => onOpenOrder(o)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={M.cardTitle}>{o.listingTitle || "(deleted)"}</span>
