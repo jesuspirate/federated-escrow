@@ -1166,6 +1166,39 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     onRefresh();
   };
 
+  // ── Arbiter fee claim handler ──
+  const handleClaimArbiterFee = async () => {
+    setLoading(true);
+    try {
+      const feeSats = Math.floor((e.arbiterFeeMsats || 0) / 1000);
+      if (feeSats <= 0) throw new Error("No fee to claim");
+
+      let invoice;
+      if (isDevMode()) {
+        invoice = "SANDBOX_FEE_" + e.id + "_" + Date.now();
+      } else if (window.webln) {
+        await window.webln.enable();
+        showToast("Create an invoice in Fedi for " + feeSats + " sats...", "ok");
+        const result = await window.webln.makeInvoice({ amount: feeSats });
+        invoice = result.paymentRequest;
+      } else {
+        invoice = prompt("Paste a BOLT-11 invoice for " + feeSats + " sats:");
+        if (!invoice) { setLoading(false); return; }
+      }
+
+      const res = await api("/" + e.id + "/payout", {
+        method: "POST",
+        body: JSON.stringify({ invoice, type: "arbiter_fee" }),
+      });
+      if (res.error) throw new Error(res.error);
+      showToast("\u2696\ufe0f Arbiter fee claimed: " + feeSats + " sats!");
+      onRefresh();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+    setLoading(false);
+  };
+
   // ── 2-step confirmation for critical votes ──────────────────────
   const [confirmVote, setConfirmVote] = useState(null); // null | "release" | "refund"
 
@@ -1268,6 +1301,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const canArbiterVote = status === "LOCKED" && role === "arbiter" && !hasVoted && buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome;
   const canClaim = (status === "APPROVED" || status === "CLAIMED") && ((e.resolvedOutcome === "release" && role === "buyer") || (e.resolvedOutcome === "refund" && role === "seller"));
   const canReclaimExpired = status === "EXPIRED" && role === "seller" && e.lockedAt;
+  const canClaimArbiterFee = role === "arbiter" && (status === "APPROVED" || status === "CLAIMED" || status === "COMPLETED") && e.arbiterFeeMsats && e.arbiterFeeMsats > 0;
 
   // Helper to get participant pubkey display
   const getPkDisplay = (participant) => {
@@ -1450,6 +1484,17 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", margin: "4px 0 12px" }} onClick={handleLockFetch}>
             🔒 {t("lockSats", { amount: fmtSats(e.amountMsats) })}
           </button>
+        )}
+        {/* ── Arbiter fee claim ── */}
+        {canClaimArbiterFee && (
+          <div style={{ margin: "4px 0 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ textAlign: "center", padding: "10px 14px", background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", borderRadius: 10, fontSize: 13, color: "#a78bfa", lineHeight: 1.5 }}>
+              You resolved a dispute! Claim your 1% arbiter fee below.
+            </div>
+            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #8b5cf6, #7c3aed)", boxShadow: "0 4px 24px rgba(139,92,246,0.3)" }} onClick={handleClaimArbiterFee} disabled={loading}>
+              {loading ? "Claiming..." : "\u2696\ufe0f Claim " + fmtSats((e.arbiterFeeMsats || 0)) + " sats fee"}
+            </button>
+          </div>
         )}
         {canLock && lockStep === "fetching" && (
           <button style={{ ...S.actionBtn, background: "#1e293b", margin: "4px 0 12px" }} disabled>

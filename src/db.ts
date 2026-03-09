@@ -232,12 +232,12 @@ export function processDisputeTimeouts(allowedArbiters: string[], onReassign: (e
       startDispute(e.id);
       onReassign(e, oldArbiter, newArbiter);
       count++;
-      console.log(`  ⚖️ Arbiter timeout: \${e.id} — rotated \${oldArbiter.slice(0,8)}… → \${newArbiter.slice(0,8)}… (rotation #\${(e.arbiter_rotations || 0) + 1})`);
+      console.log(`  ⚖️ Arbiter timeout: ${e.id} — rotated ${oldArbiter.slice(0,8)}… → ${newArbiter.slice(0,8)}… (rotation #${(e.arbiter_rotations || 0) + 1})`);
     } else {
       // No more arbiters available — auto-refund to seller (safest default)
       stmts.resolve.run({ id: e.id, resolved_outcome: "refund", resolved_at: now, updated_at: now });
       count++;
-      console.log(`  ⚠️ All arbiters exhausted for \${e.id} — auto-refund to seller`);
+      console.log(`  ⚠️ All arbiters exhausted for ${e.id} — auto-refund to seller`);
     }
   }
   return count;

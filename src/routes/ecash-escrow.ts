@@ -373,7 +373,7 @@ router.get("/", (req: AuthenticatedRequest, res: Response) => {
     description: r.description, terms: r.terms, communityLink: r.community_link, federationId: r.federation_id,
     yourRole: getRoleByPubkey(r, pk),
     participants: { seller: truncPk(r.seller_pubkey), buyer: r.buyer_pubkey ? truncPk(r.buyer_pubkey) : null, arbiter: r.arbiter_pubkey ? truncPk(r.arbiter_pubkey) : null },
-    resolvedOutcome: r.resolved_outcome, claimedBy: r.claimed_by,
+    resolvedOutcome: r.resolved_outcome, claimedBy: r.claimed_by, arbiterFeeMsats: r.arbiter_fee_msats || 0,
     createdAt: r.created_at, updatedAt: r.updated_at, expiresIn: formatExpiry(r.expires_at),
   })));
 });
@@ -598,7 +598,7 @@ router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
         // 1% arbiter fee
         const feeMsats = Math.floor(row.amount_msats * 0.01);
         DB.setArbiterFee(row.id, feeMsats);
-        console.log(`  ⚖️ Dispute started: \${row.id} — arbiter has 4h to vote (fee: \${feeMsats} msats)`);
+        console.log(`  ⚖️ Dispute started: ${row.id} — arbiter has 4h to vote (fee: ${feeMsats} msats)`);
         // Notify arbiter urgently
         if (!isDevPubkey(row.seller_pubkey) && row.arbiter_pubkey) {
           Notify.notifyArbiterDispute(row.id, row.arbiter_pubkey, row.amount_msats, row.description || "", row.community_link || "");
@@ -688,7 +688,7 @@ router.post("/:id/claim", (req: AuthenticatedRequest, res: Response) => {
         arbiterFeeMsats: row.arbiter_fee_msats || 0,
         arbiterFeeSats: Math.floor((row.arbiter_fee_msats || 0) / 1000),
         message: row.arbiter_fee_msats
-          ? `Escrow resolved! \${Math.floor((row.arbiter_fee_msats || 0) / 1000)} sats arbiter fee deducted. Tap Receive for your payout.`
+          ? `Escrow resolved! ${Math.floor((row.arbiter_fee_msats || 0) / 1000)} sats arbiter fee deducted. Tap Receive for your payout.`
           : "Escrow resolved in your favor! Tap Receive to generate an invoice — server pays you immediately.",
         nextStep: "POST /:id/payout with { invoice: '<BOLT-11>' }",
       });
@@ -722,12 +722,25 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
     if (inFlightPayouts.has(row.id)) {
       return res.status(409).json({ error: "Payout already in progress. Check your wallet." });
     }
-    if (row.status !== "CLAIMED") return res.status(400).json({ error: `Cannot payout in ${row.status} state` });
+    if (row.status !== "CLAIMED" && !(role === "arbiter" && req.body.type === "arbiter_fee" && (row.status === "CLAIMED" || row.status === "COMPLETED"))) {
+      return res.status(400).json({ error: `Cannot payout in ${row.status} state` });
+    }
 
     const pk = req.pubkey!;
     const role = getRoleByPubkey(row, pk);
+    const isArbiterFeeClaim = role === "arbiter" && req.body.type === "arbiter_fee";
     const expectedWinner = row.resolved_outcome === "release" ? "buyer" : "seller";
-    if (role !== expectedWinner && !(row.resolved_outcome === "refund" && role === "seller")) {
+
+    if (isArbiterFeeClaim) {
+      // Arbiter claiming their dispute fee
+      if (!row.arbiter_fee_msats || row.arbiter_fee_msats <= 0) {
+        return res.status(400).json({ error: "No arbiter fee on this escrow (happy path trade)." });
+      }
+      // Check if already claimed (use a simple flag — fee set to negative after claim)
+      if (row.arbiter_fee_msats < 0) {
+        return res.json({ id: row.id, status: "COMPLETED", message: "Arbiter fee already claimed." });
+      }
+    } else if (role !== expectedWinner && !(row.resolved_outcome === "refund" && role === "seller")) {
       return res.status(403).json({ error: "Only the winning party can request payout" });
     }
 
@@ -755,6 +768,9 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
       return res.status(503).json({ error: "Fedimint payment service unavailable. Try again later." });
     }
 
+    // Determine payout amount (arbiter fee or full escrow amount)
+    const payoutAmountMsats = isArbiterFeeClaim ? row.arbiter_fee_msats : (row.arbiter_fee_msats ? row.amount_msats - row.arbiter_fee_msats : row.amount_msats);
+
     // Mark in-flight BEFORE paying to prevent double-spend
     inFlightPayouts.add(row.id);
 
@@ -764,8 +780,14 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
       return res.status(500).json({ error: `Payout failed: ${payment.error}` });
     }
 
-    // Mark COMPLETED immediately to prevent duplicate payouts
-    DB.completeEscrow(row.id);
+    // Mark COMPLETED (or mark fee claimed for arbiter)
+    if (isArbiterFeeClaim) {
+      // Mark fee as claimed by setting to negative
+      DB.setArbiterFee(row.id, -Math.abs(row.arbiter_fee_msats));
+      console.log("  " + String.fromCodePoint(0x1F4B0) + " Arbiter fee paid for " + row.id + ": " + row.arbiter_fee_msats + " msats");
+    } else {
+      DB.completeEscrow(row.id);
+    }
 
     // Arbiter fee: log if dispute occurred
     if (row.arbiter_fee_msats && row.arbiter_fee_msats > 0) {
