@@ -600,7 +600,7 @@ function OnboardingSplash({ onComplete, locale }) {
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════════════
 
-export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, onSwitchToMarketplace, initialEscrowId, onEscrowOpened, sharedPubkey, onPubkeyResolved }) {
+export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, onSwitchToMarketplace, onSwitchToMarketplaceOrders, initialEscrowId, onEscrowOpened, sharedPubkey, onPubkeyResolved }) {
   const [onboarded, setOnboarded] = useState(() => {
     try { return localStorage.getItem(ONBOARDING_KEY) === "1"; } catch { return false; }
   });
@@ -686,7 +686,10 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
     setLoading(false);
   }, [pubkey, showToast]);
 
-  useEffect(() => { loadEscrows(); }, [loadEscrows, pubkey]);
+  useEffect(() => {
+    // Skip loading all escrows if we're deep-linking to a specific one from marketplace
+    if (!initialEscrowId) loadEscrows();
+  }, [loadEscrows, pubkey]);
 
   const loadDetail = useCallback(async (id) => {
     setLoading(true);
@@ -701,8 +704,10 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
   };
 
   // ── Deep-link: auto-open escrow from marketplace ────────────────
+  const [cameFromMarketplace, setCameFromMarketplace] = useState(false);
   useEffect(() => {
     if (initialEscrowId && pubkey) {
+      setCameFromMarketplace(true);
       openDetail(initialEscrowId);
       if (onEscrowOpened) onEscrowOpened();
     }
@@ -764,7 +769,15 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
       {view === "list" && <ListView escrows={escrows} pubkey={pubkey} loading={loading} onOpen={openDetail} onCreate={() => setView("create")} onJoin={() => setView("join")} onRefresh={loadEscrows} locale={locale} onSwitchLocale={switchLocale} onSwitchToMarketplace={onSwitchToMarketplace} />}
       {view === "create" && <CreateView pubkey={pubkey} locale={locale} onBack={() => setView("list")} onCreated={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "join" && <JoinView pubkey={pubkey} onBack={() => setView("list")} onJoined={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
-      {view === "detail" && selected && <DetailView escrow={selected} pubkey={pubkey} onBack={() => { setSelected(null); setView("list"); loadEscrows(); }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} onSwitchToMarketplace={onSwitchToMarketplace} />}
+      {view === "detail" && selected && <DetailView escrow={selected} pubkey={pubkey} onBack={() => {
+        if (cameFromMarketplace && onSwitchToMarketplaceOrders) {
+          // Return directly to marketplace orders list — no escrow ID lookup needed
+          setCameFromMarketplace(false);
+          onSwitchToMarketplaceOrders();
+        } else {
+          setSelected(null); setView("list"); loadEscrows();
+        }
+      }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} onSwitchToMarketplace={onSwitchToMarketplace} cameFromMarketplace={cameFromMarketplace} />}
       {view === "detail" && !selected && (
         <div style={S.container}>
           <div style={S.viewHeader}>
@@ -859,6 +872,10 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
 
       <div style={{ display: "flex", gap: 10, margin: "0 0 12px" }}>
         <button style={{ ...S.primaryBtn, flex: 1, justifyContent: "center" }} onClick={() => onSwitchToMarketplace()}>🏪 {t("mkTitle") || "Marketplace"}</button>
+      </div>
+      <div style={{ display: "flex", gap: 8, margin: "0 0 12px" }}>
+        <button style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", borderRadius: 10, background: "#111827", border: "1px solid #1e293b", color: "#94a3b8", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={onCreate}>+ {t("createEscrow")}</button>
+        <button style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", borderRadius: 10, background: "#111827", border: "1px solid #1e293b", color: "#94a3b8", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={onJoin}>🔗 {t("joinEscrow")}</button>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.1)", borderRadius: 8, marginBottom: 12, fontSize: 11, color: "#64748b" }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
@@ -1059,7 +1076,7 @@ function JoinView({ pubkey, onBack, onJoined, showToast, setLoading, loading }) 
 // DETAIL VIEW — Redesigned with Vault + animated action bar
 // ═══════════════════════════════════════════════════════════════════════
 
-function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoading, loading, onSwitchToMarketplace }) {
+function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoading, loading, onSwitchToMarketplace, cameFromMarketplace }) {
   const role = e.yourRole || null;
   const status = e.status;
   const [showBurst, setShowBurst] = useState(false);
@@ -1317,18 +1334,24 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {/* ═══ POST-TRADE CTA — only after full completion (COMPLETED), not during claim ═══ */}
         {status === "COMPLETED" && onSwitchToMarketplace && e.description?.startsWith("Marketplace:") && (
           <div style={{ margin: "0 0 16px", padding: "16px 20px", borderRadius: 16, background: "linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0.04))", border: "1px solid rgba(245,158,11,0.25)", textAlign: "center" }}>
-            <div style={{ fontSize: 24, marginBottom: 6 }}>⭐</div>
+            <div style={{ fontSize: 24, marginBottom: 6 }}>🎉</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>Trade complete!</div>
-            <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 14, lineHeight: 1.5 }}>Head back to rate your trade partner and help build community trust.</div>
-            <button onClick={() => onSwitchToMarketplace(e.id)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontSize: 14, fontWeight: 700, boxShadow: "0 4px 16px rgba(245,158,11,0.25)" }}>
-              ⭐ Go Rate Your Trade Partner
+            <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 14, lineHeight: 1.5 }}>Don't forget to rate your trade partner — it helps the community.</div>
+            <button onClick={onBack} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontSize: 15, fontWeight: 700, boxShadow: "0 4px 16px rgba(245,158,11,0.25)" }}>
+              ⭐ Back to Orders — Rate Now
             </button>
           </div>
         )}
-        {/* ═══ P2P/Lending complete — no marketplace rating needed ═══ */}
+        {/* ═══ P2P/Lending complete ═══ */}
         {status === "COMPLETED" && !e.description?.startsWith("Marketplace:") && (
-          <div style={{ margin: "0 0 16px", padding: "12px 16px", borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", textAlign: "center" }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "#10b981" }}>✅ Trade complete</div>
+          <div style={{ margin: "0 0 16px", padding: "16px 20px", borderRadius: 16, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", textAlign: "center" }}>
+            <div style={{ fontSize: 24, marginBottom: 6 }}>🎉</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#10b981", marginBottom: 4 }}>Trade complete!</div>
+            {cameFromMarketplace && (
+              <button onClick={onBack} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", marginTop: 12, borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontSize: 15, fontWeight: 700 }}>
+                ← Back to My Orders
+              </button>
+            )}
           </div>
         )}
 

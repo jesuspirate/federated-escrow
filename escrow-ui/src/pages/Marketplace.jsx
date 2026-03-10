@@ -461,6 +461,15 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   // Deep-link: if arriving from escrow with an escrowId, find the linked order and open it
   useEffect(() => {
     if (!initialEscrowId || !pubkey) return;
+
+    // Special marker: go directly to orders list (no API lookup)
+    if (initialEscrowId === "__ORDERS__") {
+      setView("orders");
+      loadOrders();
+      if (onOpened) onOpened();
+      return;
+    }
+
     (async () => {
       try {
         const data = await mapi(`/orders/by-escrow/${initialEscrowId}`);
@@ -675,6 +684,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
           onOpen={openListing}
           onCreate={() => setView("create")}
           onOrders={openOrders}
+          activeOrderCount={orders.filter(o => o.status === "pending" || o.status === "active").length}
           onRefresh={() => loadListings(searchQuery)}
           onSwitchToEscrow={onSwitchToEscrow}
           onProfile={openProfile}
@@ -701,7 +711,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
           onPause={handlePause}
           onUnpause={handleUnpause}
           onDelete={handleDelete}
-          onOrderCreated={(order) => { setSelected(order); setView("orderDetail"); loadOrders(); }}
+          onOrderCreated={(order) => { setSelected(order); setView("orderDetail"); }}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
         />
       )}
@@ -1005,7 +1015,7 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
 // BROWSE VIEW — Community homepage with hero + categories
 // ═══════════════════════════════════════════════════════════════════════
 
-function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale }) {
+function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const btcPrice = useBtcPrice();
@@ -1061,7 +1071,12 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
 
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <button style={{ ...M.primaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={onCreate}><Icons.Plus /> {t("mkSell")}</button>
-          <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={onOrders}><Icons.Package /> {t("mkOrders")}</button>
+          <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center", position: "relative", ...(activeOrderCount > 0 ? { borderColor: "rgba(245,158,11,0.4)", boxShadow: "0 0 12px rgba(245,158,11,0.15)", animation: "pulse 2s infinite" } : {}) }} onClick={onOrders}>
+            <Icons.Package /> {t("mkOrders")}
+            {activeOrderCount > 0 && (
+              <span style={{ position: "absolute", top: -4, right: -4, width: 18, height: 18, borderRadius: "50%", background: "#f59e0b", color: "#0c0f17", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{activeOrderCount}</span>
+            )}
+          </button>
         </div>
 
         {/* ── Category quick-filters ── */}

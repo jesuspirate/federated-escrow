@@ -88,6 +88,12 @@ export default function App() {
     setActiveApp("marketplace");
   }, []);
 
+  const switchToMarketplaceOrders = useCallback(() => {
+    setInitialEscrowId(null);
+    setInitialMarketplaceEscrowId("__ORDERS__");
+    setActiveApp("marketplace");
+  }, []);
+
   // ── Loading state ───────────────────────────────────────────────
   if (!pubkey) {
     return (
@@ -140,6 +146,7 @@ export default function App() {
           pubkey={pubkey}
           devRole={devRole}
           onSwitchToMarketplace={switchToMarketplace}
+          onSwitchToMarketplaceOrders={switchToMarketplaceOrders}
           initialEscrowId={initialEscrowId}
           onEscrowOpened={() => setInitialEscrowId(null)}
         />
