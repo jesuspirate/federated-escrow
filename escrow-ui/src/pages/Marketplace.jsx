@@ -122,6 +122,24 @@ async function mapi(path, opts = {}, _retries = 1) {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
+function msatsToFiat(msats, rates, currency = "USD") {
+  if (!rates || !rates.btcUsd) return null;
+  const btc = msats / 100_000_000_000;
+  const usd = btc * rates.btcUsd;
+  if (currency === "USD") return usd;
+  const rate = rates.rates?.[currency];
+  return rate ? usd * rate : null;
+}
+
+function fmtFiat(msats, rates, currency = "USD") {
+  const val = msatsToFiat(msats, rates, currency);
+  if (val === null) return null;
+  const sym = { USD: "$", EUR: "€", GBP: "£", TZS: "TSh", KES: "KSh", NGN: "₦", UGX: "USh", GHS: "GH₵", XOF: "CFA", ZAR: "R", BRL: "R$", CAD: "CA$", AUD: "A$", JPY: "¥", CHF: "CHF", INR: "₹" }[currency] || currency + " ";
+  if (val < 0.01) return sym + val.toFixed(4);
+  if (val < 1000) return sym + val.toFixed(2);
+  return sym + val.toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
 function fmtSats(msats) { return Math.floor(msats / 1000).toLocaleString(); }
 function fmtVolume(msats) {
   const sats = Math.floor(msats / 1000);
@@ -195,21 +213,7 @@ const CURRENCY_SYMBOLS = {
   BRL: "R$", ARS: "ARS ", INR: "₹", ZAR: "R", CAD: "CA$", CHF: "CHF ", AUD: "A$", JPY: "¥",
 };
 
-function fmtFiat(msats, btcPrices, currency = "USD") {
-  if (!btcPrices || !btcPrices.USD) return null;
-  const sats = Math.floor(msats / 1000);
-  const usd = (sats / 100_000_000) * btcPrices.USD;
-  const rate = FALLBACK_FOREX[FOREX_CODE_MAP[currency] || currency] || FALLBACK_FOREX[currency] || 1;
-  const local = usd * rate;
-  const sym = CURRENCY_SYMBOLS[currency] || currency + " ";
-  if (currency === "USD") {
-    if (local < 0.01) return "< $0.01";
-    return local < 1000 ? `$${local.toFixed(2)}` : `$${local.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-  }
-  if (local < 1) return `${sym}${local.toFixed(2)}`;
-  if (local < 1000) return `${sym}${local.toFixed(local < 100 ? 2 : 0)}`;
-  return `${sym}${local.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-}
+// Old fmtFiat removed — using Yadio-based version above
 
 function truncPk(hex) {
   if (!hex || hex.length < 16) return hex || "";
@@ -454,6 +458,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   });
   const [view, setView] = useState("browse");
   const [listings, setListings] = useState([]);
+  const [fiatRates, setFiatRates] = useState(null);
   const [selected, setSelected] = useState(null);
   const [editingListing, setEditingListing] = useState(null);
   const [orders, setOrders] = useState([]);
@@ -576,6 +581,16 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
       console.error("[marketplace-ui] loadOrders:", err);
     }
     setOrdersLoading(false);
+  }, []);
+
+  // Fetch fiat rates on mount (no auth needed)
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch(MAPI + "/rates");
+        if (r.ok) { const d = await r.json(); setFiatRates(d); }
+      } catch {}
+    })();
   }, []);
 
   // Re-load listings every time we switch TO browse view
@@ -717,6 +732,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
           onDelete={handleDelete}
           onOrderCreated={(order) => { setSelected(order); setView("orderDetail"); }}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
+          fiatRates={fiatRates}
         />
       )}
       {view === "detail" && !selected && (
@@ -746,6 +762,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
           onRefresh={loadOrders}
           onOpenOrder={(order) => { setSelected(order); setView("orderDetail"); }}
           onProfile={openProfile}
+          fiatRates={fiatRates}
         />
       )}
       {view === "orderDetail" && selected && (
@@ -755,6 +772,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
           onProfile={openProfile}
           onSwitchToEscrow={onSwitchToEscrow}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
+          fiatRates={fiatRates}
         />
       )}
       {view === "profile" && profilePubkey && (
@@ -1039,7 +1057,14 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         if (isSpecialCategory(l.category)) return false;
         return l.category?.toLowerCase() === activeCategory;
       })
-  ).slice().sort((a, b) => {
+  ).filter(l => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase().trim();
+    return (l.title || "").toLowerCase().includes(q)
+      || (l.description || "").toLowerCase().includes(q)
+      || (l.category || "").toLowerCase().includes(q)
+      || (l.id || "").toLowerCase().includes(q);
+  }).slice().sort((a, b) => {
     // Urgent (1 left) first, then available, then sold out
     const rank = (l) => l.quantity === 1 ? 0 : l.quantity > 1 ? 1 : 2;
     return rank(a) - rank(b);
@@ -1073,7 +1098,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
 
         {searchOpen && (
           <div style={{ display: "flex", gap: 8, marginBottom: 10, animation: "slideUp 0.2s ease-out" }}>
-            <input style={M.input} placeholder={t("mkSearchPlaceholder") || "Search by title, description, or category..."} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && onSearch(searchQuery)} autoFocus />
+            <input style={M.input} placeholder={t("mkSearchPlaceholder") || "Search by title, description, or category..."} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} autoFocus />
             {searchQuery && <button style={M.iconBtn} onClick={() => { setSearchQuery(""); onSearch(""); }}><Icons.X /></button>}
           </div>
         )}
@@ -1179,7 +1204,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={M.cardTitle}>{l.title}</span>
 		<span style={M.cardPrice}>
-                  <span style={{ color: "#f7931a", fontSize: 14 }}>₿</span> {fmtSats(l.priceMsats)}
+                  <span style={{ color: "#f7931a", fontWeight: 800 }}>₿</span>{fmtSats(l.priceMsats)}
                 </span>
               </div>
               {l.description && <p style={M.cardDesc}>{l.description}</p>}
@@ -1308,7 +1333,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
 // LISTING DETAIL
 // ═══════════════════════════════════════════════════════════════════════
 
-function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, showToast, loading, setLoading, onEdit, onPause, onUnpause, onDelete }) {
+function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, showToast, loading, setLoading, onEdit, onPause, onUnpause, onDelete, fiatRates }) {
   const isSeller = l.sellerPubkey === pubkey;
   const canBuy = !isSeller && l.status === "active" && l.quantity > 0;
   const isP2P = isSatsForFiat(l.category);
@@ -1351,8 +1376,9 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         <div style={{ marginBottom: 16 }}>
           <h2 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", margin: "0 0 8px", lineHeight: 1.3 }}>{l.title}</h2>
           <div style={{ fontSize: 32, fontWeight: 900, color: "#f8fafc", letterSpacing: -1 }}>
-	  <span style={{ color: "#f7931a", fontSize: 22 }}>₿</span> {fmtSats(l.priceMsats)}
+	  <span style={{ color: "#f7931a", fontWeight: 800, fontSize: 30 }}>₿</span>{fmtSats(l.priceMsats)}
           </div>
+          {fiatRates && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>≈ {fmtFiat(l.priceMsats, fiatRates, "USD")}</div>}
         </div>
 
         {/* Trade type indicator */}
@@ -1363,7 +1389,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
               <span style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b" }}>P2P Sats-for-Fiat Trade</span>
             </div>
             <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
-              Seller locks sats in escrow. You send fiat (or other payment) externally. Once both confirm, you receive the sats.
+              Seller locks ₿ sats in escrow. You send fiat (or other payment) externally. Once both confirm, you receive the ₿ sats.
             </div>
           </div>
         )}
@@ -1409,7 +1435,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
             </div>
             {isP2P && (
               <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 4, lineHeight: 1.5 }}>
-                When someone starts this trade, you'll lock your sats in escrow. The buyer sends you fiat externally.
+                When someone starts this trade, you'll lock your ₿ sats in escrow. The buyer sends you fiat externally.
               </div>
             )}
           </div>
@@ -1526,7 +1552,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
     if (interestRate && Number(interestRate) > 0) sats = Math.ceil(sats * (1 + Number(interestRate) / 100));
     if (!title.trim()) return showToast(t("mkTitleRequired"), "error");
     if (!sats || sats <= 0) return showToast(t("mkPriceRequired"), "error");
-    if (sats < 1000) return showToast("Minimum 1,000 sats for Lightning routing", "error");
+    if (sats < 1000) return showToast("Minimum ₿ 1,000 sats for Lightning routing", "error");
     if (sats > 2_000_000) return showToast(t("mkPriceExceeds"), "error");
 
     // Append P2P metadata to terms
@@ -1640,7 +1666,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
             <span style={{ fontSize: 13, fontWeight: 700, color: "#10b981" }}>Community Lending</span>
           </div>
           <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
-            You lock sats in escrow as a loan. The borrower receives them and repays externally (fiat, goods, labor). The community arbiter verifies repayment.
+            You lock ₿ sats in escrow as a loan. The borrower receives them and repays externally (fiat, goods, labor). The community arbiter verifies repayment.
           </div>
         </div>
       )}
@@ -1659,7 +1685,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
       )}
 
       {/* ── Common fields: Title + Price ── */}
-      <div style={M.formGroup}><label style={M.label}>{t("mkFieldTitle")} *</label><input style={M.input} placeholder={isP2P ? "e.g., Selling 50,000 sats for USD" : isLoan ? "e.g., Lending 50,000 sats — 14 day term" : t("mkFieldTitleHint")} value={title} onChange={e => setTitle(e.target.value)} /></div>
+      <div style={M.formGroup}><label style={M.label}>{t("mkFieldTitle")} *</label><input style={M.input} placeholder={isP2P ? "e.g., Selling ₿ 50,000 sats for USD" : isLoan ? "e.g., Lending ₿ 50,000 sats — 14 day term" : t("mkFieldTitleHint")} value={title} onChange={e => setTitle(e.target.value)} /></div>
       <div style={M.formGroup}><label style={M.label}>{isLoan ? "LOAN AMOUNT (SATS) *" : t("mkFieldPrice") + " *"}</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}</p></div>
 
       {/* ── P2P-specific fields ── */}
@@ -1810,9 +1836,17 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
 // ORDERS VIEW
 // ═══════════════════════════════════════════════════════════════════════
 
-function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, onProfile }) {
+function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, onProfile, fiatRates }) {
+  const [orderSearch, setOrderSearch] = useState("");
   // Sort: needs-rating first, then by date
-  const sorted = [...orders].sort((a, b) => {
+  const sorted = [...orders].filter(o => {
+    if (!orderSearch.trim()) return true;
+    const q = orderSearch.toLowerCase().trim();
+    return (o.id || "").toLowerCase().includes(q)
+      || (o.escrowId || "").toLowerCase().includes(q)
+      || (o.listingTitle || "").toLowerCase().includes(q)
+      || (o.status || "").toLowerCase().includes(q);
+  }).sort((a, b) => {
     const priority = (o) => {
       if (o.needsRating) return 0;
       if (o.status === "active") return 1;
@@ -1831,6 +1865,9 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
         <button style={M.iconBtn} onClick={onBack}><Icons.Back /></button>
         <h2 style={M.viewTitle}>{t("mkMyOrders")}</h2>
         <button style={M.iconBtn} onClick={onRefresh}><Icons.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <input style={{ ...M.input, fontSize: 13 }} placeholder="Search by order ID, escrow ID, title, or status…" value={orderSearch} onChange={e => setOrderSearch(e.target.value)} />
       </div>
 
       {sorted.length === 0 ? (
@@ -1866,7 +1903,8 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
                 </div>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
-		<span style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc" }}><span style={{ color: "#f7931a" }}>₿</span> {fmtSats(o.amountMsats)}</span>
+		<span style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc" }}><span style={{ color: "#f7931a", fontWeight: 800 }}>₿</span>{fmtSats(o.amountMsats)}</span>
+                    {fiatRates && <span style={{ fontSize: 10, color: "#64748b", marginLeft: 6 }}>≈ {fmtFiat(o.amountMsats, fiatRates, "USD")}</span>}
                 <span style={{ fontSize: 11, color: "#475569" }}>
                   {o.buyerPubkey === pubkey ? `🛒 ${t("buyer")}` : `🏠 ${t("seller")}`}
                 </span>
@@ -1886,7 +1924,7 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
 // ORDER DETAIL VIEW
 // ═══════════════════════════════════════════════════════════════════════
 
-function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow, showToast, loading, setLoading }) {
+function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow, showToast, loading, setLoading, fiatRates }) {
   const [detail, setDetail] = useState(null);
   const [rateScore, setRateScore] = useState(0);
   const [rateComment, setRateComment] = useState("");
@@ -1963,8 +2001,9 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             </span>
           )}
           <div style={{ fontSize: 32, fontWeight: 900, color: "#f8fafc", marginTop: 12, letterSpacing: -1 }}>
-	  <span style={{ color: "#f7931a", fontSize: 22 }}>₿</span> {fmtSats(o.amountMsats)}
+	  <span style={{ color: "#f7931a", fontWeight: 800, fontSize: 30 }}>₿</span>{fmtSats(o.amountMsats)}
           </div>
+          {fiatRates && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>≈ {fmtFiat(o.amountMsats, fiatRates, "USD")}</div>}
           <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
             {o.listingTitle || detail?.listing?.title || "—"}
           </div>
@@ -2098,8 +2137,8 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
                 <Icons.Clock style={{ display: "inline", verticalAlign: "middle", marginRight: 6, color: "#f59e0b" }} />
                 <span style={{ color: "#f59e0b" }}>
                   {isBuyer
-                    ? "Waiting for seller to lock sats in escrow…"
-                    : "You need to lock your sats in escrow to begin the trade."
+                    ? "Waiting for seller to lock ₿ sats in escrow…"
+                    : "You need to lock your ₿ sats in escrow to begin the trade."
                   }
                 </span>
               </div>
@@ -2108,8 +2147,8 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
                 <Icons.Clock style={{ display: "inline", verticalAlign: "middle", marginRight: 6, color: "#64748b" }} />
                 <span style={{ color: "#64748b" }}>
                   {isBuyer
-                    ? "You need to lock your sats as payment."
-                    : "Waiting for buyer to lock sats as payment…"
+                    ? "You need to lock your ₿ sats as payment."
+                    : "Waiting for buyer to lock ₿ sats as payment…"
                   }
                 </span>
               </div>
@@ -2137,7 +2176,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
         )}
         {status === "completed" && (
           <div style={{ textAlign: "center", padding: "14px 0", color: "#10b981", fontSize: 13, fontWeight: 600 }}>
-            ✓ {isP2P ? "Trade complete — sats released!" : t("tradeComplete")}
+            ✓ {isP2P ? "Trade complete — ₿ sats released!" : t("tradeComplete")}
           </div>
         )}
 

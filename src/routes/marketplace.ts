@@ -430,6 +430,41 @@ function syncAndFormatOrder(order: OrderRow, pubkey?: string) {
 // ══════════════════════════════════════════════════════════════════════════
 
 const router = Router();
+
+// ── Fiat rates cache (Yadio API, refreshed every 5 min) ────────────────
+let ratesCache: { btcUsd: number; rates: Record<string, any>; updatedAt: number } | null = null;
+const RATES_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function fetchRates() {
+  try {
+    const res = await fetch("https://api.yadio.io/exrates");
+    if (!res.ok) throw new Error("Yadio API error: " + res.status);
+    const data = await res.json();
+    ratesCache = {
+      btcUsd: data.BTC || 0,
+      rates: data.USD || {},
+      updatedAt: Date.now(),
+    };
+    console.log("[rates] Updated BTC/USD:", ratesCache.btcUsd, "currencies:", Object.keys(ratesCache.rates).length);
+  } catch (err: any) {
+    console.error("[rates] Fetch failed:", err.message);
+  }
+}
+
+// Initial fetch + refresh every 5 min
+fetchRates();
+setInterval(fetchRates, RATES_TTL);
+
+router.get("/rates", (_req, res) => {
+  if (!ratesCache) return res.status(503).json({ error: "Rates not yet loaded" });
+  res.json({
+    btcUsd: ratesCache.btcUsd,
+    rates: ratesCache.rates,
+    updatedAt: ratesCache.updatedAt,
+  });
+});
+
+
 // Auth + rate limit applied per-route. GET browse/detail are public.
 // POST routes require auth. GET /orders/* requires auth.
 const requireAuth = [extractPubkey, rateLimit];

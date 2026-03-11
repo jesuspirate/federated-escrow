@@ -19,8 +19,8 @@ export const FED_LIMITS = {
 
 function validateAmount(sats) {
   if (!sats || sats <= 0) return "Enter a valid amount";
-  if (sats > FED_LIMITS.MAX_TX_SATS) return `Exceeds ${FED_LIMITS.MAX_TX_SATS.toLocaleString()} sats federation limit`;
-  if (sats < 1000) return "Minimum 1,000 sats for Lightning routing";
+  if (sats > FED_LIMITS.MAX_TX_SATS) return `Exceeds ${FED_LIMITS.MAX_TX_SATS.toLocaleString()} ₿ sats federation limit`;
+  if (sats < 1000) return "Minimum ₿ 1,000 sats for Lightning routing";
   return null;
 }
 
@@ -474,10 +474,10 @@ function Vault({ status, amountMsats, showBurst, resolvedOutcome }) {
           {isDone ? <SvgZapIcon size={52} color="#10b981" /> : isActive ? <SvgLockIcon size={52} color={vaultColor} /> : status === "FUNDED" ? <SvgUnlockIcon size={52} color="#8b5cf6" /> : <SvgUnlockIcon size={52} color="#1e293b" />}
         </div>
       </div>
-      <div style={{ fontSize: isActive ? 48 : 36, fontWeight: 900, color: isActive ? "#f8fafc" : "#334155", letterSpacing: -2, lineHeight: 1, transition: "all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)", textShadow: isActive ? `0 0 40px ${vaultGlow}` : "none", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+      <div style={{ fontSize: isActive ? 48 : 36, fontWeight: 900, color: isActive ? "#f8fafc" : "#334155", letterSpacing: -2, lineHeight: 1, transition: "all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)", textShadow: isActive ? `0 0 40px ${vaultGlow}` : "none", fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', display: "flex", alignItems: "baseline", gap: 4 }}>
+        <span style={{ color: "#f7931a", fontWeight: 800, fontSize: isActive ? 44 : 34, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>₿</span>
         <AnimNum value={fmtSatsNum(amountMsats)} dur={1400} />
       </div>
-      <div style={{ fontSize: 14, fontWeight: 500, color: isActive ? "#64748b" : "#1e293b", marginTop: 4, letterSpacing: 2, transition: "color 0.8s ease" }}><span style={{ color: "#f7931a", fontWeight: 700, fontSize: 18 }}>₿</span> SATS</div>
       <div style={{ marginTop: 10, fontSize: 12, fontWeight: 500, color: isDone ? "#10b981" : isApproved ? "#10b981" : isLocked ? "#f59e0b" : status === "FUNDED" ? "#8b5cf6" : "#475569", transition: "color 0.5s ease", display: "flex", alignItems: "center", gap: 6 }}>
         {isDone ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981", animation: "pulseGreen 1.5s ease infinite" }} />{resolvedOutcome === "release" ? t("deliveredToBuyer") : t("refundedToSeller")}</>) : isApproved ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#10b981" }} />{t("readyToClaim")}</>) : isLocked ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#f59e0b", animation: "pulseAmber 2s ease infinite" }} />{t("securedInVault")}</>) : status === "FUNDED" ? t("readyToLock") : status === "EXPIRED" ? (<><span style={{ width: 7, height: 7, borderRadius: "50%", background: "#ef4444" }} />{t("escrowExpired")}</>) : t("waitingAllParties")}
       </div>
@@ -858,8 +858,19 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
 // ═══════════════════════════════════════════════════════════════════════
 
 function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefresh, locale, onSwitchLocale, onSwitchToMarketplace }) {
+  const [escrowSearch, setEscrowSearch] = useState("");
+  const filteredEscrows = escrows.filter(e => {
+    if (!escrowSearch.trim()) return true;
+    const q = escrowSearch.toLowerCase().trim();
+    return (e.id || "").toLowerCase().includes(q)
+      || (e.description || "").toLowerCase().includes(q)
+      || (e.status || "").toLowerCase().includes(q);
+  });
+
   return (
-    <div style={S.container}>
+    <div style={{ ...S.container, display: "flex", flexDirection: "column", flex: 1, overflow: "hidden" }}>
+      {/* ══ PINNED HEADER SECTION ══ */}
+      <div style={{ flexShrink: 0 }}>
       <div style={S.listHeader}>
         <div>
           <h1 style={S.title}>{t("escrow")}</h1>
@@ -882,16 +893,22 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
         {t("maxPerTrade", { limit: FED_LIMITS.MAX_TX_SATS.toLocaleString() })}
       </div>
 
-      {/* ── Trade list ──────────────────────────────── */}
-      <div style={{ paddingBottom: 20 }}>
-        {escrows.length === 0 ? (
+      {/* ── Search ── */}
+      <div style={{ marginBottom: 12 }}>
+        <input style={{ ...S.input, fontSize: 13 }} placeholder="Search by escrow ID, description, or status…" value={escrowSearch} onChange={e => setEscrowSearch(e.target.value)} />
+      </div>
+
+      </div>
+      {/* ══ SCROLLABLE TRADE LIST ══ */}
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 20 }}>
+        {filteredEscrows.length === 0 ? (
           <div style={S.emptyState}>
             <SvgArbiter size={40} color="#475569" />
             <p style={{ color: "#64748b", marginTop: 12, fontSize: 14 }}>{t("noEscrows")}</p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {escrows.slice().sort((a, b) => {
+            {filteredEscrows.slice().sort((a, b) => {
               // Priority: items needing YOUR action first
               const rank = (e) => {
                 if (e.status === "FUNDED") return 0;   // needs lock
@@ -907,7 +924,7 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
             }).map(e => (
               <button key={e.id} style={{ ...S.escrowCard, ...(e.status === "COMPLETED" || e.status === "EXPIRED" ? { opacity: 0.5 } : {}) }} onClick={() => onOpen(e.id)}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={S.cardAmount}><span style={{ color: "#f7931a", fontWeight: 700 }}>₿</span> {fmtSats(e.amountMsats)}</span>
+                  <span style={S.cardAmount}><span style={{ color: "#f7931a", fontWeight: 800 }}>₿</span>{fmtSats(e.amountMsats)}</span>
                   <StatusBadge status={e.status} />
                 </div>
                 {e.description && <p style={S.cardDesc}>{e.description}</p>}
@@ -917,7 +934,7 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
                   {e.expiresIn && <span style={S.cardExpiry}><I.Clock /> {e.expiresIn}</span>}
                 </div>
                 {e.status === "FUNDED" && e.yourRole === "seller" && (
-                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(245,158,11,0.1)", fontSize: 11, fontWeight: 600, color: "#f59e0b", textAlign: "center" }}>🔒 Lock your sats to start</div>
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(245,158,11,0.1)", fontSize: 11, fontWeight: 600, color: "#f59e0b", textAlign: "center" }}>🔒 Lock your ₿ sats to start</div>
                 )}
                 {e.status === "FUNDED" && e.yourRole !== "seller" && (
                   <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>Waiting for seller to lock</div>
@@ -987,7 +1004,7 @@ function CreateView({ pubkey, locale, onBack, onCreated, showToast, setLoading, 
     <div style={{ ...S.container, paddingBottom: 20 }}>
       <div style={S.viewHeader}><button style={S.iconBtn} onClick={onBack}><I.Back /></button><h2 style={S.viewTitle}>{t("newTrade")}</h2><div style={{ width: 36 }} /></div>
       <div style={S.formGroup}><label style={S.label}>{t("amountSats")}</label><input style={{ ...S.input, ...(amountError ? { borderColor: "#ef4444" } : {}) }} type="number" placeholder="25000" value={amount} onChange={e => onAmountChange(e.target.value)} />{amountError && <p style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>{amountError}</p>}<p style={S.hint}>{t("maxFedLimit", { limit: FED_LIMITS.MAX_TX_SATS.toLocaleString() })}</p></div>
-      <div style={S.formGroup}><label style={S.label}>{t("description")}</label><input style={S.input} placeholder="Selling 50 USD for sats" value={desc} onChange={e => setDesc(e.target.value)} /></div>
+      <div style={S.formGroup}><label style={S.label}>{t("description")}</label><input style={S.input} placeholder="Selling 50 USD for ₿ sats" value={desc} onChange={e => setDesc(e.target.value)} /></div>
       <div style={S.formGroup}><label style={S.label}>{t("tradeTerms")}</label><textarea style={{ ...S.input, minHeight: 72, resize: "vertical" }} placeholder="Payment via Zelle. Send within 1 hour of lock." value={terms} onChange={e => setTerms(e.target.value)} /></div>
       <div style={S.formGroup}><label style={S.label}>{t("communityLink")}</label><input style={S.input} placeholder="fedi:room:!roomId:federation.domain:::" value={community} onChange={e => setCommunity(e.target.value)} /><p style={S.hint}>{t("communityLinkHint")}</p></div>
       <button style={{ ...S.primaryBtn, width: "100%", marginTop: 8, padding: "14px 0" }} onClick={handleCreate} disabled={loading || !!amountError}>{loading ? t("creating") : t("createEscrow")}</button>
@@ -1112,7 +1129,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const handleLockFetch = async () => {
     const amountSats = Math.floor((e.amountMsats || 0) / 1000);
     if (amountSats > FED_LIMITS.MAX_TX_SATS) {
-      return showToast(`Exceeds ${FED_LIMITS.MAX_TX_SATS.toLocaleString()} sats federation limit`, "error");
+      return showToast(`Exceeds ${FED_LIMITS.MAX_TX_SATS.toLocaleString()} ₿ sats federation limit`, "error");
     }
     if (isDevMode() || !window.webln) {
       // Dev/sandbox mode — skip WebLN, use manual lock
@@ -1402,7 +1419,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ textAlign: "center", padding: "8px 12px", background: confirmVote === "release" ? "rgba(5,150,105,0.1)" : "rgba(180,83,9,0.1)", border: `1px solid ${confirmVote === "release" ? "rgba(5,150,105,0.3)" : "rgba(180,83,9,0.3)"}`, borderRadius: 10, fontSize: 13, fontWeight: 700, color: confirmVote === "release" ? "#10b981" : "#f59e0b" }}>
                         {confirmVote === "release"
-                          ? (isP2PTrade ? "Confirm: Buyer sent fiat? Release sats to them." : isLending ? "Confirm: Release loan to borrower?" : "Confirm: Release sats to buyer?")
+                          ? (isP2PTrade ? "Confirm: Buyer sent fiat? Release ₿ sats to them." : isLending ? "Confirm: Release loan to borrower?" : "Confirm: Release ₿ sats to buyer?")
                           : `Confirm: Dispute — refund to ${role === "seller" ? t("toMe") : t("seller")}?`}
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
@@ -1425,7 +1442,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
                   {confirmVote ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ textAlign: "center", padding: "10px 12px", background: confirmVote === "release" ? "rgba(5,150,105,0.1)" : "rgba(180,83,9,0.1)", border: `1px solid ${confirmVote === "release" ? "rgba(5,150,105,0.3)" : "rgba(180,83,9,0.3)"}`, borderRadius: 10, fontSize: 13, fontWeight: 700, color: confirmVote === "release" ? "#10b981" : "#f59e0b", lineHeight: 1.5 }}>
-                        {confirmVote === "release" ? "⚖️ As arbiter, you are releasing sats to the BUYER. This is final." : "⚖️ As arbiter, you are refunding sats to the SELLER. This is final."}
+                        {confirmVote === "release" ? "⚖️ As arbiter, you are releasing ₿ sats to the BUYER. This is final." : "⚖️ As arbiter, you are refunding ₿ sats to the SELLER. This is final."}
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
                         <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8" }} onClick={cancelConfirm}>Cancel</button>
@@ -1467,7 +1484,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {canBuyerVote && confirmVote === "release" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "0 0 12px" }}>
             <div style={{ textAlign: "center", padding: "12px 14px", background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.3)", borderRadius: 10, fontSize: 14, fontWeight: 700, color: "#10b981" }}>
-              {isP2PTrade ? "Confirm: You sent fiat? Sats will release to you." : isLending ? "Confirm: You received the loan?" : "Release sats to you?"}
+              {isP2PTrade ? "Confirm: You sent fiat? ₿ Sats will release to you." : isLending ? "Confirm: You received the loan?" : "Release ₿ sats to you?"}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8", fontSize: 15, padding: "14px" }} onClick={cancelConfirm}>Cancel</button>
@@ -1483,7 +1500,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {claimRetry && (
           <div style={{ margin: "4px 0 12px", display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ textAlign: "center", padding: "10px 14px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, fontSize: 13, color: "#fbbf24", lineHeight: 1.5 }}>
-              Your sats are ready! Tap below and approve the invoice in Fedi to receive them.
+              Your ₿ sats are ready! Tap below and approve the invoice in Fedi to receive them.
             </div>
             <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", animation: "pulseGreen 2s ease infinite", fontSize: 16, padding: "16px 20px" }} onClick={() => { setClaimRetry(false); handleClaim(); }} disabled={loading}>
               {loading ? t("claiming") : `⚡ Receive ${fmtSats(e.amountMsats)} sats`}
@@ -1517,39 +1534,39 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {e.description?.startsWith("Marketplace:") && role === "seller" && (
           <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
             <strong style={{ color: "#10b981" }}>🛒 Marketplace Purchase</strong><br/>
-            You are locking sats as payment. Once the seller ships and you both confirm, sats release to them.
+            You are locking ₿ sats as payment. Once the seller ships and you both confirm, ₿ sats release to them.
           </div>
         )}
         {e.description?.startsWith("Marketplace:") && role === "buyer" && (
           <div style={{ padding: "12px 16px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
             <strong style={{ color: "#f59e0b" }}>📦 You're the Seller</strong><br/>
-            The buyer locked sats as payment. Ship your item, then both confirm to release payment to you.
+            The buyer locked ₿ sats as payment. Ship your item, then both confirm to release payment to you.
           </div>
         )}
         {/* ── P2P Trade context ── */}
         {e.description?.startsWith("P2P Trade:") && role === "seller" && (
           <div style={{ padding: "12px 16px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
             <strong style={{ color: "#f59e0b" }}>₿ Sats-for-Fiat Trade</strong><br/>
-            Lock your sats in escrow. Once the buyer sends fiat and you both confirm, sats release to the buyer.
+            Lock your ₿ sats in escrow. Once the buyer sends fiat and you both confirm, ₿ sats release to the buyer.
           </div>
         )}
         {e.description?.startsWith("P2P Trade:") && role === "buyer" && (
           <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
             <strong style={{ color: "#10b981" }}>₿ Sats-for-Fiat Trade</strong><br/>
-            Send fiat to the seller as agreed. Once you both confirm, the sats release to you.
+            Send fiat to the seller as agreed. Once you both confirm, the ₿ sats release to you.
           </div>
         )}
         {/* ── Lending context ── */}
         {e.description?.startsWith("Lending:") && role === "seller" && (
           <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
             <strong style={{ color: "#10b981" }}>🤝 Community Loan — Lender</strong><br/>
-            Lock your sats as a loan. Once the borrower confirms receipt, sats release to them. They repay you externally per the agreed terms.
+            Lock your ₿ sats as a loan. Once the borrower confirms receipt, ₿ ₿ sats release to them. They repay you externally per the agreed terms.
           </div>
         )}
         {e.description?.startsWith("Lending:") && role === "buyer" && (
           <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
             <strong style={{ color: "#10b981" }}>🤝 Community Loan — Borrower</strong><br/>
-            The lender locked sats for you. Confirm receipt to release the loan. Repay according to the agreed terms.
+            The lender locked ₿ sats for you. Confirm receipt to release the loan. Repay according to the agreed terms.
           </div>
         )}
 
