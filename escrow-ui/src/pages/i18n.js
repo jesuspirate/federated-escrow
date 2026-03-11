@@ -924,6 +924,7 @@ export function getAvailableLocales() {
     { code: "fr", flag: "🇫🇷", label: "Français" },
     { code: "es", flag: "🇪🇸", label: "Español" },
     { code: "sw", flag: "🇰🇪", label: "Kiswahili" },
+    { code: "sw", flag: "🇹🇿", label: "Swahili" },
   ];
 }
 

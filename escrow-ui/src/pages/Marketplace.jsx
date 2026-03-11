@@ -825,7 +825,12 @@ function MarketplaceOnboarding({ onComplete }) {
           ))}
         </div>
 
-        <div key={step} style={{ fontSize: 44, marginBottom: 14, animation: "obFadeUp 0.4s ease-out" }}>{s.icon}</div>
+        <div key={step} style={{ marginBottom: 14, animation: "obFadeUp 0.4s ease-out" }}>
+          {step === 0
+            ? <img src="/satoshimarket-logo.png" alt="SatoshiMarket" style={{ height: 96, objectFit: "contain" }} />
+            : <span style={{ fontSize: 44 }}>{s.icon}</span>
+          }
+        </div>
 
         <div key={`t-${step}`} style={{ animation: "obFadeUp 0.4s ease-out 0.1s both" }}>
           <h1 style={{ fontSize: 19, fontWeight: 700, color: "#f8fafc", margin: "0 0 8px", letterSpacing: -0.5 }}>{s.title}</h1>
@@ -1018,7 +1023,6 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
 function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
-  const btcPrice = useBtcPrice();
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
   const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
   const filteredListings = (activeCategory === "all"
@@ -1042,7 +1046,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       <div style={{ flexShrink: 0 }}>
         <div style={M.header}>
           <div>
-            <h1 style={M.title}>🏪 {t("mkTitle")}</h1>
+            <img src="/satoshimarket-logo.png" alt="SatoshiMarket" style={{ height: 112, objectFit: "contain" }} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <GlobeLangPicker locale={locale} onSwitchLocale={onSwitchLocale} />
@@ -1171,7 +1175,6 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                 <span style={M.cardTitle}>{l.title}</span>
 		<span style={M.cardPrice}>
                   <span style={{ color: "#f7931a", fontSize: 14 }}>₿</span> {fmtSats(l.priceMsats)}
-                  {btcPrice && <span style={{ fontSize: 11, color: "#64748b", marginLeft: 6 }}>≈ {fmtFiat(l.priceMsats, btcPrice)}</span>}
                 </span>
               </div>
               {l.description && <p style={M.cardDesc}>{l.description}</p>}
@@ -1304,7 +1307,6 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
   const isSeller = l.sellerPubkey === pubkey;
   const canBuy = !isSeller && l.status === "active" && l.quantity > 0;
   const isP2P = isSatsForFiat(l.category);
-  const btcPrice = useBtcPrice();
 
   const handleBuy = async () => {
     setLoading(true);
@@ -1346,7 +1348,6 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
           <div style={{ fontSize: 32, fontWeight: 900, color: "#f8fafc", letterSpacing: -1 }}>
 	  <span style={{ color: "#f7931a", fontSize: 22 }}>₿</span> {fmtSats(l.priceMsats)}
           </div>
-          {btcPrice && <div style={{ fontSize: 14, color: "#64748b", marginTop: 4 }}>≈ {fmtFiat(l.priceMsats, btcPrice)} USD</div>}
         </div>
 
         {/* Trade type indicator */}
@@ -1367,7 +1368,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
             {loading
               ? (isP2P ? "Starting trade…" : t("mkBuying"))
               : isP2P
-		? `₿ Start Trade — ${fmtSats(l.priceMsats)} sats`
+		? `Start Trade — ₿ ${fmtSats(l.priceMsats)} sats`
 		: `⚡ Buy for ₿ ${fmtSats(l.priceMsats)}`
             }
           </button>
@@ -1480,7 +1481,6 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [price, setPrice] = useState("");
-  const btcPrice = useBtcPrice();
   const [terms, setTerms] = useState("");
   const [category, setCategory] = useState("");
   const [condition, setCondition] = useState("new");
@@ -1629,7 +1629,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
 
       {/* ── Common fields: Title + Price ── */}
       <div style={M.formGroup}><label style={M.label}>{t("mkFieldTitle")} *</label><input style={M.input} placeholder={isP2P ? "e.g., Selling 50,000 sats for USD" : isLoan ? "e.g., Lending 50,000 sats — 14 day term" : t("mkFieldTitleHint")} value={title} onChange={e => setTitle(e.target.value)} /></div>
-      <div style={M.formGroup}><label style={M.label}>{isLoan ? "LOAN AMOUNT (SATS) *" : t("mkFieldPrice") + " *"}</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}{price && btcPrice ? ` · ≈ ${fmtFiat(Number(price) * 1000, btcPrice, fiatCurrency || "USD")}` : ""}</p></div>
+      <div style={M.formGroup}><label style={M.label}>{isLoan ? "LOAN AMOUNT (SATS) *" : t("mkFieldPrice") + " *"}</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}</p></div>
 
       {/* ── P2P-specific fields ── */}
       {isP2P && (
@@ -1684,8 +1684,13 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ flex: 1 }}>
-              <label style={M.label}>INTEREST RATE</label>
-              <input style={M.input} placeholder="e.g., 5%" value={interestRate} onChange={e => setInterestRate(e.target.value)} />
+              <label style={M.label}>INTEREST / PREMIUM (%)</label>
+              <input style={M.input} placeholder="e.g., 5" type="number" value={interestRate} onChange={e => setInterestRate(e.target.value)} />
+              {interestRate && price && (
+                <p style={{ ...M.hint, color: "#10b981", fontWeight: 600 }}>
+                  Total repayment: ₿ {Math.ceil(Number(price) * (1 + Number(interestRate) / 100)).toLocaleString()} sats
+                </p>
+              )}
             </div>
             <div style={{ flex: 1 }}>
               <label style={M.label}>REPAYMENT PERIOD</label>
@@ -1702,10 +1707,10 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
             </div>
           </div>
           <div style={M.formGroup}>
-            <label style={M.label}>REPAYMENT METHOD</label>
+            <label style={M.label}>REPAYMENT METHOD *</label>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {["Sats", "Fiat", "Goods/Labor", "Mixed"].map(rm => (
-                <button key={rm} onClick={() => setPaymentMethod(rm)} style={{
+                <button key={rm} onClick={() => { setPaymentMethod(rm); if (rm === "Sats" || rm === "Goods/Labor") setFiatCurrency(""); }} style={{
                   ...M.chipBtn, padding: "6px 12px", fontSize: 12,
                   ...(paymentMethod === rm ? { ...M.chipBtnActive, borderColor: "#10b981", color: "#10b981", background: "rgba(16,185,129,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
                 }}>
@@ -1713,11 +1718,13 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
                 </button>
               ))}
             </div>
+            {!paymentMethod && <p style={{ ...M.hint, color: "#f59e0b" }}>Please select a repayment method</p>}
           </div>
-          <div style={M.formGroup}>
-            <label style={M.label}>{t("mkFiatCurrency")}</label>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {["USD", "EUR", "CFA", "KES", "TZS", "NGN", "BRL", "ARS"].map(cur => (
+          {(paymentMethod === "Fiat" || paymentMethod === "Mixed") && (
+            <div style={M.formGroup}>
+              <label style={M.label}>{t("mkFiatCurrency")}</label>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {["USD", "EUR", "CFA", "KES", "TZS", "NGN", "BRL", "ARS"].map(cur => (
                 <button key={cur} onClick={() => setFiatCurrency(cur)} style={{
                   ...M.chipBtn, padding: "6px 12px", fontSize: 12, fontWeight: 600,
                   ...(fiatCurrency === cur ? { ...M.chipBtnActive, borderColor: "#10b981", color: "#10b981", background: "rgba(16,185,129,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
@@ -1727,6 +1734,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
               ))}
             </div>
           </div>
+          )}
         </div>
       )}
 
