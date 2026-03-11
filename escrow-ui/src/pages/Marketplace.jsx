@@ -880,6 +880,7 @@ const CATEGORIES = [
   { key: "services", label: "Services", icon: "🛠️" },
   { key: "digital", label: "Digital", icon: "💾" },
   { key: "clothing", label: "Clothing", icon: "👕" },
+  { key: "shipping", label: "Shipping", icon: "📦" },
   { key: "other", label: "Other", icon: "📦" },
 ];
 
@@ -1510,6 +1511,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
 
   const isP2P = isSatsForFiat(category);
   const isLoan = isLending(category);
+  const isShipping = category.toLowerCase().trim() === "shipping";
   const isSpecial = isP2P || isLoan;
 
   // Auto-set condition/qty when P2P or Lending is selected
@@ -1524,6 +1526,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
     if (interestRate && Number(interestRate) > 0) sats = Math.ceil(sats * (1 + Number(interestRate) / 100));
     if (!title.trim()) return showToast(t("mkTitleRequired"), "error");
     if (!sats || sats <= 0) return showToast(t("mkPriceRequired"), "error");
+    if (sats < 1000) return showToast("Minimum 1,000 sats for Lightning routing", "error");
     if (sats > 2_000_000) return showToast(t("mkPriceExceeds"), "error");
 
     // Append P2P metadata to terms
@@ -1585,6 +1588,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
             { value: LENDING, label: "🤝 Lending", color: "#10b981", bg: "rgba(16,185,129,0.12)" },
             { value: "electronics", label: "Electronics" },
             { value: "clothing", label: "Clothing" },
+            { value: "shipping", label: "📦 Shipping" },
             { value: "art", label: "Art" },
             { value: "services", label: "Services" },
           ].map(cat => {
@@ -1637,6 +1641,19 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           </div>
           <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
             You lock sats in escrow as a loan. The borrower receives them and repays externally (fiat, goods, labor). The community arbiter verifies repayment.
+          </div>
+        </div>
+      )}
+
+      {/* ── Shipping mode banner ── */}
+      {isShipping && (
+        <div style={{ ...M.infoBanner, borderColor: "rgba(59,130,246,0.3)", background: "rgba(59,130,246,0.06)", marginBottom: 14, borderLeft: "3px solid #3b82f6" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 15 }}>📦</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#3b82f6" }}>Physical Item — Shipping</span>
+          </div>
+          <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
+            14-day escrow window for shipping and inspection. Buyer confirms receipt, then both vote to release payment.
           </div>
         </div>
       )}

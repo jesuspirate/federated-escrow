@@ -451,6 +451,9 @@ router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ error: "title must be 200 characters or fewer" });
     if (!priceMsats || typeof priceMsats !== "number" || priceMsats <= 0)
       return res.status(400).json({ error: "priceMsats is required (positive integer)" });
+    if (priceMsats < 1_000_000) return res.status(400).json({ error: "Minimum 1,000 sats for Lightning routing" });
+    if (priceMsats < 1_000_000) return res.status(400).json({ error: "Minimum 1,000 sats for Lightning routing" });
+    if (priceMsats < 1_000_000) return res.status(400).json({ error: "Minimum 1,000 sats for Lightning routing" });
     if (priceMsats > 2_000_000_000_000)
       return res.status(400).json({ error: "priceMsats exceeds maximum (2M sats)" });
     if (condition && !VALID_CONDITIONS.includes(condition))
@@ -1020,6 +1023,8 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
         ? `Lending: ${listing.title}`
         : isP2PTrade
         ? `P2P Trade: ${listing.title}`
+        : (listing.category || "").toLowerCase().trim() === "shipping"
+        ? `Marketplace Shipping: ${listing.title}`
         : `Marketplace: ${listing.title}`,
       terms: listing.terms || "Standard marketplace terms apply.",
       communityLink: listing.community_link,

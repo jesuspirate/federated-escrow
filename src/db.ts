@@ -292,13 +292,15 @@ export function joinAsArbiter(id: string, arbiterPubkey: string, newStatus: stri
   stmts.updateArbiter.run({ id, arbiter_pubkey: arbiterPubkey, status: newStatus, updated_at: Date.now() });
 }
 
-export function lockNotes(id: string, notes: string, mode: "webln" | "manual", preimage?: string): void {
+export const EXPIRY_SHIPPING_MS = Number(process.env.ESCROW_EXPIRY_SHIPPING_MS) || 14 * 24 * 60 * 60 * 1000; // 14 days
+
+export function lockNotes(id: string, notes: string, mode: "webln" | "manual", preimage?: string, expiryMs?: number): void {
   const now = Date.now();
   stmts.lockNotes.run({
     id, locked_notes: encryptNotes(notes), locked_at: now,
     lock_mode: mode, lock_preimage: preimage || null, updated_at: now,
   });
-  stmts.extendExpiry.run(now + EXPIRY_LOCKED_MS, id);
+  stmts.extendExpiry.run(now + (expiryMs || EXPIRY_LOCKED_MS), id);
 }
 
 export function addVote(escrowId: string, role: string, outcome: string, pubkey: string): void {

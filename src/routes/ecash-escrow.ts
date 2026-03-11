@@ -267,6 +267,7 @@ router.post("/", (req: AuthenticatedRequest, res: Response) => {
 
     if (!amountMsats || typeof amountMsats !== "number" || amountMsats <= 0)
       return res.status(400).json({ error: "amountMsats is required (positive integer)" });
+    if (amountMsats < 1_000_000) return res.status(400).json({ error: "Minimum 1,000 sats (1,000,000 msats) for Lightning routing" });
     if (!terms || typeof terms !== "string" || terms.trim().length < 5)
       return res.status(400).json({ error: "Trade terms are required (minimum 5 characters)." });
     if (!communityLink || !isValidCommunityLink(communityLink))
@@ -456,7 +457,8 @@ router.get("/:id/invoice", async (req: AuthenticatedRequest, res: Response) => {
         lockedAt: Date.now(),
         sellerPubkey: pk,
       });
-      DB.lockNotes(row.id, receipt, "webln", operationId);
+      const shippingExpiry = /shipping|physical|ship/i.test(row.description || "") ? DB.EXPIRY_SHIPPING_MS : undefined;
+      DB.lockNotes(row.id, receipt, "webln", operationId, shippingExpiry);
       pendingInvoices.delete(row.id);
       console.log(`🔒 Auto-lock: ${row.id} locked via background listener (frontend missed POST /lock)`);
     }).catch(err => {
@@ -518,7 +520,8 @@ router.post("/:id/lock", async (req: AuthenticatedRequest, res: Response) => {
         sellerPubkey: pk,
       });
 
-      DB.lockNotes(row.id, receipt, "webln", pending.operationId);
+      const shippingExpiry2 = /shipping|physical|ship/i.test(row.description || "") ? DB.EXPIRY_SHIPPING_MS : undefined;
+      DB.lockNotes(row.id, receipt, "webln", pending.operationId, shippingExpiry2);
       pendingInvoices.delete(row.id);
 
     } else {
@@ -529,7 +532,8 @@ router.post("/:id/lock", async (req: AuthenticatedRequest, res: Response) => {
       if (process.env.NODE_ENV === "production" && process.env.ALLOW_DEV_PUBKEY !== "true")
         return res.status(400).json({ error: "Manual note locking is disabled in production. Use WebLN mode." });
 
-      DB.lockNotes(row.id, notes, "manual");
+      const shippingExpiry3 = /shipping|physical|ship/i.test(row.description || "") ? DB.EXPIRY_SHIPPING_MS : undefined;
+      DB.lockNotes(row.id, notes, "manual", undefined, shippingExpiry3);
     }
 
     const updated = DB.getEscrow(row.id)!;
