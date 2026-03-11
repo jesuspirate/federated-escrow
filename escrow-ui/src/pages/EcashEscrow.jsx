@@ -85,7 +85,7 @@ function _detectFediApp() {
 
   // Fedi WebView on Android: contains "wv" (WebView marker)
   // Fedi WebView on iOS: no "Safari" standalone (WebViews omit it)
-  const isAndroidWebView = /Android/.test(ua) && /wv\)/.test(ua);
+  const isAndroidWebView = /Android/.test(ua) && (/wv\)/.test(ua) || !!window.webln);
   const isIOSWebView = /iPhone|iPad|iPod/.test(ua) && !/Safari\//.test(ua);
 
   // Desktop browsers with Alby: always sandbox

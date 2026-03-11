@@ -23,7 +23,7 @@ function _detectFediApp() {
   if (typeof window === "undefined") return false;
   if (!window.webln) return false;
   const ua = navigator.userAgent || "";
-  const isAndroidWebView = /Android/.test(ua) && /wv\)/.test(ua);
+  const isAndroidWebView = /Android/.test(ua) && (/wv\)/.test(ua) || !!window.webln);
   const isIOSWebView = /iPhone|iPad|iPod/.test(ua) && !/Safari\//.test(ua);
   const isDesktop = !/Android|iPhone|iPad|iPod|Mobile/.test(ua);
   if (isDesktop) return false;
@@ -233,12 +233,12 @@ const _nostrProfileCache = new Map(); // pubkey → { name, picture, about, nip0
 
 // Seed from sessionStorage — profiles survive navigation without re-fetching
 try {
-  const stored = sessionStorage.getItem("nostr_profile_cache");
+  const stored = localStorage.getItem("nostr_profile_cache");
   if (stored) Object.entries(JSON.parse(stored)).forEach(([k, v]) => _nostrProfileCache.set(k, v));
 } catch {}
 
 const _pendingFetches = new Map(); // dedup simultaneous fetches for same pubkey
-const NOSTR_RELAYS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.nostr.band"];
+const NOSTR_RELAYS = ["wss://relay.damus.io", "wss://nos.lol", "wss://relay.nostr.band", "wss://relay.primal.net", "wss://purplepag.es"];
 
 async function fetchNostrProfile(pubkey) {
   if (_nostrProfileCache.has(pubkey)) return _nostrProfileCache.get(pubkey);
@@ -266,8 +266,8 @@ async function _doFetchNostrProfile(pubkey) {
       }
     }, 4000);
 
-    // Use only the first relay with a hard 3s timeout to avoid blocking renders
-    for (const relay of NOSTR_RELAYS.slice(0, 1)) {
+    // Query all relays in parallel — first valid response wins
+    for (const relay of NOSTR_RELAYS) {
       try {
         const ws = new WebSocket(relay);
         const subId = "p_" + pubkey.slice(0, 8);
@@ -291,9 +291,9 @@ async function _doFetchNostrProfile(pubkey) {
               _nostrProfileCache.set(pubkey, profile);
               // Persist to sessionStorage for fast re-use across navigation
               try {
-                const existing = JSON.parse(sessionStorage.getItem("nostr_profile_cache") || "{}");
+                const existing = JSON.parse(localStorage.getItem("nostr_profile_cache") || "{}");
                 existing[pubkey] = profile;
-                sessionStorage.setItem("nostr_profile_cache", JSON.stringify(existing));
+                localStorage.setItem("nostr_profile_cache", JSON.stringify(existing));
               } catch {}
               if (!resolved) { resolved = true; clearTimeout(timeout); resolve(profile); }
             }

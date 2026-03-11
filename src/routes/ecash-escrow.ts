@@ -117,7 +117,7 @@ function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunct
   DB.processDisputeTimeouts(arbiterList, (escrow, oldArbiter, newArbiter) => {
     // Notify old arbiter they've been replaced
     if (!isDevPubkey(escrow.seller_pubkey)) {
-      Notify.notifyArbiterReplaced(escrow.id, oldArbiter, newArbiter, escrow.amount_msats, escrow.community_link || "");
+      Notify.notifyArbiterReplaced(escrow.id, oldArbiter, newArbiter, escrow.amount_msats, escrow.community_link || "", escrow.seller_pubkey, escrow.buyer_pubkey);
     }
   });
 
@@ -605,7 +605,7 @@ router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
         console.log(`  ⚖️ Dispute started: ${row.id} — arbiter has 4h to vote (fee: ${feeMsats} msats)`);
         // Notify arbiter urgently
         if (!isDevPubkey(row.seller_pubkey) && row.arbiter_pubkey) {
-          Notify.notifyArbiterDispute(row.id, row.arbiter_pubkey, row.amount_msats, row.description || "", row.community_link || "");
+          Notify.notifyArbiterDispute(row.id, row.arbiter_pubkey, row.amount_msats, row.description || "", row.community_link || "", row.seller_pubkey, row.buyer_pubkey);
         }
       }
     }

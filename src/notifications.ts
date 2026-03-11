@@ -9,6 +9,26 @@
 //   4. Idempotent — duplicate sends are harmless (each Nostr event has unique ID)
 
 import { sendDM, sendDMBatch } from "./nostr-dm";
+
+// ── Hex pubkey → npub (bech32) conversion ──────────────────────────────
+function hexToNpub(hex: string): string {
+  const C = "qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+  const GEN = [0x3b6a57b2, 0x26508e6d, 0x1ea119fa, 0x3d4233dd, 0x2a1462b3];
+  function polymod(v: number[]) { let c = 1; for (const x of v) { const b = c >> 25; c = ((c & 0x1ffffff) << 5) ^ x; for (let i = 0; i < 5; i++) if ((b >> i) & 1) c ^= GEN[i]; } return c; }
+  const hrp = [0, 0, 0, 0, 14, 16, 21, 2];
+  const bytes: number[] = []; for (let i = 0; i < hex.length; i += 2) bytes.push(parseInt(hex.substring(i, i + 2), 16));
+  const words: number[] = []; let acc = 0, bits = 0;
+  for (const b of bytes) { acc = (acc << 8) | b; bits += 8; while (bits >= 5) { bits -= 5; words.push((acc >> bits) & 31); } }
+  if (bits > 0) words.push((acc << (5 - bits)) & 31);
+  const pm = polymod(hrp.concat(words).concat([0, 0, 0, 0, 0, 0])) ^ 1;
+  const cs: number[] = []; for (let i = 0; i < 6; i++) cs.push((pm >> (5 * (5 - i))) & 31);
+  return "npub1" + words.concat(cs).map(d => C[d]).join("");
+}
+
+const FEDI_DOMAIN = "m1.8fa.in";
+function fediProfileLink(hexPk: string): string {
+  return "https://app.fedi.xyz/link?screen=user&id=@" + hexToNpub(hexPk) + ":" + FEDI_DOMAIN;
+}
 import db from "./db";
 
 // ── Notification Preferences Table ────────────────────────────────────────
@@ -197,17 +217,19 @@ export function notifyEscrowCompleted(escrowId: string, winnerPk: string, amount
 
 /** Urgent: dispute detected, arbiter must vote within 4 hours. */
 export function notifyArbiterDispute(
-  escrowId: string, arbiterPk: string, amountMsats: number, description: string, communityLink: string
+  escrowId: string, arbiterPk: string, amountMsats: number, description: string, communityLink: string, sellerPk?: string, buyerPk?: string
 ): void {
   if (!arbiterPk || !shouldNotify(arbiterPk, "escrow")) return;
   const amt = fmtSats(amountMsats);
   const desc = description ? `\n"${description.length > 50 ? description.slice(0, 47) + "…" : description}"` : "";
-  sendDM(arbiterPk, `⚖️ SatoshiMarket — DISPUTE ALERT\n\nTrade ${escrowId} (₿ ${amt})${desc}\n\nBuyer and seller disagree. You have 4 HOURS to cast your vote.\n\nIf you cannot respond in time, the trade will be reassigned to another arbiter.\n\n👉 Open Fedi now to review and vote.\nFor details, message the community room in Fedi.`).catch(() => {});
+  const sellerLink = sellerPk ? `\nSeller: ${fediProfileLink(sellerPk)}` : "";
+  const buyerLink = buyerPk ? `\nBuyer: ${fediProfileLink(buyerPk)}` : "";
+  sendDM(arbiterPk, `⚖️ SatoshiMarket — DISPUTE ALERT\n\nTrade ${escrowId} (₿ ${amt})${desc}\n\nBuyer and seller disagree. You have 4 HOURS to cast your vote.\n\nIf you cannot respond in time, the trade will be reassigned to another arbiter.\n\n📇 Contact the parties in Fedi:${sellerLink}${buyerLink}\n\n👉 Open Fedi now to review and vote.`).catch(() => {});
 }
 
 /** Arbiter was replaced due to timeout. */
 export function notifyArbiterReplaced(
-  escrowId: string, oldArbiterPk: string, newArbiterPk: string, amountMsats: number, communityLink: string
+  escrowId: string, oldArbiterPk: string, newArbiterPk: string, amountMsats: number, communityLink: string, sellerPk?: string, buyerPk?: string
 ): void {
   const amt = fmtSats(amountMsats);
 
@@ -218,7 +240,9 @@ export function notifyArbiterReplaced(
 
   // Notify new arbiter
   if (newArbiterPk && shouldNotify(newArbiterPk, "escrow")) {
-    sendDM(newArbiterPk, `⚖️ SatoshiMarket — URGENT: Dispute reassigned to you\n\nTrade ${escrowId} (₿ ${amt})\n\nThe previous arbiter did not respond. You have 4 HOURS to review and vote.\n\n👉 Open Fedi now.\nFor dispute details, message the community room in Fedi.`).catch(() => {});
+    const sLink = sellerPk ? `\nSeller: ${fediProfileLink(sellerPk)}` : "";
+    const bLink = buyerPk ? `\nBuyer: ${fediProfileLink(buyerPk)}` : "";
+    sendDM(newArbiterPk, `⚖️ SatoshiMarket — URGENT: Dispute reassigned to you\n\nTrade ${escrowId} (₿ ${amt})\n\nThe previous arbiter did not respond. You have 4 HOURS to review and vote.\n\n📇 Contact the parties in Fedi:${sLink}${bLink}\n\n👉 Open Fedi now to review and vote.`).catch(() => {});
   }
 }
 
