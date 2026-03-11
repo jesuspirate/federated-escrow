@@ -42,7 +42,7 @@ async function getNostrPubkey() {
 }
 
 async function makeNip98Header(url, method) {
-  if (_devPubkey || _forceDevMode) return null;
+  if (_devPubkey || isDevMode()) return null;
   if (!window.nostr) return null;
   const event = {
     kind: 27235,
@@ -102,11 +102,18 @@ function _detectFediApp() {
   return false;
 }
 
-const _isFediApp = _detectFediApp();
-const _forceDevMode = typeof location !== "undefined"
-  && (!_isFediApp || new URLSearchParams(location.search).has("dev"));
+function _isFediRuntime() {
+  if (_detectFediApp()) return true;
+  if (typeof window !== "undefined" && (window.fediInternal || window.nostr)) return true;
+  return false;
+}
 
-function isDevMode() { return !!_devPubkey || _forceDevMode; }
+function isDevMode() {
+  if (_devPubkey) return true;
+  if (typeof location !== "undefined" && new URLSearchParams(location.search).has("dev")) return true;
+  if (!_isFediRuntime()) return true;
+  return false;
+}
 
 // Fedi community chat rooms
 const FEDI_ROOMS = {
@@ -506,7 +513,7 @@ const ONBOARDING_KEY = "fedi-escrow-onboarded";
 
 function OnboardingSplash({ onComplete, locale }) {
   const [step, setStep] = useState(0);
-  const isBrowser = !_isFediApp;
+  const isBrowser = !_isFediRuntime();
   const roomLink = getFediRoomLink(locale);
 
   const steps = isBrowser ? [
@@ -642,7 +649,7 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
 	// Only runs if pubkey wasn't provided by parent
   useEffect(() => {
     if (propPubkey) return; // Parent controls auth
-    if (_forceDevMode) {
+    if (isDevMode()) {
       _devPubkey = DEV_IDENTITIES[devRole];
       setPubkey(_devPubkey);
       return;

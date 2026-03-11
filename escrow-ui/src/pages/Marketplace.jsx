@@ -31,13 +31,20 @@ function _detectFediApp() {
   return false;
 }
 
-const _isFediApp = _detectFediApp();
-const _forceDevMode = typeof location !== "undefined"
-  && (!_isFediApp || new URLSearchParams(location.search).has("dev"));
-
 let _devPubkey = null;
 
-function isDevMode() { return !!_devPubkey || _forceDevMode; }
+function _isFediRuntime() {
+  if (_detectFediApp()) return true;
+  if (typeof window !== "undefined" && (window.fediInternal || window.nostr)) return true;
+  return false;
+}
+
+function isDevMode() {
+  if (_devPubkey) return true;
+  if (typeof location !== "undefined" && new URLSearchParams(location.search).has("dev")) return true;
+  if (!_isFediRuntime()) return true;
+  return false;
+}
 
 class NostrRejectedError extends Error {
   constructor(action) { super(`Nostr permission denied — ${action}`); this.name = "NostrRejectedError"; }
@@ -51,7 +58,7 @@ function withTimeout(promise, ms) {
 }
 
 async function makeNip98Header(url, method) {
-  if (_devPubkey || _forceDevMode) return null;
+  if (_devPubkey || isDevMode()) return null;
   if (!window.nostr) return null;
   const event = {
     kind: 27235,
@@ -909,7 +916,7 @@ const CATEGORIES = [
 const LEARN_DISMISSED_KEY = "fedi-mk-learn-dismissed";
 
 function NewToFediBanner() {
-  if (_isFediApp) return null;  // User is already in Fedi
+  if (_isFediRuntime()) return null;  // User is already in Fedi
   // ... rest unchanged
   const [dismissed, setDismissed] = useState(() => {
     try { return localStorage.getItem(LEARN_DISMISSED_KEY) === "1"; } catch { return false; }
