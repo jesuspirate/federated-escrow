@@ -37,7 +37,10 @@ let _fediConfirmed = false;
 function _isFediRuntime() {
   if (_fediConfirmed) return true;
   if (_detectFediApp()) { _fediConfirmed = true; return true; }
-  if (typeof window !== "undefined" && (window.fediInternal || window.nostr || window.webln)) { _fediConfirmed = true; return true; }
+  if (typeof window !== "undefined" && window.fediInternal) { _fediConfirmed = true; return true; }
+  // Only trust window.webln on mobile (desktop could be Alby/other extension)
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || "");
+  if (isMobile && typeof window !== "undefined" && window.webln) { _fediConfirmed = true; return true; }
   return false;
 }
 

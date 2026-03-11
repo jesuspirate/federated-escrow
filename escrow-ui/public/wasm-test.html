@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fedimint WASM Test</title>
+  <style>
+    body { background: #0c0f17; color: #f8fafc; font-family: system-ui; padding: 20px; font-size: 14px; }
+    #log { white-space: pre-wrap; line-height: 1.8; }
+    .ok { color: #10b981; }
+    .err { color: #ef4444; }
+    .info { color: #f59e0b; }
+  </style>
+</head>
+<body>
+  <h2>₿ Fedimint WASM Test</h2>
+  <div id="log"></div>
+  <script type="module">
+    const log = document.getElementById('log');
+    function out(msg, cls = '') {
+      log.innerHTML += `<span class="${cls}">${msg}</span>\n`;
+    }
+
+    out('1. Checking environment...', 'info');
+    out(`   UA: ${navigator.userAgent}`);
+    out(`   webln: ${!!window.webln}`);
+    out(`   nostr: ${!!window.nostr}`);
+    out(`   fediInternal: ${!!window.fediInternal}`);
+
+    try {
+      out('\n2. Importing @fedimint/core...', 'info');
+      const { FedimintWallet, WalletDirector } = await import('/node_modules/@fedimint/core/dist/index.js');
+      out('   ✅ Core imported', 'ok');
+      out(`   FedimintWallet: ${typeof FedimintWallet}`);
+      out(`   WalletDirector: ${typeof WalletDirector}`);
+    } catch (e) {
+      out(`   ❌ Core import failed: ${e.message}`, 'err');
+    }
+
+    try {
+      out('\n3. Importing @fedimint/transport-web...', 'info');
+      const { WebTransport } = await import('/node_modules/@fedimint/transport-web/dist/index.js');
+      out(`   ✅ Transport imported: ${typeof WebTransport}`, 'ok');
+    } catch (e) {
+      out(`   ❌ Transport import failed: ${e.message}`, 'err');
+    }
+
+    out('\n4. Done — check results above.', 'info');
+  </script>
+</body>
+</html>
