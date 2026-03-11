@@ -102,9 +102,11 @@ function _detectFediApp() {
   return false;
 }
 
+let _fediConfirmed = false;
 function _isFediRuntime() {
-  if (_detectFediApp()) return true;
-  if (typeof window !== "undefined" && (window.fediInternal || window.nostr)) return true;
+  if (_fediConfirmed) return true;
+  if (_detectFediApp()) { _fediConfirmed = true; return true; }
+  if (typeof window !== "undefined" && (window.fediInternal || window.nostr || window.webln)) { _fediConfirmed = true; return true; }
   return false;
 }
 

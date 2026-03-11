@@ -33,9 +33,11 @@ function _detectFediApp() {
 
 let _devPubkey = null;
 
+let _fediConfirmed = false;
 function _isFediRuntime() {
-  if (_detectFediApp()) return true;
-  if (typeof window !== "undefined" && (window.fediInternal || window.nostr)) return true;
+  if (_fediConfirmed) return true;
+  if (_detectFediApp()) { _fediConfirmed = true; return true; }
+  if (typeof window !== "undefined" && (window.fediInternal || window.nostr || window.webln)) { _fediConfirmed = true; return true; }
   return false;
 }
 
@@ -1246,7 +1248,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
           <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: 1.2 }}>EST. BLOCK 934,669</span>
           <span style={{ fontSize: 10 }}>🥜</span>
           <span style={{ color: "#1e293b" }}>·</span>
-          <button onClick={() => onSwitchToEscrow()} style={{ fontSize: 9, color: "#334155", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "none" }}>⚖️ Advanced</button>
+          {!isDevMode() && <button onClick={() => onSwitchToEscrow()} style={{ fontSize: 9, color: "#334155", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "none" }}>⚖️ Advanced</button>}
           <span style={{ color: "#1e293b" }}>·</span>
           <a href="https://github.com/jesuspirate/federated-escrow" target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#6d28d9", textDecoration: "none", fontWeight: 600 }}>GitHub ↗</a>
         </div>

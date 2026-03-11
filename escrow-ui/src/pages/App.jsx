@@ -29,8 +29,17 @@ function _detectFediApp() {
   return false;
 }
 
-const _isFediApp = _detectFediApp();
-const _isSandbox = !_isFediApp || (typeof location !== "undefined" && new URLSearchParams(location.search).has("dev"));
+let _fediConfirmed = false;
+function _isFediRuntime() {
+  if (_fediConfirmed) return true;
+  if (_detectFediApp()) { _fediConfirmed = true; return true; }
+  if (typeof window !== "undefined" && (window.fediInternal || window.nostr || window.webln)) { _fediConfirmed = true; return true; }
+  return false;
+}
+function _isSandboxCheck() {
+  if (typeof location !== "undefined" && new URLSearchParams(location.search).has("dev")) return true;
+  return !_isFediRuntime();
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -40,12 +49,12 @@ export default function App() {
   const [initialMarketplaceEscrowId, setInitialMarketplaceEscrowId] = useState(null);
 
   // ── Auth state (single source of truth) ─────────────────────────
-  const [pubkey, setPubkey] = useState(_isSandbox ? DEV_IDENTITIES["seller"] : null);
+  const [pubkey, setPubkey] = useState(_isSandboxCheck() ? DEV_IDENTITIES["seller"] : null);
   const [devRole, setDevRole] = useState("seller");
 
   // Resolve pubkey once on mount
   useEffect(() => {
-    if (_isSandbox) {
+    if (_isSandboxCheck()) {
       setPubkey(DEV_IDENTITIES[devRole]);
       return;
     }
@@ -106,7 +115,7 @@ export default function App() {
   return (
     <div style={{ background: "#0c0f17", height: "100dvh", maxHeight: "100vh", display: "flex", flexDirection: "column" }}>
       {/* ── Sandbox bar — always visible, fixed at top ── */}
-      {_isSandbox && (
+      {_isSandboxCheck() && (
         <div style={{
           display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
           padding: "10px 14px 12px",
