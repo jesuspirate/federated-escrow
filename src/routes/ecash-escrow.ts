@@ -778,6 +778,29 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
     // Mark in-flight BEFORE paying to prevent double-spend
     inFlightPayouts.add(row.id);
 
+    // ── BOLT-11 invoice amount validation ──────────────────────────────
+    // Decode amount from BOLT-11 human-readable part to prevent mismatched invoices
+    const bolt11AmountMsats = (() => {
+      try {
+        // BOLT-11 format: ln[bc|tb|...][amount][multiplier]1[data]
+        const lower = invoice.toLowerCase();
+        const match = lower.match(/^ln\w+?(\d+)([munp])1/);
+        if (!match) return null; // no amount encoded (zero-amount invoice)
+        const num = parseInt(match[1]);
+        const multiplier: Record<string, number> = { m: 100_000_000, u: 100_000, n: 100, p: 0.1 };
+        return Math.round(num * (multiplier[match[2]] || 0));
+      } catch { return null; }
+    })();
+
+    if (bolt11AmountMsats !== null && bolt11AmountMsats !== payoutAmountMsats) {
+      inFlightPayouts.delete(row.id);
+      const expectedSats = Math.floor(payoutAmountMsats / 1000);
+      const invoiceSats = Math.floor(bolt11AmountMsats / 1000);
+      return res.status(400).json({
+        error: \`Invoice amount mismatch: invoice is for \${invoiceSats} sats but payout is \${expectedSats} sats. Create a new invoice for the correct amount.\`
+      });
+    }
+
     const payment = await FM.payoutToWinner(invoice);
     if (!payment.success) {
       inFlightPayouts.delete(row.id);
