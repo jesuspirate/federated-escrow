@@ -457,6 +457,8 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   const [selected, setSelected] = useState(null);
   const [editingListing, setEditingListing] = useState(null);
   const [orders, setOrders] = useState([]);
+  // Cached active order count for glow badge on cold start (no auth needed)
+  const [cachedOrderCount] = useState(() => { try { return parseInt(localStorage.getItem("sm_active_orders") || "0"); } catch { return 0; } });
 
   // Deep-link: if arriving from escrow with an escrowId, find the linked order and open it
   useEffect(() => {
@@ -568,6 +570,8 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
       const unique = all.filter(o => { if (seen.has(o.id)) return false; seen.add(o.id); return true; });
       unique.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setOrders(unique);
+      // Cache active count for glow badge on next cold start
+      try { const ac = unique.filter(o => o.status === "pending" || o.status === "active").length; localStorage.setItem("sm_active_orders", String(ac)); } catch {}
     } catch (err) {
       console.error("[marketplace-ui] loadOrders:", err);
     }
@@ -684,7 +688,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
           onOpen={openListing}
           onCreate={() => setView("create")}
           onOrders={openOrders}
-          activeOrderCount={orders.filter(o => o.status === "pending" || o.status === "active").length}
+          activeOrderCount={orders.length > 0 ? orders.filter(o => o.status === "pending" || o.status === "active").length : cachedOrderCount}
           onRefresh={() => loadListings(searchQuery)}
           onSwitchToEscrow={onSwitchToEscrow}
           onProfile={openProfile}
@@ -1425,10 +1429,17 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
           </div>
         )}
 
-        {l.terms && (
+        {l.terms && isSeller && (
           <div style={M.section}>
             <div style={M.sectionLabel}>{t("tradeTerms")}</div>
             <div style={M.sectionValue}>{l.terms}</div>
+          </div>
+        )}
+        {l.terms && !isSeller && (
+          <div style={{ ...M.infoBanner, borderColor: "rgba(100,116,139,0.2)", background: "rgba(100,116,139,0.04)", marginBottom: 14 }}>
+            <div style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", gap: 6 }}>
+              🔒 Trade terms visible after purchase
+            </div>
           </div>
         )}
 
@@ -1507,7 +1518,10 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
   }, [isP2P, isLoan]);
 
   const handleCreate = async () => {
-    const sats = parseInt(price);
+    let sats = parseInt(price);
+    // Apply rate premium to sats price if set
+    if (ratePremium && Number(ratePremium) > 0) sats = Math.ceil(sats * (1 + Number(ratePremium) / 100));
+    if (interestRate && Number(interestRate) > 0) sats = Math.ceil(sats * (1 + Number(interestRate) / 100));
     if (!title.trim()) return showToast(t("mkTitleRequired"), "error");
     if (!sats || sats <= 0) return showToast(t("mkPriceRequired"), "error");
     if (sats > 2_000_000) return showToast(t("mkPriceExceeds"), "error");
@@ -1673,8 +1687,13 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
             </div>
           </div>
           <div style={M.formGroup}>
-            <label style={M.label}>{t("mkRatePremium")}</label>
-            <input style={M.input} placeholder={t("mkRatePremiumHint")} value={ratePremium} onChange={e => setRatePremium(e.target.value)} />
+            <label style={M.label}>{t("mkRatePremium")} (%)</label>
+            <input style={M.input} placeholder="e.g., 3" type="number" value={ratePremium} onChange={e => setRatePremium(e.target.value)} />
+            {ratePremium && price && (
+              <p style={{ ...M.hint, color: "#f59e0b", fontWeight: 600 }}>
+                Total with premium: ₿ {Math.ceil(Number(price) * (1 + Number(ratePremium) / 100)).toLocaleString()} sats
+              </p>
+            )}
           </div>
         </div>
       )}
