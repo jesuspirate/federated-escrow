@@ -1813,9 +1813,16 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
 function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, onProfile }) {
   // Sort: needs-rating first, then by date
   const sorted = [...orders].sort((a, b) => {
-    if (a.needsRating && !b.needsRating) return -1;
-    if (!a.needsRating && b.needsRating) return 1;
-    return 0; // preserve existing date order within groups
+    const priority = (o) => {
+      if (o.needsRating) return 0;
+      if (o.status === "active") return 1;
+      if (o.status === "pending") return 2;
+      if (o.status === "completed") return 3;
+      if (o.status === "expired") return 4;
+      if (o.status === "cancelled") return 5;
+      return 6;
+    };
+    return priority(a) - priority(b) || new Date(b.createdAt) - new Date(a.createdAt);
   });
 
   return (

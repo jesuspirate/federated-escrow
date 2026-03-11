@@ -797,7 +797,7 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
       const expectedSats = Math.floor(payoutAmountMsats / 1000);
       const invoiceSats = Math.floor(bolt11AmountMsats / 1000);
       return res.status(400).json({
-        error: \`Invoice amount mismatch: invoice is for \${invoiceSats} sats but payout is \${expectedSats} sats. Create a new invoice for the correct amount.\`
+        error: `Invoice amount mismatch: invoice is for ${invoiceSats} sats but payout is ${expectedSats} sats. Create a new invoice for the correct amount.`
       });
     }
 
