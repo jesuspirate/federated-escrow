@@ -475,6 +475,59 @@ router.get("/:id/invoice", async (req: AuthenticatedRequest, res: Response) => {
 
 // ── POST /:id/lock ───────────────────────────────────────────────────────
 
+// ── POST /:id/lock-ecash — Lock via e-cash notes (WASM wallet) ───────────
+//
+// The buyer/seller's browser WASM wallet calls mint.spendNotes() and sends
+// the e-cash string here. Server validates the amount and stores the notes.
+// On payout, the winner redeems the notes via mint.redeemEcash() in their browser.
+
+router.post("/:id/lock-ecash", async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const row = DB.getEscrow(req.params.id);
+    if (!row) return res.status(404).json({ error: "Escrow not found" });
+    if (isExpired(row)) return res.status(400).json({ error: "This escrow has expired" });
+
+    const pk = req.pubkey!;
+    if (getRoleByPubkey(row, pk) !== "seller") return res.status(403).json({ error: "Only the seller can lock notes" });
+
+    if (row.status !== "FUNDED") {
+      if (row.status === "CREATED")
+        return res.status(400).json({ error: "All parties must join before locking." });
+      return res.status(400).json({ error: `Cannot lock in ${row.status} state` });
+    }
+
+    const { notes } = req.body;
+    if (!notes || typeof notes !== "string" || notes.length < 20)
+      return res.status(400).json({ error: "Invalid e-cash notes" });
+
+    // Store e-cash notes as the locked value
+    const shippingExpiry = /shipping|physical|ship/i.test(row.description || "") ? DB.EXPIRY_SHIPPING_MS : undefined;
+    DB.lockNotes(row.id, notes, "ecash", undefined, shippingExpiry);
+
+    const updated = DB.getEscrow(row.id)!;
+
+    // Notify parties
+    if (!isDevPubkey(row.seller_pubkey)) {
+      Notify.notifyEscrowLocked(row.id, row.seller_pubkey, row.buyer_pubkey, row.arbiter_pubkey, row.amount_msats, row.description || "");
+    }
+
+    // Matrix notification
+    if (!isDevPubkey(row.seller_pubkey)) matrixBot.notifyLock({ id: row.id, amountMsats: row.amount_msats, description: row.description, communityLink: row.community_link, sellerPubkey: row.seller_pubkey, buyerPubkey: row.buyer_pubkey, arbiterPubkey: row.arbiter_pubkey });
+
+    console.log("  \u{1F512} E-cash lock: " + row.id + " — " + Math.floor(row.amount_msats / 1000) + " sats locked via browser WASM wallet");
+
+    res.json({
+      escrowId: row.id, status: updated.status,
+      amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
+      mode: "ecash",
+      message: "E-cash notes locked in escrow!",
+    });
+  } catch (err: any) {
+    console.error("[ecash-escrow] POST /:id/lock-ecash error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post("/:id/lock", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const row = DB.getEscrow(req.params.id);
@@ -700,6 +753,49 @@ router.post("/:id/claim", (req: AuthenticatedRequest, res: Response) => {
 
     res.json({ id: row.id, status: "CLAIMED", claimedBy: role, notes, message: "E-cash notes claimed." });
   } catch (err: any) { console.error("POST /claim error:", err); res.status(500).json({ error: err.message }); }
+});
+
+// ── GET /:id/ecash-payout — Retrieve e-cash notes for the winner ─────────
+//
+// If the escrow was locked with e-cash notes (mode: "ecash"), the winner
+// retrieves the notes string here and redeems them in their browser WASM wallet
+// via mint.redeemEcash(notes). Instant, zero Lightning routing.
+
+router.get("/:id/ecash-payout", (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const row = DB.getEscrow(req.params.id);
+    if (!row) return res.status(404).json({ error: "Escrow not found" });
+
+    if (row.status !== "CLAIMED" && row.status !== "COMPLETED")
+      return res.status(400).json({ error: "Escrow not yet resolved" });
+
+    // Check if this was an e-cash lock
+    if (row.lock_mode !== "ecash")
+      return res.json({ mode: "lightning", message: "This escrow uses Lightning payout, not e-cash." });
+
+    const pk = req.pubkey!;
+    const role = getRoleByPubkey(row, pk);
+    const expectedWinner = row.resolved_outcome === "release" ? "buyer" : "seller";
+
+    if (role !== expectedWinner && !(row.resolved_outcome === "refund" && role === "seller"))
+      return res.status(403).json({ error: "Only the winning party can retrieve e-cash notes" });
+
+    // Decrypt and return the locked notes for the winner to redeem
+    const notes = DB.decryptNotes(row.locked_notes!);
+    
+    // Mark as completed after notes are retrieved
+    if (row.status === "CLAIMED") DB.completeEscrow(row.id);
+
+    res.json({
+      escrowId: row.id, mode: "ecash",
+      notes,
+      amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
+      message: "Redeem these notes in your wallet using mint.redeemEcash()",
+    });
+  } catch (err: any) {
+    console.error("[ecash-escrow] GET /:id/ecash-payout error:", err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── POST /:id/payout — Pay the winner via LN ────────────────────────────
