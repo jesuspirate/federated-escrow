@@ -1422,18 +1422,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         <button style={S.iconBtn} onClick={onRefresh}><I.Refresh /></button>
       </div>
 
-      {/* ── Trade type badge — bold, impossible to miss ── */}
-      <div style={{ textAlign: "center", marginBottom: 12 }}>
-        <span style={{
-          display: "inline-block", padding: "6px 16px", borderRadius: 99, fontSize: 13, fontWeight: 800, letterSpacing: 0.5,
-          ...(isP2PTrade ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.3)" }
-            : isLending ? { background: "rgba(16,185,129,0.15)", color: "#10b981", border: "1px solid rgba(16,185,129,0.3)" }
-            : isMarketplace ? { background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)" }
-            : { background: "rgba(100,116,139,0.15)", color: "#94a3b8", border: "1px solid rgba(100,116,139,0.3)" }),
-        }}>
-          {isP2PTrade ? "₿ P2P SATS FOR FIAT" : isLending ? "🤝 COMMUNITY LOAN" : isMarketplace ? "📦 MARKETPLACE" : "⚖️ MANUAL ESCROW"}
-        </span>
-      </div>
+      {/* Category badge removed — escrow view is purely for voting */}
 
       <div style={{ paddingBottom: 100 }}>
         {/* ═══ THE VAULT ═══ */}
@@ -1619,55 +1608,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           </button>
         )}
 
-        {role && (
-          <div style={S.roleBanner}>
-            <SvgArbiter size={16} color="#f59e0b" />
-            <span>{t("youAreThe")} <strong style={{ textTransform: "capitalize" }}>{t(role)}</strong></span>
-          </div>
-        )}
+        {/* Role banner removed — YOU tag on participants is sufficient */}
 
-        {/* ── Marketplace context — explain the role mapping ── */}
-        {e.description?.startsWith("Marketplace:") && role === "seller" && (
-          <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
-            <strong style={{ color: "#10b981" }}>🛒 Marketplace Purchase</strong><br/>
-            You are locking ₿ sats as payment. Once the seller ships and you both confirm, ₿ sats release to them.
-          </div>
-        )}
-        {e.description?.startsWith("Marketplace:") && role === "buyer" && (
-          <div style={{ padding: "12px 16px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
-            <strong style={{ color: "#f59e0b" }}>📦 You're the Seller</strong><br/>
-            The buyer locked ₿ sats as payment. Ship your item, then both confirm to release payment to you.
-          </div>
-        )}
-        {/* ── P2P Trade context ── */}
-        {e.description?.startsWith("P2P Trade:") && role === "seller" && (
-          <div style={{ padding: "12px 16px", background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
-            <strong style={{ color: "#f59e0b" }}>₿ Sats-for-Fiat Trade</strong><br/>
-            Lock your ₿ sats in escrow. Once the buyer sends fiat and you both confirm, ₿ sats release to the buyer.
-          </div>
-        )}
-        {e.description?.startsWith("P2P Trade:") && role === "buyer" && (
-          <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
-            <strong style={{ color: "#10b981" }}>₿ Sats-for-Fiat Trade</strong><br/>
-            Send fiat to the seller as agreed. Once you both confirm, the ₿ sats release to you.
-          </div>
-        )}
-        {/* ── Lending context ── */}
-        {e.description?.startsWith("Lending:") && role === "seller" && (
-          <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
-            <strong style={{ color: "#10b981" }}>🤝 Community Loan — Lender</strong><br/>
-            Lock your ₿ sats as a loan. Once the borrower confirms receipt, ₿ ₿ sats release to them. They repay you externally per the agreed terms.
-          </div>
-        )}
-        {e.description?.startsWith("Lending:") && role === "buyer" && (
-          <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 10, fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12, textAlign: "center" }}>
-            <strong style={{ color: "#10b981" }}>🤝 Community Loan — Borrower</strong><br/>
-            The lender locked ₿ sats for you. Confirm receipt to release the loan. Repay according to the agreed terms.
-          </div>
-        )}
-
-        {e.terms && (<div style={S.section}><div style={S.sectionLabel}>{t("tradeTerms")}</div><div style={S.sectionValue}>{e.terms}</div></div>)}
-        {e.description && (<div style={S.section}><div style={S.sectionLabel}>{t("description")}</div><div style={S.sectionValue}>{e.description}</div></div>)}
+        {/* Context messaging + terms/description moved to Order Detail view */}
 
         {/* Share prompt — visible until all 3 participants have joined */}
         {(!isParticipantJoined(e.participants?.buyer) || !isParticipantJoined(e.participants?.arbiter)) ? (

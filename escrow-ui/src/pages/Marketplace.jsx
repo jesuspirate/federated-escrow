@@ -229,7 +229,7 @@ const CURRENCY_SYMBOLS = {
 
 function truncPk(hex) {
   if (!hex || hex.length < 16) return hex || "";
-  return hex.slice(0, 8) + "\u2026" + hex.slice(-8);
+  return hex.slice(0, 8) + "…" + hex.slice(-8);
 }
 
 // ── Trade Type Detection ────────────────────────────────────────────
@@ -2000,195 +2000,142 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
     <div style={M.container}>
       <div style={M.viewHeader}>
         <button style={M.iconBtn} onClick={onBack}><Icons.Back /></button>
-        <h2 style={M.viewTitle}>{t("mkOrder")} {o.id}</h2>
+        <h2 style={M.viewTitle}>{o.listingTitle || detail?.listing?.title || t("mkOrder")}</h2>
         <div style={{ width: 36 }} />
       </div>
 
       <div style={{ paddingBottom: 20 }}>
-        <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <OrderBadge status={status} />
-          {isP2P && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700, color: "#f59e0b", background: "rgba(245,158,11,0.12)", marginLeft: 6 }}>
-              ₿ P2P Trade
-            </span>
-          )}
-          <div style={{ fontSize: 32, fontWeight: 900, color: "#f8fafc", marginTop: 12, letterSpacing: -1 }}>
-	  <span style={{ color: "#f7931a", fontWeight: 800, fontSize: 30 }}>₿</span>{fmtSats(o.amountMsats)}
+        {/* ── Price + fiat ── */}
+        <div style={{ textAlign: "center", marginBottom: 20 }}>
+          <div style={{ fontSize: 36, fontWeight: 900, color: "#f8fafc", letterSpacing: -1 }}>
+            <span style={{ color: "#f7931a", fontWeight: 800, fontSize: 34 }}>₿</span>{fmtSats(o.amountMsats)}
           </div>
-          {fiatRates && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>≈ {fmtFiat(o.amountMsats, fiatRates, "USD")}</div>}
-          <div style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>
-            {o.listingTitle || detail?.listing?.title || "—"}
-          </div>
+          {fiatRates && <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>≈ {fmtFiat(o.amountMsats, fiatRates, "USD")}</div>}
         </div>
 
+        {/* ── Participants ── */}
+        <div style={{ display: "flex", justifyContent: "space-around", marginBottom: 20, padding: "14px 0", borderRadius: 12, background: "rgba(15,23,42,0.5)", border: "1px solid #1e293b" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 22, marginBottom: 4 }}>🏠</div>
+            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("seller")}</div>
+            <div onClick={() => onProfile(o.sellerPubkey)} style={{ cursor: "pointer" }}><SellerName pubkey={o.sellerPubkey} /></div>
+            {o.sellerPubkey === pubkey && <span style={{ fontSize: 9, color: "#f59e0b", fontWeight: 700, background: "rgba(245,158,11,0.12)", padding: "1px 6px", borderRadius: 4, marginTop: 2, display: "inline-block" }}>YOU</span>}
+          </div>
+          <div style={{ width: 1, background: "#1e293b" }} />
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 22, marginBottom: 4 }}>🛒</div>
+            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("buyer")}</div>
+            <div onClick={() => onProfile(o.buyerPubkey)} style={{ cursor: "pointer" }}><SellerName pubkey={o.buyerPubkey} /></div>
+            {o.buyerPubkey === pubkey && <span style={{ fontSize: 9, color: "#8b5cf6", fontWeight: 700, background: "rgba(139,92,246,0.12)", padding: "1px 6px", borderRadius: 4, marginTop: 2, display: "inline-block" }}>YOU</span>}
+          </div>
+          {o.arbiterPubkey && (
+            <>
+              <div style={{ width: 1, background: "#1e293b" }} />
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 22, marginBottom: 4 }}>⚖️</div>
+                <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("arbiter")}</div>
+                <div style={{ fontFamily: "monospace", fontSize: 10, color: "#475569" }}>{truncPk(o.arbiterPubkey)}</div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* ── Trade info (description + terms) ── */}
+        {(detail?.listing?.description || detail?.listing?.terms || escrow?.terms) && (
+          <div style={{ marginBottom: 16, padding: "12px 16px", borderRadius: 12, background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.12)" }}>
+            {(detail?.listing?.description || escrow?.description) && (
+              <div style={{ marginBottom: detail?.listing?.terms || escrow?.terms ? 10 : 0 }}>
+                <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, textAlign: "center" }}>Description</div>
+                <div style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.5, textAlign: "center" }}>{detail?.listing?.description || escrow?.description}</div>
+              </div>
+            )}
+            {(detail?.listing?.terms || escrow?.terms) && (
+              <div>
+                <div style={{ fontSize: 11, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>ⓘ Trade Terms</div>
+                <div style={{ fontSize: 13, color: "#f8fafc", lineHeight: 1.5, fontWeight: 500, textAlign: "center" }}>{detail?.listing?.terms || escrow?.terms}</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── ONE action button ── */}
+        {onSwitchToEscrow && (status === "pending" || status === "active") && (o.escrowId || escrow?.id) && (
+          <button
+            onClick={() => onSwitchToEscrow(escrow?.id || o.escrowId)}
+            style={{
+              ...M.actionBtn,
+              background: status === "active"
+                ? "linear-gradient(135deg, #f59e0b, #d97706)"
+                : "linear-gradient(135deg, #7c3aed, #6d28d9)",
+              boxShadow: status === "active"
+                ? "0 4px 24px rgba(245,158,11,0.3)"
+                : "0 4px 24px rgba(124,58,237,0.3)",
+              marginBottom: 8, fontSize: 16, padding: "16px 20px",
+            }}
+          >
+            {status === "pending"
+              ? (isP2P
+                  ? (isBuyer ? "View Trade" : "🔐 Lock E-cash")
+                  : (isBuyer ? "🔐 Lock Payment" : "View Trade"))
+              : "⚡ Open Trade"
+            }
+          </button>
+        )}
+
+        {/* ── ONE status notification ── */}
+        {status !== "completed" && status !== "cancelled" && status !== "expired" && (
+          <div style={{ textAlign: "center", padding: "8px 0", fontSize: 12, color: "#64748b" }}>
+            {status === "pending" && (
+              isP2P
+                ? (isBuyer ? "Waiting for seller to lock e-cash…" : "Lock your e-cash to start the trade.")
+                : (isBuyer ? "Lock your e-cash as payment." : "Waiting for buyer to lock payment…")
+            )}
+            {status === "active" && "Trade in progress — open to vote and confirm."}
+          </div>
+        )}
+
+        {/* ── Cancel (buyer only, before lock) ── */}
         {canCancel && (
-          <button style={{ ...M.actionBtn, background: "linear-gradient(135deg, #dc2626, #b91c1c)", marginBottom: 16 }} onClick={handleCancel} disabled={loading}>
+          <button style={{ ...M.actionBtn, background: "linear-gradient(135deg, #dc2626, #b91c1c)", marginTop: 8, marginBottom: 16, fontSize: 13, padding: "10px 16px" }} onClick={handleCancel} disabled={loading}>
             {loading ? t("mkCancelling") : t("mkCancelOrder")}
           </button>
         )}
 
-        {/* ═══ RATING PROMPT — shown prominently for completed unrated trades ═══ */}
+        {/* ── Completed ── */}
+        {status === "completed" && !needsRating && !rated && (
+          <div style={{ textAlign: "center", padding: "14px 0", color: "#10b981", fontSize: 14, fontWeight: 600 }}>
+            ✓ Trade complete
+          </div>
+        )}
+
+        {/* ── Rating prompt ── */}
         {needsRating && (
-          <div style={{
-            borderRadius: 16, padding: 20, marginBottom: 16,
-            background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03))",
-            border: "1px solid rgba(245,158,11,0.2)",
-          }}>
+          <div style={{ borderRadius: 16, padding: 20, marginBottom: 16, background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03))", border: "1px solid rgba(245,158,11,0.2)" }}>
             <div style={{ textAlign: "center", marginBottom: 14 }}>
               <div style={{ fontSize: 28, marginBottom: 6 }}>⭐</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc" }}>
-                How was your trade?
-              </div>
-              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>
-                Rate your {otherRole} to help the community
-              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc" }}>How was your trade?</div>
+              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>Rate your {otherRole} to help the community</div>
             </div>
             <div style={{ textAlign: "center", marginBottom: 14 }}>
               <StarRating score={rateScore} onChange={setRateScore} size={32} />
             </div>
             {rateScore > 0 && (
               <>
-                <textarea
-                  value={rateComment}
-                  onChange={(e) => setRateComment(e.target.value)}
-                  placeholder={`Optional: tell others about trading with this ${otherRole}...`}
-                  maxLength={500}
-                  style={{ ...M.input, minHeight: 60, resize: "vertical", marginBottom: 12, fontSize: 13 }}
-                />
-                <button
-                  style={{
-                    ...M.actionBtn,
-                    background: "linear-gradient(135deg, #f59e0b, #d97706)",
-                    color: "#0c0f17",
-                  }}
-                  onClick={handleRate}
-                  disabled={loading || !rateScore}
-                >
-                  {loading ? "Submitting…" : `⭐ Submit ${rateScore}-Star Rating`}
+                <textarea value={rateComment} onChange={(e) => setRateComment(e.target.value)} placeholder={"Optional: tell others about this " + otherRole + "..."} maxLength={500} style={{ ...M.input, minHeight: 60, resize: "vertical", marginBottom: 12, fontSize: 13 }} />
+                <button style={{ ...M.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17" }} onClick={handleRate} disabled={loading || !rateScore}>
+                  {loading ? "Submitting…" : "⭐ Submit " + rateScore + "-Star Rating"}
                 </button>
               </>
             )}
           </div>
         )}
 
-        {/* ═══ ALREADY RATED — show confirmation ═══ */}
+        {/* ── Already rated ── */}
         {rated && (
-          <div style={{
-            textAlign: "center", padding: "14px 16px", marginBottom: 16,
-            borderRadius: 12, background: "rgba(16,185,129,0.06)",
-            border: "1px solid rgba(16,185,129,0.15)",
-          }}>
+          <div style={{ textAlign: "center", padding: "14px 16px", marginBottom: 16, borderRadius: 12, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)" }}>
             <span style={{ color: "#10b981", fontSize: 13, fontWeight: 600 }}>
-              ✓ You rated this trade {myExistingRating ? `${myExistingRating.score}/5` : rateScore ? `${rateScore}/5` : ""}
+              ✓ You rated this trade {myExistingRating ? myExistingRating.score + "/5" : rateScore ? rateScore + "/5" : ""}
             </span>
-          </div>
-        )}
-
-        {/* ═══ ESCROW STATUS CARD ═══ */}
-        {escrow && (
-          <div style={{ ...M.infoBanner, borderColor: "rgba(139,92,246,0.2)", background: "rgba(139,92,246,0.06)", marginBottom: 14 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-              <div>
-                <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 }}>{t("escrow")}</div>
-                <div style={{ fontSize: 13, fontFamily: "monospace", color: "#a78bfa" }}>{escrow.id}</div>
-              </div>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 10px", borderRadius: 99, fontSize: 11, fontWeight: 700, color: "#a78bfa", background: "rgba(139,92,246,0.15)" }}>
-                {escrow.status}
-              </span>
-            </div>
-            {escrow.resolvedOutcome && (
-              <div style={{ fontSize: 12, color: escrow.resolvedOutcome === "release" ? "#10b981" : "#f59e0b", marginTop: 8, fontWeight: 600 }}>
-                {escrow.resolvedOutcome === "release"
-                  ? isP2P ? "✓ Sats released to buyer" : "✓ Payment released to seller"
-                  : isP2P ? "↩ Sats refunded to seller" : "↩ Payment refunded to buyer"
-                }
-              </div>
-            )}
-            {onSwitchToEscrow && status !== "completed" && (
-              <div style={{ fontSize: 11, color: "#64748b", marginTop: 8, textAlign: "center" }}>
-                Use the button below to manage this escrow
-              </div>
-            )}
-          </div>
-        )}
-
-        <div style={M.section}>
-          <div style={M.sectionLabel}>{t("mkParticipants")}</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div style={M.participantRow}><span style={{ color: "#f59e0b" }}>🏠 {t("seller")}</span><SellerName pubkey={o.sellerPubkey} onTap={onProfile} /></div>
-            <div style={M.participantRow}><span style={{ color: "#8b5cf6" }}>🛒 {t("buyer")}</span><SellerName pubkey={o.buyerPubkey} onTap={onProfile} /></div>
-            {o.arbiterPubkey && <div style={M.participantRow}><span style={{ color: "#64748b" }}>⚖️ {t("arbiter")}</span><span style={{ fontFamily: "monospace", fontSize: 11, color: "#475569" }}>{truncPk(o.arbiterPubkey)}</span></div>}
-          </div>
-        </div>
-
-        {/* ── Primary action: Go to Escrow (right after participants for visibility) ── */}
-        {onSwitchToEscrow && (status === "pending" || status === "active") && (o.escrowId || escrow?.id) && (
-          <button
-            onClick={() => onSwitchToEscrow(escrow?.id || o.escrowId)}
-            style={{
-              ...M.actionBtn,
-              background: "linear-gradient(135deg, #7c3aed, #6d28d9)",
-              boxShadow: "0 4px 24px rgba(124,58,237,0.3)",
-              marginTop: 4, marginBottom: 14,
-            }}
-          >
-            ⚡ {status === "pending"
-              ? (isP2P
-                  ? (isBuyer ? "View Escrow — Send Fiat" : "Lock Sats in Escrow")
-                  : (isBuyer ? "Lock Sats in Escrow" : "View Escrow"))
-              : "Open Escrow — Vote"
-            }
-          </button>
-        )}
-
-        {/* ═══ STATUS GUIDANCE ═══ */}
-        {status === "pending" && (
-          <div style={{ textAlign: "center", padding: "14px 0", fontSize: 13 }}>
-            {isP2P ? (
-              <div>
-                <Icons.Clock style={{ display: "inline", verticalAlign: "middle", marginRight: 6, color: "#f59e0b" }} />
-                <span style={{ color: "#f59e0b" }}>
-                  {isBuyer
-                    ? "Waiting for seller to lock ₿ sats in escrow…"
-                    : "You need to lock your ₿ sats in escrow to begin the trade."
-                  }
-                </span>
-              </div>
-            ) : (
-              <div>
-                <Icons.Clock style={{ display: "inline", verticalAlign: "middle", marginRight: 6, color: "#64748b" }} />
-                <span style={{ color: "#64748b" }}>
-                  {isBuyer
-                    ? "You need to lock your ₿ sats as payment."
-                    : "Waiting for buyer to lock ₿ sats as payment…"
-                  }
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-        {status === "active" && (
-          <div style={{ textAlign: "center", padding: "14px 0", fontSize: 13 }}>
-            {isP2P ? (
-              <span style={{ color: "#f59e0b" }}>
-                ₿ {isBuyer
-                  ? "Sats are locked! Send fiat to the seller, then confirm."
-                  : "Sats are locked! Waiting for buyer to send fiat."
-                }
-              </span>
-            ) : (
-              <span style={{ color: "#f59e0b" }}>
-                ⚡ {isBuyer
-                  ? "Payment locked! Waiting for seller to ship."
-                  : "Buyer paid! Ship the item, then both confirm."
-                }
-              </span>
-            )}
-          </div>
-        )}
-        {status === "completed" && (
-          <div style={{ textAlign: "center", padding: "14px 0", color: "#10b981", fontSize: 13, fontWeight: 600 }}>
-            ✓ {isP2P ? "Trade complete — ₿ sats released!" : t("tradeComplete")}
           </div>
         )}
 
