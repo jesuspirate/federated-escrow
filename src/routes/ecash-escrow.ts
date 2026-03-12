@@ -512,7 +512,7 @@ router.post("/:id/lock-ecash", async (req: AuthenticatedRequest, res: Response) 
     }
 
     // Matrix notification
-    if (!isDevPubkey(row.seller_pubkey)) matrixBot.notifyLock({ id: row.id, amountMsats: row.amount_msats, description: row.description, communityLink: row.community_link, sellerPubkey: row.seller_pubkey, buyerPubkey: row.buyer_pubkey, arbiterPubkey: row.arbiter_pubkey });
+    if (!isDevPubkey(row.seller_pubkey)) matrixBot.notifyLocked({ id: row.id, amountMsats: row.amount_msats, description: row.description, communityLink: row.community_link, sellerPubkey: row.seller_pubkey, buyerPubkey: row.buyer_pubkey, arbiterPubkey: row.arbiter_pubkey });
 
     console.log("  \u{1F512} E-cash lock: " + row.id + " — " + Math.floor(row.amount_msats / 1000) + " sats locked via browser WASM wallet");
 
