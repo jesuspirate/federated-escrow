@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fedi API Probe</title>
+  <style>
+    body { background: #0c0f17; color: #f8fafc; font-family: system-ui; padding: 20px; font-size: 13px; }
+    #log { white-space: pre-wrap; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <h2>Fedi API Probe</h2>
+  <div id="log">Waiting 2s for Fedi injection...</div>
+  <script>
+    setTimeout(function() {
+      var log = document.getElementById('log');
+      log.textContent = '';
+      function out(msg) { log.textContent += msg + '\n'; }
+
+      out('=== window.fediInternal ===');
+      if (window.fediInternal) {
+        out('Type: ' + typeof window.fediInternal);
+        try {
+          var keys = Object.getOwnPropertyNames(window.fediInternal);
+          out('Props: ' + keys.join(', '));
+          for (var i = 0; i < keys.length; i++) {
+            var k = keys[i];
+            out('  ' + k + ': ' + typeof window.fediInternal[k]);
+            if (typeof window.fediInternal[k] === 'object' && window.fediInternal[k] !== null) {
+              try { out('    keys: ' + Object.getOwnPropertyNames(window.fediInternal[k]).join(', ')); } catch(e) {}
+            }
+          }
+        } catch(e) { out('Error enumerating: ' + e.message); }
+        // Try prototype chain
+        try {
+          var proto = Object.getPrototypeOf(window.fediInternal);
+          if (proto && proto !== Object.prototype) {
+            out('Proto methods: ' + Object.getOwnPropertyNames(proto).join(', '));
+          }
+        } catch(e) {}
+      } else {
+        out('NOT AVAILABLE');
+      }
+
+      out('\n=== window.webln ===');
+      if (window.webln) {
+        out('Type: ' + typeof window.webln);
+        try {
+          var wkeys = Object.getOwnPropertyNames(window.webln);
+          out('Props: ' + wkeys.join(', '));
+          for (var i = 0; i < wkeys.length; i++) {
+            out('  ' + wkeys[i] + ': ' + typeof window.webln[wkeys[i]]);
+          }
+          var wproto = Object.getPrototypeOf(window.webln);
+          if (wproto && wproto !== Object.prototype) {
+            out('Proto: ' + Object.getOwnPropertyNames(wproto).join(', '));
+          }
+        } catch(e) { out('Error: ' + e.message); }
+      } else {
+        out('NOT AVAILABLE');
+      }
+
+      out('\n=== window.nostr ===');
+      if (window.nostr) {
+        out('Type: ' + typeof window.nostr);
+        try {
+          var nkeys = Object.getOwnPropertyNames(window.nostr);
+          out('Props: ' + nkeys.join(', '));
+          for (var i = 0; i < nkeys.length; i++) {
+            out('  ' + nkeys[i] + ': ' + typeof window.nostr[nkeys[i]]);
+          }
+          var nproto = Object.getPrototypeOf(window.nostr);
+          if (nproto && nproto !== Object.prototype) {
+            out('Proto: ' + Object.getOwnPropertyNames(nproto).join(', '));
+          }
+        } catch(e) { out('Error: ' + e.message); }
+      } else {
+        out('NOT AVAILABLE');
+      }
+
+      out('\n=== Fedi globals ===');
+      var all = Object.keys(window).filter(function(k) {
+        return /fedi|fedimint|ecash|mint|guardian|injected/i.test(k);
+      });
+      out(all.length > 0 ? all.join(', ') : 'none found');
+    }, 2000);
+  </script>
+</body>
+</html>
