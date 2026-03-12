@@ -1587,15 +1587,17 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             </button>
           </div>
         )}
+        {/* ── E-cash lock (primary) ── */}
+        {canLock && (
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", fontSize: 16, padding: "16px 20px", marginBottom: 8 }} onClick={handleLockEcash} disabled={locking}>
+            {locking ? "Locking e-cash…" : "🔐 Lock ₿ " + fmtSats(e.amountMsats)}
+          </button>
+        )}
+        {/* ── Lightning lock (commented out — kept for future reference) ──
         {canLock && lockStep === "idle" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", fontSize: 16, padding: "16px 20px" }} onClick={handleLockFetch} disabled={locking}>
-              🔒 {t("lockSats", { amount: fmtSats(e.amountMsats) })}
-            </button>
-            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #8b5cf6, #6d28d9)", boxShadow: "0 4px 24px rgba(139,92,246,0.3)", fontSize: 14, padding: "12px 16px" }} onClick={handleLockEcash} disabled={locking}>
-              {locking ? "Locking e-cash..." : "🔐 Lock with E-cash (instant)"}
-            </button>
-          </div>
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", fontSize: 16, padding: "16px 20px" }} onClick={handleLockFetch} disabled={locking}>
+            🔒 {t("lockSats", { amount: fmtSats(e.amountMsats) })}
+          </button>
         )}
         {canLock && lockStep === "fetching" && (
           <button style={{ ...S.actionBtn, background: "#1e293b", margin: "4px 0 12px" }} disabled>
@@ -1604,9 +1606,10 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         )}
         {canLock && (lockStep === "ready" || lockStep === "paying") && (
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "4px 0 12px", fontSize: 16, padding: "16px 20px" }} onClick={handleLockPay} disabled={lockStep === "paying"}>
-            {lockStep === "paying" ? t("locking") : `⚡ ${t("confirmInFedi")}`}
+            {lockStep === "paying" ? t("locking") : "⚡ " + t("confirmInFedi")}
           </button>
         )}
+        ── end Lightning lock */}
 
         {/* Role banner removed — YOU tag on participants is sufficient */}
 

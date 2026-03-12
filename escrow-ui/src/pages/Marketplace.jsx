@@ -2044,7 +2044,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
         {(detail?.listing?.description || detail?.listing?.terms || escrow?.terms) && (
           <div style={{ marginBottom: 16, padding: "12px 16px", borderRadius: 12, background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.12)" }}>
             {(detail?.listing?.description || escrow?.description) && (
-              <div style={{ marginBottom: detail?.listing?.terms || escrow?.terms ? 10 : 0 }}>
+              <div style={{ marginBottom: detail?.listing?.terms || escrow?.terms ? 20 : 0 }}>
                 <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, textAlign: "center" }}>Description</div>
                 <div style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.5, textAlign: "center" }}>{detail?.listing?.description || escrow?.description}</div>
               </div>
