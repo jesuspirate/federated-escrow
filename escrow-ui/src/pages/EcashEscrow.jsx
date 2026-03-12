@@ -1,4 +1,30 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+
+// Fedimint WASM SDK for e-cash escrow
+let _wasmWallet = null;
+let _wasmReady = false;
+async function getWasmWallet() {
+  if (_wasmWallet && _wasmReady) return _wasmWallet;
+  try {
+    const { WalletDirector } = await import('@fedimint/core');
+    const { createWasmWorkerTransport } = await import('@fedimint/transport-web');
+    const transport = createWasmWorkerTransport();
+    const director = new WalletDirector(transport);
+    await director.initialize();
+    try { await director.generateMnemonic(); } catch(e) { /* exists */ }
+    _wasmWallet = await director.createWallet();
+    try {
+      await _wasmWallet.open();
+    } catch(e) {
+      await _wasmWallet.joinFederation("fed11qgqyj3mfwfhksw309ajrwvmxvenxgvpkvyursenxxvur2c3sv4jkxdfcxf3kgdmyvs6nzcehvc6xzctzxumrxdmr89jnwdtpv5enqwtpxqmrsvfh89skxv34qqqjpzytwrkr28r8mjas4ej467utd7excr7fapj7ukgc4ugacm6nu2u73k7ram");
+    }
+    _wasmReady = true;
+    return _wasmWallet;
+  } catch(e) {
+    console.error("[wasm] Init failed:", e);
+    return null;
+  }
+}
 import { t, setLocale, getLocale, getAvailableLocales } from "./i18n";
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1184,7 +1210,43 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     }
   };
 
-  const handleLockPay = async () => {
+  const handleLockEcash = async () => {
+    setLocking(true);
+    try {
+      showToast("Initializing e-cash wallet...");
+      const w = await getWasmWallet();
+      if (!w) throw new Error("WASM wallet not available");
+
+      const bal = await w.balance.getBalance();
+      if (bal < e.amountMsats) {
+        showToast("Insufficient e-cash balance (" + Math.floor(bal/1000) + " sats). Need " + Math.floor(e.amountMsats/1000) + " sats.", "error");
+        setLocking(false);
+        return;
+      }
+
+      showToast("Creating e-cash notes...");
+      const spend = await w.mint.spendNotes(e.amountMsats, 86400);
+      showToast("Locking in escrow...");
+      const lock = await api("/" + e.id + "/lock-ecash", {
+        method: "POST",
+        body: JSON.stringify({ notes: spend.notes }),
+      }, 0);
+
+      if (lock.error) {
+        // Cancel the spend if lock failed
+        await w.mint.tryCancelSpendNotes(spend.operation_id);
+        throw new Error(lock.error);
+      }
+
+      showToast("E-cash locked in escrow!");
+      onRefresh();
+    } catch (err) {
+      showToast(err.message, "error");
+    }
+    setLocking(false);
+  };
+
+    const handleLockPay = async () => {
     // Step 2: User-initiated WebLN payment — fresh tap each time
     if (!lockInvoice) return;
     setLockStep("paying");
@@ -1519,9 +1581,14 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           </div>
         )}
         {canLock && lockStep === "idle" && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", margin: "4px 0 12px", fontSize: 16, padding: "16px 20px" }} onClick={handleLockFetch}>
-            🔒 {t("lockSats", { amount: fmtSats(e.amountMsats) })}
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", fontSize: 16, padding: "16px 20px" }} onClick={handleLockFetch} disabled={locking}>
+              🔒 {t("lockSats", { amount: fmtSats(e.amountMsats) })}
+            </button>
+            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #8b5cf6, #6d28d9)", boxShadow: "0 4px 24px rgba(139,92,246,0.3)", fontSize: 14, padding: "12px 16px" }} onClick={handleLockEcash} disabled={locking}>
+              {locking ? "Locking e-cash..." : "🔐 Lock with E-cash (instant)"}
+            </button>
+          </div>
         )}
         {canLock && lockStep === "fetching" && (
           <button style={{ ...S.actionBtn, background: "#1e293b", margin: "4px 0 12px" }} disabled>
