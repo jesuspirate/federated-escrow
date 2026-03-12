@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>E-cash API Test</title>
+  <style>
+    body { background: #0c0f17; color: #f8fafc; font-family: system-ui; padding: 20px; font-size: 13px; }
+    #log { white-space: pre-wrap; line-height: 1.6; margin-top: 12px; }
+    button { padding: 12px 20px; border-radius: 10px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; margin: 4px; }
+    .gen { background: #f59e0b; color: #0c0f17; }
+    .recv { background: #10b981; color: #fff; }
+  </style>
+</head>
+<body>
+  <h2>E-cash API Test</h2>
+  <div>
+    <button class="gen" onclick="testGen(1000)">Generate 1000 (sats?)</button>
+    <button class="gen" onclick="testGen(1000000)">Generate 1000000 (msats?)</button>
+    <button class="gen" onclick="testGen({amount: 1000})">Generate {amount: 1000}</button>
+    <button class="gen" onclick="testGen({amountMsats: 1000000})">Generate {amountMsats: 1M}</button>
+    <button class="gen" onclick="testGen()">Generate (no args)</button>
+  </div>
+  <div id="log">Waiting 2s for injection...</div>
+  <script>
+    var log = document.getElementById('log');
+    function out(msg) { log.textContent += msg + '\n'; }
+
+    setTimeout(function() {
+      log.textContent = '';
+      if (!window.fediInternal) { out('fediInternal not available'); return; }
+      out('fediInternal ready!');
+      out('generateEcash type: ' + typeof window.fediInternal.generateEcash);
+      out('receiveEcash type: ' + typeof window.fediInternal.receiveEcash);
+      try {
+        out('generateEcash.length (param count): ' + window.fediInternal.generateEcash.length);
+        out('receiveEcash.length (param count): ' + window.fediInternal.receiveEcash.length);
+      } catch(e) { out('Error: ' + e.message); }
+      out('\nReady — tap a button above to test');
+    }, 2000);
+
+    async function testGen(arg) {
+      out('\n--- generateEcash(' + JSON.stringify(arg) + ') ---');
+      try {
+        var result = await window.fediInternal.generateEcash(arg);
+        out('Result type: ' + typeof result);
+        out('Result: ' + JSON.stringify(result).substring(0, 300));
+      } catch(e) {
+        out('Error: ' + (e.message || JSON.stringify(e)));
+      }
+    }
+  </script>
+</body>
+</html>

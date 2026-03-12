@@ -1211,37 +1211,32 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   };
 
   const handleLockEcash = async () => {
+    if (!window.fediInternal || !window.fediInternal.generateEcash) {
+      showToast("E-cash not available — use Lightning lock instead", "error");
+      return;
+    }
     setLocking(true);
     try {
-      showToast("Initializing e-cash wallet...");
-      const w = await getWasmWallet();
-      if (!w) throw new Error("WASM wallet not available");
+      const amountSats = Math.floor(e.amountMsats / 1000);
+      showToast("Generating " + amountSats.toLocaleString() + " sats e-cash...");
+      const notes = await window.fediInternal.generateEcash({ amount: amountSats });
 
-      const bal = await w.balance.getBalance();
-      if (bal < e.amountMsats) {
-        showToast("Insufficient e-cash balance (" + Math.floor(bal/1000) + " sats). Need " + Math.floor(e.amountMsats/1000) + " sats.", "error");
-        setLocking(false);
-        return;
+      if (!notes || typeof notes !== "string" || notes.length < 20) {
+        throw new Error("Failed to generate e-cash notes");
       }
 
-      showToast("Creating e-cash notes...");
-      const spend = await w.mint.spendNotes(e.amountMsats, 86400);
-      showToast("Locking in escrow...");
+      showToast("Locking e-cash in escrow...");
       const lock = await api("/" + e.id + "/lock-ecash", {
         method: "POST",
-        body: JSON.stringify({ notes: spend.notes }),
+        body: JSON.stringify({ notes }),
       }, 0);
 
-      if (lock.error) {
-        // Cancel the spend if lock failed
-        await w.mint.tryCancelSpendNotes(spend.operation_id);
-        throw new Error(lock.error);
-      }
+      if (lock.error) throw new Error(lock.error);
 
-      showToast("E-cash locked in escrow!");
+      showToast("E-cash locked! Instant. Pure Fedimint.");
       onRefresh();
     } catch (err) {
-      showToast(err.message, "error");
+      showToast(err.message || "E-cash lock failed", "error");
     }
     setLocking(false);
   };
@@ -1307,6 +1302,29 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     setLoading(true);
     try {
       let amountSats = Math.floor((e.amountMsats || 0) / 1000);
+
+      // ── E-CASH PAYOUT: If locked with e-cash, redeem directly into Fedi wallet ──
+      if (e.lock_mode === "ecash" && window.fediInternal && window.fediInternal.receiveEcash) {
+        // First claim on server
+        if (status !== "CLAIMED" && !claimRetry) {
+          const claim = await api("/" + e.id + "/claim", { method: "POST" });
+          if (claim.error) throw new Error(claim.error);
+        }
+        // Fetch e-cash notes from server
+        showToast("Retrieving e-cash notes...");
+        const ecashData = await api("/" + e.id + "/ecash-payout", {}, 0);
+        if (ecashData.error) throw new Error(ecashData.error);
+        if (ecashData.mode !== "ecash" || !ecashData.notes) throw new Error("No e-cash notes available");
+
+        showToast("Redeeming " + amountSats.toLocaleString() + " sats into your Fedi wallet...");
+        await window.fediInternal.receiveEcash(ecashData.notes);
+        showToast("E-cash received! " + amountSats.toLocaleString() + " sats in your wallet. Pure Fedimint.");
+        onRefresh();
+        setLoading(false);
+        return;
+      }
+
+      // ── LIGHTNING PAYOUT (existing flow) ──
       let payoutReady = false;
       let notes = null;
 
