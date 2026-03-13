@@ -205,8 +205,8 @@ function pickArbiter(excludePubkeys: string[]): string | null {
 const stmts = {
   // Listings
   insert: db.prepare(`
-    INSERT INTO listings (id, seller_pubkey, title, description, price_msats, currency_display, category, condition, images, terms, community_link, status, quantity, min_price_msats, max_price_msats)
-    VALUES (@id, @seller_pubkey, @title, @description, @price_msats, @currency_display, @category, @condition, @images, @terms, @community_link, 'active', @quantity, @min_price_msats, @max_price_msats)
+    INSERT INTO listings (id, seller_pubkey, title, description, price_msats, currency_display, category, condition, images, terms, community_link, status, quantity, min_price_msats, max_price_msats, seller_fed_domain)
+    VALUES (@id, @seller_pubkey, @title, @description, @price_msats, @currency_display, @category, @condition, @images, @terms, @community_link, 'active', @quantity, @min_price_msats, @max_price_msats, @seller_fed_domain)
   `),
   getById: db.prepare(`SELECT * FROM listings WHERE id = ?`),
   listActive: db.prepare(`SELECT * FROM listings WHERE status = ? ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END, updated_at DESC LIMIT ? OFFSET ?`),
@@ -299,6 +299,7 @@ export interface ListingRow {
   condition: string | null; images: string | null; terms: string | null;
   community_link: string | null; status: string; quantity: number;
   min_price_msats: number | null; max_price_msats: number | null;
+  seller_fed_domain: string | null;
   created_at: string; updated_at: string;
 }
 
@@ -336,6 +337,7 @@ function formatListing(row: ListingRow) {
     minPriceMsats: row.min_price_msats || null,
     maxPriceMsats: row.max_price_msats || null,
     minPriceSats: row.min_price_msats ? Math.floor(row.min_price_msats / 1000) : null,
+    sellerFedDomain: row.seller_fed_domain || null,
     maxPriceSats: row.max_price_msats ? Math.floor(row.max_price_msats / 1000) : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -487,7 +489,7 @@ const requireAuth = [extractPubkey, rateLimit];
 router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
   try {
     const pk = req.pubkey!;
-    const { title, description, priceMsats, currencyDisplay, category, condition, images, terms, communityLink, quantity, minPriceMsats, maxPriceMsats } = req.body;
+    const { title, description, priceMsats, currencyDisplay, category, condition, images, terms, communityLink, quantity, minPriceMsats, maxPriceMsats, sellerFedDomain } = req.body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0)
       return res.status(400).json({ error: "title is required" });
@@ -532,6 +534,7 @@ router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
       quantity: quantity ?? 1,
       min_price_msats: minPriceMsats ? Math.floor(minPriceMsats) : null,
       max_price_msats: maxPriceMsats ? Math.floor(maxPriceMsats) : null,
+      seller_fed_domain: sellerFedDomain?.trim() || null,
     });
 
     const row = stmts.getById.get(id) as ListingRow;
@@ -856,6 +859,7 @@ router.post("/:id/update", ...requireAuth, (req: AuthenticatedRequest, res: Resp
     const allowedFields: Record<string, string> = {
       title: "title", description: "description", priceMsats: "price_msats",
       minPriceMsats: "min_price_msats", maxPriceMsats: "max_price_msats",
+      sellerFedDomain: "seller_fed_domain",
       currencyDisplay: "currency_display", category: "category", condition: "condition",
       images: "images", terms: "terms", communityLink: "community_link",
       quantity: "quantity", status: "status",

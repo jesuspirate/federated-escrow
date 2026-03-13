@@ -1378,7 +1378,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
           const member = await window.fediInternal.getAuthenticatedMember();
           if (member && member.id) {
             const buyerFedDomain = member.id.split(":").pop();
-            const listingFedDomain = (l.communityLink || "").match(/:([a-zA-Z0-9.-]+):::/)?.[1];
+            const listingFedDomain = l.sellerFedDomain || (l.communityLink || "").match(/:([a-zA-Z0-9.-]+):::/)?.[1];
             if (buyerFedDomain && listingFedDomain && buyerFedDomain !== listingFedDomain) {
               showToast("You're on federation '" + buyerFedDomain + "' but this listing is on '" + listingFedDomain + "'. E-cash only works within the same federation.", "error");
               setLoading(false);
@@ -1648,6 +1648,25 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
     if (sats < 1) return showToast("Minimum ₿ 1 sat", "error");
     if (sats > 2_000_000) return showToast(t("mkPriceExceeds"), "error");
 
+    // Federation check — get seller's federation domain from Fedi
+    let sellerFedDomain = null;
+    if (window.fediInternal && window.fediInternal.getAuthenticatedMember) {
+      try {
+        const member = await window.fediInternal.getAuthenticatedMember();
+        if (member && member.id) {
+          sellerFedDomain = member.id.split(":").pop();
+        }
+      } catch (e) { /* continue */ }
+    }
+
+    // Validate community link matches seller's federation
+    if (sellerFedDomain && community.trim()) {
+      const linkFed = (community.trim()).match(/:([a-zA-Z0-9.-]+):::/)?.[1];
+      if (linkFed && linkFed !== sellerFedDomain) {
+        return showToast("Community link is for federation '" + linkFed + "' but you're on '" + sellerFedDomain + "'. Use a chat room from your own federation.", "error");
+      }
+    }
+
     // Append P2P metadata to terms
     let finalTerms = terms.trim();
     if (isP2P) {
@@ -1682,6 +1701,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           category: category.trim() || undefined,
           condition: isSpecial ? "service" : condition,
           communityLink: community.trim() || undefined,
+          sellerFedDomain: sellerFedDomain || undefined,
           quantity: parseInt(quantity) || 1,
         }),
       });
