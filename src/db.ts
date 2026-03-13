@@ -171,7 +171,7 @@ const stmts = {
   `),
   extendExpiry: db.prepare(`UPDATE escrows SET expires_at = ? WHERE id = ?`),
   resolve: db.prepare(`UPDATE escrows SET status = 'APPROVED', resolved_outcome = @resolved_outcome, resolved_at = @resolved_at, updated_at = @updated_at WHERE id = @id`),
-  claim: db.prepare(`UPDATE escrows SET status = 'CLAIMED', claimed_by = @claimed_by, claimed_at = @claimed_at, locked_notes = NULL, updated_at = @updated_at WHERE id = @id`),
+  claim: db.prepare(`UPDATE escrows SET status = 'CLAIMED', claimed_by = @claimed_by, claimed_at = @claimed_at, updated_at = @updated_at WHERE id = @id`),
   insertVote: db.prepare(`INSERT INTO votes (escrow_id, role, outcome, pubkey, timestamp) VALUES (@escrow_id, @role, @outcome, @pubkey, @timestamp)`),
   getVotes: db.prepare(`SELECT * FROM votes WHERE escrow_id = ? ORDER BY timestamp ASC`),
   countEscrows: db.prepare(`SELECT COUNT(*) as count FROM escrows`),
