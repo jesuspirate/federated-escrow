@@ -846,6 +846,10 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
 	    message: "Already paid — check your Fedi wallet balance.",
 	  });
 	}
+    // E-cash escrows must use the e-cash payout path, not Lightning
+    if (row.lock_mode === "ecash" && !(req.body.type === "arbiter_fee")) {
+      return res.status(400).json({ error: "This is an e-cash escrow. Use the e-cash claim button — no Lightning invoice needed." });
+    }
     if (inFlightPayouts.has(row.id)) {
       return res.status(409).json({ error: "Payout already in progress. Check your wallet." });
     }

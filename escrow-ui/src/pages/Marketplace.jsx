@@ -1666,7 +1666,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           category: category.trim() || undefined,
           condition: isSpecial ? "service" : condition,
           communityLink: community.trim() || undefined,
-          sellerFedDomain: sellerFedDomain || undefined,
+
           quantity: parseInt(quantity) || 1,
         }),
       });
