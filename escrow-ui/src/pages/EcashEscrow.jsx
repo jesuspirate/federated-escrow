@@ -1317,7 +1317,15 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         if (ecashData.mode !== "ecash" || !ecashData.notes) throw new Error("No e-cash notes available");
 
         showToast("Redeeming " + amountSats.toLocaleString() + " sats into your Fedi wallet...");
-        await window.fediInternal.receiveEcash(ecashData.notes);
+        try {
+          await window.fediInternal.receiveEcash(ecashData.notes);
+        } catch (redeemErr) {
+          showToast("Failed to redeem e-cash. Are you on the same federation? Try again.", "error");
+          setLoading(false);
+          return;
+        }
+        // Confirm successful receipt — server wipes notes and marks COMPLETED
+        await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
         showToast("E-cash received! " + amountSats.toLocaleString() + " sats in your wallet. Pure Fedimint.");
         onRefresh();
         setLoading(false);

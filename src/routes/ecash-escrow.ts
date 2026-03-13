@@ -781,10 +781,10 @@ router.get("/:id/ecash-payout", (req: AuthenticatedRequest, res: Response) => {
       return res.status(403).json({ error: "Only the winning party can retrieve e-cash notes" });
 
     // Decrypt and return the locked notes for the winner to redeem
-    const notes = DB.decryptNotes(row.locked_notes!);
+    if (!row.locked_notes) return res.status(400).json({ error: "E-cash notes already retrieved and confirmed. If you didn't receive them, contact the arbiter." });
+    const notes = DB.decryptNotes(row.locked_notes);
     
-    // Mark as completed after notes are retrieved
-    if (row.status === "CLAIMED") DB.completeEscrow(row.id);
+    // DON'T complete here — wait for confirm-ecash-received
 
     res.json({
       escrowId: row.id, mode: "ecash",
@@ -794,6 +794,33 @@ router.get("/:id/ecash-payout", (req: AuthenticatedRequest, res: Response) => {
     });
   } catch (err: any) {
     console.error("[ecash-escrow] GET /:id/ecash-payout error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── POST /:id/confirm-ecash-received — Winner confirms successful redemption ──
+router.post("/:id/confirm-ecash-received", (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const row = DB.getEscrow(req.params.id);
+    if (!row) return res.status(404).json({ error: "Escrow not found" });
+    if (row.lock_mode !== "ecash") return res.status(400).json({ error: "Not an e-cash escrow" });
+    if (row.status !== "CLAIMED") return res.status(400).json({ error: "Escrow status is " + row.status + ", expected CLAIMED" });
+
+    const pk = req.pubkey!;
+    const role = getRoleByPubkey(row, pk);
+    const expectedWinner = row.resolved_outcome === "release" ? "buyer" : "seller";
+    if (role !== expectedWinner && !(row.resolved_outcome === "refund" && role === "seller"))
+      return res.status(403).json({ error: "Only the winning party can confirm receipt" });
+
+    // Now safe to complete and wipe notes
+    DB.completeEscrow(row.id);
+    // Wipe the encrypted notes from DB
+    try { db.prepare("UPDATE escrows SET locked_notes = NULL WHERE id = ?").run(row.id); } catch(e) {}
+
+    console.log("[ecash-escrow] E-cash confirmed received for", row.id, "by", role);
+    res.json({ success: true, escrowId: row.id, status: "COMPLETED" });
+  } catch (err: any) {
+    console.error("[ecash-escrow] POST /:id/confirm-ecash-received error:", err);
     res.status(500).json({ error: err.message });
   }
 });
