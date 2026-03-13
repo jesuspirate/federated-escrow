@@ -1298,6 +1298,15 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
   const cancelConfirm = () => setConfirmVote(null);
 
+  // Extract federation ID prefix from e-cash notes (bytes 3-7 of base64-decoded notes)
+  const extractFedIdFromNotes = (notes) => {
+    try {
+      const b64 = notes.replace(/-/g, "+").replace(/_/g, "/");
+      const bin = atob(b64.substring(0, 12));
+      return Array.from(bin.substring(3, 7), c => c.charCodeAt(0).toString(16).padStart(2, "0")).join("");
+    } catch { return null; }
+  };
+
   const handleClaim = async () => {
     setLoading(true);
     try {
@@ -1316,28 +1325,25 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         if (ecashData.error) throw new Error(ecashData.error);
         if (ecashData.mode !== "ecash" || !ecashData.notes) throw new Error("No e-cash notes available");
 
-        showToast("Redeeming " + amountSats.toLocaleString() + " sats — select the SELLER\'S federation if prompted...");
-        let redeemAttempts = 0;
-        let redeemed = false;
-        while (!redeemed && redeemAttempts < 3) {
-          redeemAttempts++;
-          try {
-            await window.fediInternal.receiveEcash(ecashData.notes);
-            redeemed = true;
-          } catch (redeemErr) {
-            console.error("[ecash-claim] receiveEcash attempt", redeemAttempts, "failed:", redeemErr);
-            if (redeemAttempts < 3) {
-              showToast("Wrong federation selected? Pick the seller\'s federation. Retrying... (" + redeemAttempts + "/3)", "error");
-              await new Promise(r => setTimeout(r, 1500));
-            } else {
-              showToast("E-cash redeem failed after 3 attempts. Make sure you select the same federation the seller used. Tap Receive to try again.", "error");
-              setLoading(false);
-              return;
-            }
-          }
+        // Check if buyer is on the same federation as the notes
+        const notesFedPrefix = extractFedIdFromNotes(ecashData.notes);
+        const escrowFedId = e.federationId || "";
+        const notesFedMatch = notesFedPrefix && escrowFedId.startsWith(notesFedPrefix);
+
+        if (notesFedPrefix && escrowFedId && !notesFedMatch) {
+          showToast("These notes are from a different federation (" + escrowFedId.substring(0, 8) + "...). Select the correct one if prompted.", "error");
+        } else {
+          showToast("Redeeming " + amountSats.toLocaleString() + " sats...");
         }
-        // Confirm successful receipt — server wipes notes and marks COMPLETED
-        await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
+
+        try {
+          await window.fediInternal.receiveEcash(ecashData.notes);
+        } catch (redeemErr) {
+          console.error("[ecash-claim] receiveEcash failed:", redeemErr);
+          showToast("E-cash redeem failed. If you have multiple federations, select the same one the seller used. Tap Receive to try again.", "error");
+          setLoading(false);
+          return;
+        }
         showToast("E-cash received! " + amountSats.toLocaleString() + " sats in your wallet. Pure Fedimint.");
         onRefresh();
         setLoading(false);

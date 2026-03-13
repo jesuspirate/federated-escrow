@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Federation Select Test</title>
+  <style>
+    body { background: #0c0f17; color: #f8fafc; font-family: system-ui; padding: 20px; font-size: 13px; }
+    #log { white-space: pre-wrap; line-height: 1.6; margin-top: 12px; }
+    button { padding: 10px 16px; border-radius: 8px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; margin: 4px; background: #f59e0b; color: #0c0f17; }
+  </style>
+</head>
+<body>
+  <h2>Federation Select Test</h2>
+  <div id="buttons"></div>
+  <div id="log">Waiting 2s...</div>
+  <script>
+    setTimeout(async function() {
+      var log = document.getElementById('log');
+      var btns = document.getElementById('buttons');
+      log.textContent = '';
+      function out(msg) { log.textContent += msg + '\n'; }
+
+      if (!window.fediInternal) { out('fediInternal not available'); return; }
+      out('fediInternal ready\n');
+
+      // 1. Get current member info
+      out('=== getAuthenticatedMember ===');
+      try {
+        var member = await window.fediInternal.getAuthenticatedMember();
+        out('ID: ' + member.id);
+        out('Username: ' + member.username);
+        out('Federation domain: ' + member.id.split(':').pop());
+      } catch(e) { out('Error: ' + e.message); }
+
+      // 2. Try refreshCommunities to get list
+      out('\n=== refreshCommunities ===');
+      try {
+        var comms = await window.fediInternal.refreshCommunities();
+        out('Type: ' + typeof comms);
+        out('Result: ' + JSON.stringify(comms, null, 2).substring(0, 800));
+      } catch(e) { out('Error: ' + e.message); }
+
+      // 3. Try setSelectedCommunity with different args
+      out('\n=== setSelectedCommunity tests ===');
+      out('Function length: ' + window.fediInternal.setSelectedCommunity.length);
+      
+      // Try with no args to see what happens
+      try {
+        var r = await window.fediInternal.setSelectedCommunity();
+        out('No args result: ' + JSON.stringify(r));
+      } catch(e) { out('No args error: ' + e.message); }
+
+      // Try with empty string
+      try {
+        var r2 = await window.fediInternal.setSelectedCommunity('');
+        out('Empty string result: ' + JSON.stringify(r2));
+      } catch(e) { out('Empty string error: ' + e.message); }
+
+      // 4. Generate ecash with {amount:1} and check which federation it uses
+      out('\n=== generateEcash + self-receive test ===');
+      try {
+        var notes = await window.fediInternal.generateEcash({amount: 1});
+        out('Generated notes (first 40): ' + notes.substring(0, 40));
+        out('Notes length: ' + notes.length);
+        
+        // Now try to receive them back
+        try {
+          await window.fediInternal.receiveEcash(notes);
+          out('Self-receive: SUCCESS');
+        } catch(e2) {
+          out('Self-receive FAILED: ' + e2.message);
+        }
+      } catch(e) { out('Generate error: ' + e.message + ' (user cancelled?)'); }
+
+      // 5. Try getCurrencyCode (might tell us about current federation)
+      out('\n=== getCurrencyCode ===');
+      try {
+        var cc = await window.fediInternal.getCurrencyCode();
+        out('Currency: ' + JSON.stringify(cc));
+      } catch(e) { out('Error: ' + e.message); }
+
+    }, 2000);
+  </script>
+</body>
+</html>
