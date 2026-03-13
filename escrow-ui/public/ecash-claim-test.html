@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>E-cash Claim Test</title>
+  <style>
+    body { background: #0c0f17; color: #f8fafc; font-family: system-ui; padding: 20px; font-size: 13px; }
+    #log { white-space: pre-wrap; line-height: 1.6; margin-top: 12px; }
+    textarea { width: 100%; height: 100px; background: #1e293b; color: #f8fafc; border: 1px solid #334155; border-radius: 8px; padding: 8px; font-size: 12px; }
+    button { padding: 12px 20px; border-radius: 10px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; margin: 4px; background: #10b981; color: #fff; }
+  </style>
+</head>
+<body>
+  <h2>E-cash Claim Test</h2>
+  <textarea id="notes" placeholder="Paste e-cash notes here..."></textarea>
+  <button onclick="testReceive()">Test receiveEcash</button>
+  <button onclick="testReceiveStr()">Test receiveEcash (as string arg)</button>
+  <div id="log">Waiting 2s for Fedi...</div>
+  <script>
+    setTimeout(function() {
+      var log = document.getElementById('log');
+      log.textContent = '';
+      function out(msg) { log.textContent += msg + '\n'; }
+      if (!window.fediInternal) { out('fediInternal not available'); return; }
+      out('fediInternal ready');
+      out('receiveEcash type: ' + typeof window.fediInternal.receiveEcash);
+      out('receiveEcash.length: ' + window.fediInternal.receiveEcash.length);
+    }, 2000);
+
+    async function testReceive() {
+      var log = document.getElementById('log');
+      var notes = document.getElementById('notes').value.trim();
+      log.textContent += '\n--- receiveEcash(notes) ---\n';
+      log.textContent += 'Notes length: ' + notes.length + '\n';
+      log.textContent += 'Starts with: ' + notes.substring(0, 20) + '\n';
+      try {
+        var result = await window.fediInternal.receiveEcash(notes);
+        log.textContent += 'SUCCESS! Result: ' + JSON.stringify(result) + '\n';
+      } catch(e) {
+        log.textContent += 'FAILED: ' + e + '\n';
+        log.textContent += 'Type: ' + typeof e + '\n';
+        log.textContent += 'Message: ' + (e?.message || 'none') + '\n';
+        log.textContent += 'JSON: ' + JSON.stringify(e) + '\n';
+      }
+    }
+
+    async function testReceiveStr() {
+      var log = document.getElementById('log');
+      var notes = document.getElementById('notes').value.trim();
+      log.textContent += '\n--- receiveEcash({notes: notes}) ---\n';
+      try {
+        var result = await window.fediInternal.receiveEcash({notes: notes});
+        log.textContent += 'SUCCESS! Result: ' + JSON.stringify(result) + '\n';
+      } catch(e) {
+        log.textContent += 'FAILED: ' + e + '\n';
+        log.textContent += 'JSON: ' + JSON.stringify(e) + '\n';
+      }
+    }
+  </script>
+</body>
+</html>

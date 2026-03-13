@@ -1316,13 +1316,25 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         if (ecashData.error) throw new Error(ecashData.error);
         if (ecashData.mode !== "ecash" || !ecashData.notes) throw new Error("No e-cash notes available");
 
-        showToast("Redeeming " + amountSats.toLocaleString() + " sats into your Fedi wallet...");
-        try {
-          await window.fediInternal.receiveEcash(ecashData.notes);
-        } catch (redeemErr) {
-          showToast("E-cash redeem cancelled or failed. Tap Receive to try again.", "error");
-          setLoading(false);
-          return;
+        showToast("Redeeming " + amountSats.toLocaleString() + " sats — select the SELLER\'S federation if prompted...");
+        let redeemAttempts = 0;
+        let redeemed = false;
+        while (!redeemed && redeemAttempts < 3) {
+          redeemAttempts++;
+          try {
+            await window.fediInternal.receiveEcash(ecashData.notes);
+            redeemed = true;
+          } catch (redeemErr) {
+            console.error("[ecash-claim] receiveEcash attempt", redeemAttempts, "failed:", redeemErr);
+            if (redeemAttempts < 3) {
+              showToast("Wrong federation selected? Pick the seller\'s federation. Retrying... (" + redeemAttempts + "/3)", "error");
+              await new Promise(r => setTimeout(r, 1500));
+            } else {
+              showToast("E-cash redeem failed after 3 attempts. Make sure you select the same federation the seller used. Tap Receive to try again.", "error");
+              setLoading(false);
+              return;
+            }
+          }
         }
         // Confirm successful receipt — server wipes notes and marks COMPLETED
         await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
