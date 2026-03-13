@@ -1372,22 +1372,6 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
   const handleBuy = async () => {
     setLoading(true);
     try {
-      // Federation check — ensure buyer is on same federation as listing
-      if (window.fediInternal && window.fediInternal.getAuthenticatedMember) {
-        try {
-          const member = await window.fediInternal.getAuthenticatedMember();
-          if (member && member.id) {
-            const buyerFedDomain = member.id.split(":").pop();
-            const listingFedDomain = l.sellerFedDomain || (l.communityLink || "").match(/:([a-zA-Z0-9.-]+):::/)?.[1];
-            if (buyerFedDomain && listingFedDomain && buyerFedDomain !== listingFedDomain) {
-              showToast("You're on federation '" + buyerFedDomain + "' but this listing is on '" + listingFedDomain + "'. E-cash only works within the same federation.", "error");
-              setLoading(false);
-              return;
-            }
-          }
-        } catch (fedErr) { /* continue if check fails */ }
-      }
-
       const customMsats = hasRange && buyAmount ? parseInt(buyAmount) * 1000 : undefined;
       const res = await mapi(`/${l.id}/buy`, { method: "POST", body: JSON.stringify(customMsats ? { amountMsats: customMsats } : {}) });
       if (res.error) throw new Error(res.error);
@@ -1647,25 +1631,6 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
     if (!sats || sats <= 0) return showToast(t("mkPriceRequired"), "error");
     if (sats < 1) return showToast("Minimum ₿ 1 sat", "error");
     if (sats > 2_000_000) return showToast(t("mkPriceExceeds"), "error");
-
-    // Federation check — get seller's federation domain from Fedi
-    let sellerFedDomain = null;
-    if (window.fediInternal && window.fediInternal.getAuthenticatedMember) {
-      try {
-        const member = await window.fediInternal.getAuthenticatedMember();
-        if (member && member.id) {
-          sellerFedDomain = member.id.split(":").pop();
-        }
-      } catch (e) { /* continue */ }
-    }
-
-    // Validate community link matches seller's federation
-    if (sellerFedDomain && community.trim()) {
-      const linkFed = (community.trim()).match(/:([a-zA-Z0-9.-]+):::/)?.[1];
-      if (linkFed && linkFed !== sellerFedDomain) {
-        return showToast("Community link is for federation '" + linkFed + "' but you're on '" + sellerFedDomain + "'. Use a chat room from your own federation.", "error");
-      }
-    }
 
     // Append P2P metadata to terms
     let finalTerms = terms.trim();
