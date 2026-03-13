@@ -1217,6 +1217,20 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     }
     setLocking(true);
     try {
+      // Federation check — verify user is on the correct federation
+      if (window.fediInternal.getAuthenticatedMember && e.communityLink) {
+        try {
+          const member = await window.fediInternal.getAuthenticatedMember();
+          const myFed = member?.id?.split(":").pop();
+          const escrowFed = (e.communityLink || "").match(/:([a-zA-Z0-9.-]+):::/)?.[1];
+          if (myFed && escrowFed && myFed !== escrowFed) {
+            showToast("Wrong federation! You're on '" + myFed + "' but this escrow is on '" + escrowFed + "'. E-cash is federation-specific.", "error");
+            setLocking(false);
+            return;
+          }
+        } catch (fedErr) { /* continue if check fails */ }
+      }
+
       const amountSats = Math.floor(e.amountMsats / 1000);
       showToast("Generating " + amountSats.toLocaleString() + " sats e-cash...");
       const notes = await window.fediInternal.generateEcash({ amount: amountSats });

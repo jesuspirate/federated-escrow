@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Federation Check</title>
+  <style>
+    body { background: #0c0f17; color: #f8fafc; font-family: system-ui; padding: 20px; font-size: 13px; }
+    #log { white-space: pre-wrap; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <h2>Federation Check</h2>
+  <div id="log">Waiting 2s...</div>
+  <script>
+    setTimeout(async function() {
+      var log = document.getElementById('log');
+      log.textContent = '';
+      function out(msg) { log.textContent += msg + '\n'; }
+
+      if (!window.fediInternal) { out('fediInternal not available'); return; }
+
+      // 1. Test getAuthenticatedMember
+      out('=== getAuthenticatedMember ===');
+      try {
+        var member = await window.fediInternal.getAuthenticatedMember();
+        out('Result type: ' + typeof member);
+        out('Result: ' + JSON.stringify(member, null, 2).substring(0, 500));
+      } catch(e) { out('Error: ' + e.message); }
+
+      // 2. Test listCreatedCommunities
+      out('\n=== listCreatedCommunities ===');
+      try {
+        var comms = await window.fediInternal.listCreatedCommunities();
+        out('Result type: ' + typeof comms);
+        out('Result: ' + JSON.stringify(comms, null, 2).substring(0, 500));
+      } catch(e) { out('Error: ' + e.message); }
+
+      // 3. Test getSelectedCommunity or similar
+      out('\n=== setSelectedCommunity (read?) ===');
+      try {
+        // Try calling without args to see if it returns current
+        var sel = await window.fediInternal.getSelectedCommunity?.();
+        out('Result: ' + JSON.stringify(sel, null, 2)?.substring(0, 500));
+      } catch(e) { out('Not available or error: ' + e.message); }
+
+      // 4. Generate small ecash and inspect the notes string for federation info
+      out('\n=== generateEcash — inspect notes ===');
+      try {
+        var notes = await window.fediInternal.generateEcash({amount: 1});
+        out('Notes (first 200 chars): ' + notes.substring(0, 200));
+        // Fedimint notes start with a federation ID prefix
+        out('Notes start: ' + notes.substring(0, 20));
+      } catch(e) { out('Error: ' + e.message); }
+
+      // 5. Try receiveEcash with the same notes to get them back
+      out('\n=== receiveEcash (self-redeem) ===');
+      try {
+        await window.fediInternal.receiveEcash(notes);
+        out('Self-redeem succeeded — 1 sat returned');
+      } catch(e) { out('Error: ' + e.message); }
+
+    }, 2000);
+  </script>
+</body>
+</html>

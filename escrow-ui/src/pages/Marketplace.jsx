@@ -1372,6 +1372,22 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
   const handleBuy = async () => {
     setLoading(true);
     try {
+      // Federation check — ensure buyer is on same federation as listing
+      if (window.fediInternal && window.fediInternal.getAuthenticatedMember) {
+        try {
+          const member = await window.fediInternal.getAuthenticatedMember();
+          if (member && member.id) {
+            const buyerFedDomain = member.id.split(":").pop();
+            const listingFedDomain = (l.communityLink || "").match(/:([a-zA-Z0-9.-]+):::/)?.[1];
+            if (buyerFedDomain && listingFedDomain && buyerFedDomain !== listingFedDomain) {
+              showToast("You're on federation '" + buyerFedDomain + "' but this listing is on '" + listingFedDomain + "'. E-cash only works within the same federation.", "error");
+              setLoading(false);
+              return;
+            }
+          }
+        } catch (fedErr) { /* continue if check fails */ }
+      }
+
       const customMsats = hasRange && buyAmount ? parseInt(buyAmount) * 1000 : undefined;
       const res = await mapi(`/${l.id}/buy`, { method: "POST", body: JSON.stringify(customMsats ? { amountMsats: customMsats } : {}) });
       if (res.error) throw new Error(res.error);
