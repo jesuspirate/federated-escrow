@@ -267,7 +267,7 @@ router.post("/", (req: AuthenticatedRequest, res: Response) => {
 
     if (!amountMsats || typeof amountMsats !== "number" || amountMsats <= 0)
       return res.status(400).json({ error: "amountMsats is required (positive integer)" });
-    if (amountMsats < 1_000_000) return res.status(400).json({ error: "Minimum 1,000 sats (1,000,000 msats) for Lightning routing" });
+    if (amountMsats < 1_000) return res.status(400).json({ error: "Minimum 1 sat (1,000,000 msats) for Lightning routing" });
     if (!terms || typeof terms !== "string" || terms.trim().length < 5)
       return res.status(400).json({ error: "Trade terms are required (minimum 5 characters)." });
     if (!communityLink || !isValidCommunityLink(communityLink))

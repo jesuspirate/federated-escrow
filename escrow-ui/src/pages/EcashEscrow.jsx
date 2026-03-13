@@ -46,7 +46,7 @@ export const FED_LIMITS = {
 function validateAmount(sats) {
   if (!sats || sats <= 0) return "Enter a valid amount";
   if (sats > FED_LIMITS.MAX_TX_SATS) return `Exceeds ${FED_LIMITS.MAX_TX_SATS.toLocaleString()} ₿ sats federation limit`;
-  if (sats < 1000) return "Minimum ₿ 1,000 sats for Lightning routing";
+  if (sats < 1) return "Minimum ₿ 1,000 sats for Lightning routing";
   return null;
 }
 

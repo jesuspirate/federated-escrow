@@ -1270,6 +1270,9 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
   const [price, setPrice] = useState(l.priceMsats ? Math.floor(l.priceMsats / 1000) : "");
   const [terms, setTerms] = useState(l.terms || "");
   const [quantity, setQuantity] = useState(l.quantity ?? 1);
+  const [minPrice, setMinPrice] = useState(l.minPriceSats || "");
+  const [maxPrice, setMaxPrice] = useState(l.maxPriceSats || "");
+  const isP2P = isSatsForFiat(l.category);
 
   const handleSave = async () => {
     if (!title.trim()) return showToast("Title is required", "error");
@@ -1284,6 +1287,8 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
           priceMsats: Number(price) * 1000,
           terms: terms.trim(),
           quantity: Number(quantity),
+          minPriceMsats: minPrice ? Number(minPrice) * 1000 : null,
+          maxPriceMsats: maxPrice ? Number(maxPrice) * 1000 : null,
         }),
       });
       if (res.error) throw new Error(res.error);
@@ -1316,7 +1321,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
 
         <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
           <div style={{ flex: 1 }}>
-            <div style={M.sectionLabel}>Price (sats) *</div>
+            <div style={M.sectionLabel}>{isP2P ? "Display Price (sats)" : "Price (sats) *"}</div>
             <input style={M.input} type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="e.g. 5000" min={1} />
           </div>
           <div style={{ width: 90 }}>
@@ -1324,6 +1329,18 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
             <input style={M.input} type="number" value={quantity} onChange={e => setQuantity(e.target.value)} min={1} max={999} />
           </div>
         </div>
+
+        {isP2P && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={M.sectionLabel}>Price Range (sats)</div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input style={{ ...M.input, flex: 1 }} type="number" placeholder="Min" value={minPrice} onChange={e => setMinPrice(e.target.value)} />
+              <span style={{ color: "#64748b", fontSize: 13 }}>—</span>
+              <input style={{ ...M.input, flex: 1 }} type="number" placeholder="Max" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} />
+            </div>
+            <p style={{ fontSize: 11, color: "#64748b", marginTop: 4 }}>Buyers choose any amount in this range.</p>
+          </div>
+        )}
 
         <div style={{ marginBottom: 20 }}>
           <div style={M.sectionLabel}>Trade Terms</div>
@@ -1499,40 +1516,45 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         )}
         {l.terms && !isSeller && (
           <div style={{ ...M.infoBanner, borderColor: "rgba(100,116,139,0.2)", background: "rgba(100,116,139,0.04)", marginBottom: 14 }}>
-            <div style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
               🔒 Trade terms visible after purchase
             </div>
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
+        {/* ── Listing info grid ── */}
+        <div style={{ display: "flex", justifyContent: "space-around", padding: "12px 0", marginBottom: 14, borderRadius: 12, background: "rgba(15,23,42,0.5)", border: "1px solid #1e293b", textAlign: "center" }}>
           {l.condition && !isP2P && (
-            <div style={{ flex: 1 }}>
-              <div style={M.sectionLabel}>{t("mkCondition")}</div>
-              <div style={M.sectionValue}>{t(CONDITION_KEYS[l.condition] || l.condition)}</div>
+            <div>
+              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("mkCondition")}</div>
+              <div style={{ fontSize: 13, color: "#f8fafc", fontWeight: 600, marginTop: 2 }}>{t(CONDITION_KEYS[l.condition] || l.condition)}</div>
             </div>
           )}
           {l.category && (
-            <div style={{ flex: 1 }}>
-              <div style={M.sectionLabel}>{t("mkCategory")}</div>
-              <div style={M.sectionValue}>{l.category}</div>
+            <div>
+              <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("mkCategory")}</div>
+              <div style={{ fontSize: 13, color: "#f8fafc", fontWeight: 600, marginTop: 2 }}>{l.category}</div>
             </div>
           )}
-          <div style={{ flex: 1 }}>
-            <div style={M.sectionLabel}>{t("mkAvailable")}</div>
-            <div style={M.sectionValue}>{l.quantity}</div>
+          <div>
+            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("mkAvailable")}</div>
+            <div style={{ fontSize: 13, color: "#10b981", fontWeight: 700, marginTop: 2 }}>{l.quantity}</div>
           </div>
         </div>
 
-        <div style={M.section}>
-          <div style={M.sectionLabel}>{t("seller")}</div>
-          <SellerName pubkey={l.sellerPubkey} onTap={onProfile} />
+        {/* ── Seller ── */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", marginBottom: 10, borderRadius: 10, background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.1)" }}>
+          <span style={{ fontSize: 18 }}>🏠</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("seller")}</div>
+            <div onClick={() => onProfile(l.sellerPubkey)} style={{ cursor: "pointer" }}><SellerName pubkey={l.sellerPubkey} /></div>
+          </div>
         </div>
 
+        {/* ── Community ── */}
         {l.communityLink && (
-          <div style={M.section}>
-            <div style={M.sectionLabel}>{t("communityLink")}</div>
-            <a href={l.communityLink} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "8px 16px", borderRadius: 8, background: "rgba(139,92,246,0.12)", color: "#a78bfa", fontSize: 12, fontWeight: 600, border: "1px solid rgba(139,92,246,0.2)", textDecoration: "none" }}>
+          <div style={{ marginBottom: 14, textAlign: "center" }}>
+            <a href={l.communityLink} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 20px", borderRadius: 10, background: "rgba(139,92,246,0.08)", color: "#a78bfa", fontSize: 13, fontWeight: 600, border: "1px solid rgba(139,92,246,0.15)", textDecoration: "none" }}>
               💬 {t("openCommunity")}
             </a>
           </div>
@@ -1591,7 +1613,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
       maxSats = parseInt(maxPrice);
       if (!minSats || minSats <= 0) return showToast("Enter a minimum price", "error");
       if (!maxSats || maxSats <= 0) return showToast("Enter a maximum price", "error");
-      if (minSats < 1000) return showToast("Minimum ₿ 1,000 sats", "error");
+      if (minSats < 1) return showToast("Minimum ₿ 1 sat", "error");
       if (maxSats < minSats) return showToast("Max must be greater than min", "error");
       if (maxSats > 2_000_000) return showToast(t("mkPriceExceeds"), "error");
       if (ratePremium && Number(ratePremium) > 0) {
@@ -1607,7 +1629,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
 
     if (!title.trim()) return showToast(t("mkTitleRequired"), "error");
     if (!sats || sats <= 0) return showToast(t("mkPriceRequired"), "error");
-    if (sats < 1000) return showToast("Minimum ₿ 1,000 sats", "error");
+    if (sats < 1) return showToast("Minimum ₿ 1 sat", "error");
     if (sats > 2_000_000) return showToast(t("mkPriceExceeds"), "error");
 
     // Append P2P metadata to terms
@@ -1644,7 +1666,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           category: category.trim() || undefined,
           condition: isSpecial ? "service" : condition,
           communityLink: community.trim() || undefined,
-          quantity: isSpecial ? 1 : (parseInt(quantity) || 1),
+          quantity: parseInt(quantity) || 1,
         }),
       });
       if (res.error) throw new Error(res.error);
@@ -1801,9 +1823,12 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           <div style={M.formGroup}>
             <label style={M.label}>{t("mkRatePremium")} (%)</label>
             <input style={M.input} placeholder="e.g., 3" type="number" value={ratePremium} onChange={e => setRatePremium(e.target.value)} />
-            {ratePremium && price && (
+            {ratePremium && (minPrice || price) && (
               <p style={{ ...M.hint, color: "#f59e0b", fontWeight: 600 }}>
-                Total with premium: ₿ {Math.ceil(Number(price) * (1 + Number(ratePremium) / 100)).toLocaleString()} sats
+                {minPrice && maxPrice
+                  ? "Range with premium: ₿ " + Math.ceil(Number(minPrice) * (1 + Number(ratePremium) / 100)).toLocaleString() + " — ₿ " + Math.ceil(Number(maxPrice) * (1 + Number(ratePremium) / 100)).toLocaleString() + " sats"
+                  : "Total with premium: ₿ " + Math.ceil(Number(price) * (1 + Number(ratePremium) / 100)).toLocaleString() + " sats"
+                }
               </p>
             )}
           </div>
@@ -1866,6 +1891,15 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
             </div>
           </div>
           )}
+        </div>
+      )}
+
+      {/* ── P2P/Lending: Quantity (how many trades) ── */}
+      {(isP2P || isLoan) && (
+        <div style={{ marginBottom: 16 }}>
+          <label style={M.label}>How many trades will you accept?</label>
+          <input style={{ ...M.input, width: 100 }} type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="1" />
+          <p style={M.hint}>Each buyer creates a separate trade within your price range.</p>
         </div>
       )}
 

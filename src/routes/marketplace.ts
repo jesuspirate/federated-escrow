@@ -495,13 +495,13 @@ router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ error: "title must be 200 characters or fewer" });
     if (!priceMsats || typeof priceMsats !== "number" || priceMsats <= 0)
       return res.status(400).json({ error: "priceMsats is required (positive integer)" });
-    if (priceMsats < 1_000_000) return res.status(400).json({ error: "Minimum 1,000 sats" });
+    if (priceMsats < 1_000) return res.status(400).json({ error: "Minimum 1 sat" });
     // Bracket pricing validation (P2P)
     if (minPriceMsats !== undefined && minPriceMsats !== null) {
-      if (typeof minPriceMsats !== "number" || minPriceMsats < 1_000_000) return res.status(400).json({ error: "minPriceMsats must be at least 1,000 sats" });
+      if (typeof minPriceMsats !== "number" || minPriceMsats < 1_000) return res.status(400).json({ error: "minPriceMsats must be at least 1,000 sats" });
     }
     if (maxPriceMsats !== undefined && maxPriceMsats !== null) {
-      if (typeof maxPriceMsats !== "number" || maxPriceMsats < 1_000_000) return res.status(400).json({ error: "maxPriceMsats must be at least 1,000 sats" });
+      if (typeof maxPriceMsats !== "number" || maxPriceMsats < 1_000) return res.status(400).json({ error: "maxPriceMsats must be at least 1,000 sats" });
       if (minPriceMsats && maxPriceMsats <= minPriceMsats) return res.status(400).json({ error: "maxPriceMsats must be greater than minPriceMsats" });
     }
     if (priceMsats > 2_000_000_000_000)
@@ -855,6 +855,7 @@ router.post("/:id/update", ...requireAuth, (req: AuthenticatedRequest, res: Resp
 
     const allowedFields: Record<string, string> = {
       title: "title", description: "description", priceMsats: "price_msats",
+      minPriceMsats: "min_price_msats", maxPriceMsats: "max_price_msats",
       currencyDisplay: "currency_display", category: "category", condition: "condition",
       images: "images", terms: "terms", communityLink: "community_link",
       quantity: "quantity", status: "status",
@@ -1070,7 +1071,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
       const maxMs = listing.max_price_msats || listing.price_msats;
       if (customAmount < minMs) return res.status(400).json({ error: `Amount below minimum (${Math.floor(minMs / 1000)} sats)` });
       if (customAmount > maxMs) return res.status(400).json({ error: `Amount above maximum (${Math.floor(maxMs / 1000)} sats)` });
-      if (customAmount < 1_000_000) return res.status(400).json({ error: "Minimum 1,000 sats" });
+      if (customAmount < 1_000) return res.status(400).json({ error: "Minimum 1 sat" });
       tradeAmountMsats = Math.floor(customAmount);
     }
 
