@@ -143,6 +143,10 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_ratings_order ON ratings(order_id);
 `);
 
+// ── Migration: bracket pricing for P2P (min/max range) ──
+try { db.exec("ALTER TABLE listings ADD COLUMN min_price_msats INTEGER"); } catch(e) {}
+try { db.exec("ALTER TABLE listings ADD COLUMN max_price_msats INTEGER"); } catch(e) {}
+
 // ── Migration: fix ratings UNIQUE constraint (allow both parties to rate) ──
 // Old schema had UNIQUE(order_id) — new schema uses UNIQUE(order_id, rater_pubkey)
 try {
@@ -201,8 +205,8 @@ function pickArbiter(excludePubkeys: string[]): string | null {
 const stmts = {
   // Listings
   insert: db.prepare(`
-    INSERT INTO listings (id, seller_pubkey, title, description, price_msats, currency_display, category, condition, images, terms, community_link, status, quantity)
-    VALUES (@id, @seller_pubkey, @title, @description, @price_msats, @currency_display, @category, @condition, @images, @terms, @community_link, 'active', @quantity)
+    INSERT INTO listings (id, seller_pubkey, title, description, price_msats, currency_display, category, condition, images, terms, community_link, status, quantity, min_price_msats, max_price_msats)
+    VALUES (@id, @seller_pubkey, @title, @description, @price_msats, @currency_display, @category, @condition, @images, @terms, @community_link, 'active', @quantity, @min_price_msats, @max_price_msats)
   `),
   getById: db.prepare(`SELECT * FROM listings WHERE id = ?`),
   listActive: db.prepare(`SELECT * FROM listings WHERE status = ? ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END, updated_at DESC LIMIT ? OFFSET ?`),
@@ -294,6 +298,7 @@ export interface ListingRow {
   price_msats: number; currency_display: string; category: string | null;
   condition: string | null; images: string | null; terms: string | null;
   community_link: string | null; status: string; quantity: number;
+  min_price_msats: number | null; max_price_msats: number | null;
   created_at: string; updated_at: string;
 }
 
@@ -328,6 +333,10 @@ function formatListing(row: ListingRow) {
     communityLink: row.community_link,
     status: row.status,
     quantity: row.quantity,
+    minPriceMsats: row.min_price_msats || null,
+    maxPriceMsats: row.max_price_msats || null,
+    minPriceSats: row.min_price_msats ? Math.floor(row.min_price_msats / 1000) : null,
+    maxPriceSats: row.max_price_msats ? Math.floor(row.max_price_msats / 1000) : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -478,7 +487,7 @@ const requireAuth = [extractPubkey, rateLimit];
 router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
   try {
     const pk = req.pubkey!;
-    const { title, description, priceMsats, currencyDisplay, category, condition, images, terms, communityLink, quantity } = req.body;
+    const { title, description, priceMsats, currencyDisplay, category, condition, images, terms, communityLink, quantity, minPriceMsats, maxPriceMsats } = req.body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0)
       return res.status(400).json({ error: "title is required" });
@@ -486,9 +495,15 @@ router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ error: "title must be 200 characters or fewer" });
     if (!priceMsats || typeof priceMsats !== "number" || priceMsats <= 0)
       return res.status(400).json({ error: "priceMsats is required (positive integer)" });
-    if (priceMsats < 1_000_000) return res.status(400).json({ error: "Minimum 1,000 sats for Lightning routing" });
-    if (priceMsats < 1_000_000) return res.status(400).json({ error: "Minimum 1,000 sats for Lightning routing" });
-    if (priceMsats < 1_000_000) return res.status(400).json({ error: "Minimum 1,000 sats for Lightning routing" });
+    if (priceMsats < 1_000_000) return res.status(400).json({ error: "Minimum 1,000 sats" });
+    // Bracket pricing validation (P2P)
+    if (minPriceMsats !== undefined && minPriceMsats !== null) {
+      if (typeof minPriceMsats !== "number" || minPriceMsats < 1_000_000) return res.status(400).json({ error: "minPriceMsats must be at least 1,000 sats" });
+    }
+    if (maxPriceMsats !== undefined && maxPriceMsats !== null) {
+      if (typeof maxPriceMsats !== "number" || maxPriceMsats < 1_000_000) return res.status(400).json({ error: "maxPriceMsats must be at least 1,000 sats" });
+      if (minPriceMsats && maxPriceMsats <= minPriceMsats) return res.status(400).json({ error: "maxPriceMsats must be greater than minPriceMsats" });
+    }
     if (priceMsats > 2_000_000_000_000)
       return res.status(400).json({ error: "priceMsats exceeds maximum (2M sats)" });
     if (condition && !VALID_CONDITIONS.includes(condition))
@@ -515,6 +530,8 @@ router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
       terms: terms?.trim() || null,
       community_link: communityLink?.trim() || null,
       quantity: quantity ?? 1,
+      min_price_msats: minPriceMsats ? Math.floor(minPriceMsats) : null,
+      max_price_msats: maxPriceMsats ? Math.floor(maxPriceMsats) : null,
     });
 
     const row = stmts.getById.get(id) as ListingRow;
@@ -1044,6 +1061,19 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     //   Listing seller → escrow buyer role (receives sats on release)
     //   Flow: Buyer locks sats → Seller ships item → Both confirm → Seller gets sats
 
+    // ── Bracket pricing: buyer picks amount within range ──────────────
+    let tradeAmountMsats = listing.price_msats;
+    const { amountMsats: customAmount } = req.body;
+    if (customAmount && typeof customAmount === "number" && customAmount > 0) {
+      // Validate against listing range
+      const minMs = listing.min_price_msats || listing.price_msats;
+      const maxMs = listing.max_price_msats || listing.price_msats;
+      if (customAmount < minMs) return res.status(400).json({ error: `Amount below minimum (${Math.floor(minMs / 1000)} sats)` });
+      if (customAmount > maxMs) return res.status(400).json({ error: `Amount above maximum (${Math.floor(maxMs / 1000)} sats)` });
+      if (customAmount < 1_000_000) return res.status(400).json({ error: "Minimum 1,000 sats" });
+      tradeAmountMsats = Math.floor(customAmount);
+    }
+
     const escrowId = DB.getNextId();
     const isP2PTrade = isP2PStyle(listing.category);
 
@@ -1053,7 +1083,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
 
     DB.createEscrow({
       id: escrowId,
-      amountMsats: listing.price_msats,
+      amountMsats: tradeAmountMsats,
       description: isLenderTrade(listing.category)
         ? `Lending: ${listing.title}`
         : isP2PTrade
@@ -1084,7 +1114,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
       buyer_pubkey: buyerPubkey,
       seller_pubkey: listing.seller_pubkey,
       arbiter_pubkey: arbiterPubkey,
-      amount_msats: listing.price_msats,
+      amount_msats: tradeAmountMsats,
       status: "pending",
     });
 

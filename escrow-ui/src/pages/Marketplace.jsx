@@ -1349,11 +1349,14 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
   const isSeller = l.sellerPubkey === pubkey;
   const canBuy = !isSeller && l.status === "active" && l.quantity > 0;
   const isP2P = isSatsForFiat(l.category);
+  const hasRange = l.minPriceSats && l.maxPriceSats && l.minPriceSats !== l.maxPriceSats;
+  const [buyAmount, setBuyAmount] = useState(hasRange ? "" : "");
 
   const handleBuy = async () => {
     setLoading(true);
     try {
-      const res = await mapi(`/${l.id}/buy`, { method: "POST" });
+      const customMsats = hasRange && buyAmount ? parseInt(buyAmount) * 1000 : undefined;
+      const res = await mapi(`/${l.id}/buy`, { method: "POST", body: JSON.stringify(customMsats ? { amountMsats: customMsats } : {}) });
       if (res.error) throw new Error(res.error);
       showToast(isP2P ? t("mkTradeStarted") || "Trade started!" : t("mkBuySuccess"));
       setLoading(false);
@@ -1366,7 +1369,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
           buyerPubkey: pubkey,
           sellerPubkey: l.sellerPubkey,
           arbiterPubkey: res.order.arbiterPubkey,
-          amountMsats: l.priceMsats,
+          amountMsats: customMsats || l.priceMsats,
           listingTitle: l.title,
           status: "pending",
         });
@@ -1387,10 +1390,21 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
       <div style={{ paddingBottom: 20 }}>
         <div style={{ marginBottom: 16 }}>
           <h2 style={{ fontSize: 22, fontWeight: 700, color: "#f8fafc", margin: "0 0 8px", lineHeight: 1.3 }}>{l.title}</h2>
-          <div style={{ fontSize: 32, fontWeight: 900, color: "#f8fafc", letterSpacing: -1 }}>
-	  <span style={{ color: "#f7931a", fontWeight: 800, fontSize: 30 }}>₿</span>{fmtSats(l.priceMsats)}
-          </div>
-          {fiatRates && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>≈ {fmtFiat(l.priceMsats, fiatRates, "USD")}</div>}
+          {hasRange ? (
+            <>
+              <div style={{ fontSize: 24, fontWeight: 900, color: "#f8fafc", letterSpacing: -1 }}>
+                <span style={{ color: "#f7931a", fontWeight: 800, fontSize: 22 }}>₿</span>{l.minPriceSats.toLocaleString()} — <span style={{ color: "#f7931a", fontWeight: 800, fontSize: 22 }}>₿</span>{l.maxPriceSats.toLocaleString()}
+              </div>
+              {fiatRates && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>≈ {fmtFiat(l.minPriceMsats, fiatRates, "USD")} — {fmtFiat(l.maxPriceMsats, fiatRates, "USD")}</div>}
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 32, fontWeight: 900, color: "#f8fafc", letterSpacing: -1 }}>
+                <span style={{ color: "#f7931a", fontWeight: 800, fontSize: 30 }}>₿</span>{fmtSats(l.priceMsats)}
+              </div>
+              {fiatRates && <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>≈ {fmtFiat(l.priceMsats, fiatRates, "USD")}</div>}
+            </>
+          )}
         </div>
 
         {/* Trade type indicator */}
@@ -1406,13 +1420,22 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
           </div>
         )}
 
+        {/* Amount picker for P2P range listings */}
+        {canBuy && hasRange && (
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 11, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, display: "block" }}>How many sats do you want to buy?</label>
+            <input style={M.input} type="number" placeholder={l.minPriceSats.toLocaleString() + " — " + l.maxPriceSats.toLocaleString() + " sats"} value={buyAmount} onChange={e => setBuyAmount(e.target.value)} />
+            {buyAmount && fiatRates && <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, textAlign: "center" }}>≈ {fmtFiat(parseInt(buyAmount) * 1000 || 0, fiatRates, "USD")}</div>}
+          </div>
+        )}
+
         {canBuy && (
-          <button style={{ ...M.actionBtn, background: isP2P ? "linear-gradient(135deg, #f59e0b, #d97706)" : "linear-gradient(135deg, #10b981, #059669)", boxShadow: isP2P ? "0 4px 24px rgba(245,158,11,0.3)" : "0 4px 24px rgba(16,185,129,0.3)", color: isP2P ? "#0c0f17" : "#fff", marginBottom: 16 }} onClick={handleBuy} disabled={loading}>
+          <button style={{ ...M.actionBtn, background: isP2P ? "linear-gradient(135deg, #f59e0b, #d97706)" : "linear-gradient(135deg, #10b981, #059669)", boxShadow: isP2P ? "0 4px 24px rgba(245,158,11,0.3)" : "0 4px 24px rgba(16,185,129,0.3)", color: isP2P ? "#0c0f17" : "#fff", marginBottom: 16 }} onClick={() => { if (hasRange && (!buyAmount || parseInt(buyAmount) < l.minPriceSats || parseInt(buyAmount) > l.maxPriceSats)) { showToast("Pick an amount between " + l.minPriceSats.toLocaleString() + " and " + l.maxPriceSats.toLocaleString() + " sats", "error"); return; } handleBuy(); }} disabled={loading}>
             {loading
               ? (isP2P ? "Starting trade…" : t("mkBuying"))
               : isP2P
-		? `Start Trade — ₿ ${fmtSats(l.priceMsats)} sats`
-		: `⚡ Buy for ₿ ${fmtSats(l.priceMsats)}`
+                ? (hasRange ? ("Start Trade — ₿ " + (buyAmount || "?") + " sats") : ("Start Trade — ₿ " + fmtSats(l.priceMsats) + " sats"))
+                : ("⚡ Buy for ₿ " + fmtSats(l.priceMsats))
             }
           </button>
         )}
@@ -1531,6 +1554,8 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [price, setPrice] = useState("");
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
   const [terms, setTerms] = useState("");
   const [category, setCategory] = useState("");
   const [condition, setCondition] = useState("new");
@@ -1558,13 +1583,31 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
   }, [isP2P, isLoan]);
 
   const handleCreate = async () => {
-    let sats = parseInt(price);
-    // Apply rate premium to sats price if set
-    if (ratePremium && Number(ratePremium) > 0) sats = Math.ceil(sats * (1 + Number(ratePremium) / 100));
-    if (interestRate && Number(interestRate) > 0) sats = Math.ceil(sats * (1 + Number(interestRate) / 100));
+    let sats, minSats, maxSats;
+
+    if (isP2P) {
+      // P2P: use bracket pricing (min/max range)
+      minSats = parseInt(minPrice);
+      maxSats = parseInt(maxPrice);
+      if (!minSats || minSats <= 0) return showToast("Enter a minimum price", "error");
+      if (!maxSats || maxSats <= 0) return showToast("Enter a maximum price", "error");
+      if (minSats < 1000) return showToast("Minimum ₿ 1,000 sats", "error");
+      if (maxSats < minSats) return showToast("Max must be greater than min", "error");
+      if (maxSats > 2_000_000) return showToast(t("mkPriceExceeds"), "error");
+      if (ratePremium && Number(ratePremium) > 0) {
+        minSats = Math.ceil(minSats * (1 + Number(ratePremium) / 100));
+        maxSats = Math.ceil(maxSats * (1 + Number(ratePremium) / 100));
+      }
+      sats = maxSats; // listing price = max (display price)
+    } else {
+      sats = parseInt(price);
+      if (ratePremium && Number(ratePremium) > 0) sats = Math.ceil(sats * (1 + Number(ratePremium) / 100));
+      if (interestRate && Number(interestRate) > 0) sats = Math.ceil(sats * (1 + Number(interestRate) / 100));
+    }
+
     if (!title.trim()) return showToast(t("mkTitleRequired"), "error");
     if (!sats || sats <= 0) return showToast(t("mkPriceRequired"), "error");
-    if (sats < 1000) return showToast("Minimum ₿ 1,000 sats for Lightning routing", "error");
+    if (sats < 1000) return showToast("Minimum ₿ 1,000 sats", "error");
     if (sats > 2_000_000) return showToast(t("mkPriceExceeds"), "error");
 
     // Append P2P metadata to terms
@@ -1595,6 +1638,8 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           title: title.trim(),
           description: desc.trim() || undefined,
           priceMsats: sats * 1000,
+          minPriceMsats: minSats ? minSats * 1000 : undefined,
+          maxPriceMsats: maxSats ? maxSats * 1000 : undefined,
           terms: finalTerms || undefined,
           category: category.trim() || undefined,
           condition: isSpecial ? "service" : condition,
@@ -1698,7 +1743,19 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
 
       {/* ── Common fields: Title + Price ── */}
       <div style={M.formGroup}><label style={M.label}>{t("mkFieldTitle")} *</label><input style={M.input} placeholder={isP2P ? "e.g., Selling ₿ 50,000 sats for USD" : isLoan ? "e.g., Lending ₿ 50,000 sats — 14 day term" : t("mkFieldTitleHint")} value={title} onChange={e => setTitle(e.target.value)} /></div>
-      <div style={M.formGroup}><label style={M.label}>{isLoan ? "LOAN AMOUNT (SATS) *" : t("mkFieldPrice") + " *"}</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}</p></div>
+      {isP2P ? (
+        <div style={M.formGroup}>
+          <label style={M.label}>PRICE RANGE (SATS) *</label>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input style={{ ...M.input, flex: 1 }} type="number" placeholder="Min (e.g. 5000)" value={minPrice} onChange={e => setMinPrice(e.target.value)} />
+            <span style={{ color: "#64748b", fontSize: 13 }}>—</span>
+            <input style={{ ...M.input, flex: 1 }} type="number" placeholder="Max (e.g. 100000)" value={maxPrice} onChange={e => setMaxPrice(e.target.value)} />
+          </div>
+          <p style={M.hint}>Buyers choose any amount in this range. {t("maxFedLimit", { limit: "2,000,000" })}</p>
+        </div>
+      ) : (
+        <div style={M.formGroup}><label style={M.label}>{isLoan ? "LOAN AMOUNT (SATS) *" : t("mkFieldPrice") + " *"}</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}</p></div>
+      )}
 
       {/* ── P2P-specific fields ── */}
       {isP2P && (
@@ -2046,13 +2103,13 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             {(detail?.listing?.description || escrow?.description) && (
               <div style={{ marginBottom: detail?.listing?.terms || escrow?.terms ? 20 : 0 }}>
                 <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, textAlign: "center" }}>Description</div>
-                <div style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.5, textAlign: "center" }}>{detail?.listing?.description || escrow?.description}</div>
+                <div style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.8, textAlign: "center", whiteSpace: "pre-line" }}>{detail?.listing?.description || escrow?.description}</div>
               </div>
             )}
             {(detail?.listing?.terms || escrow?.terms) && (
               <div>
                 <div style={{ fontSize: 11, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>ⓘ Trade Terms</div>
-                <div style={{ fontSize: 13, color: "#f8fafc", lineHeight: 1.5, fontWeight: 500, textAlign: "center" }}>{detail?.listing?.terms || escrow?.terms}</div>
+                <div style={{ fontSize: 13, color: "#f8fafc", lineHeight: 1.8, fontWeight: 500, textAlign: "center", whiteSpace: "pre-line" }}>{detail?.listing?.terms || escrow?.terms}</div>
               </div>
             )}
           </div>
