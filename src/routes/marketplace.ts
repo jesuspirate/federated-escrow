@@ -146,6 +146,7 @@ db.exec(`
 // ── Migration: bracket pricing for P2P (min/max range) ──
 try { db.exec("ALTER TABLE listings ADD COLUMN min_price_msats INTEGER"); } catch(e) {}
 try { db.exec("ALTER TABLE listings ADD COLUMN max_price_msats INTEGER"); } catch(e) {}
+try { db.exec("ALTER TABLE listings ADD COLUMN seller_fed_domain TEXT"); } catch(e) {}
 
 // ── Migration: fix ratings UNIQUE constraint (allow both parties to rate) ──
 // Old schema had UNIQUE(order_id) — new schema uses UNIQUE(order_id, rater_pubkey)
