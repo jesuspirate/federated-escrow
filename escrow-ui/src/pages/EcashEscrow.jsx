@@ -1304,11 +1304,11 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       let amountSats = Math.floor((e.amountMsats || 0) / 1000);
 
       // ── E-CASH PAYOUT: If locked with e-cash, redeem directly into Fedi wallet ──
-      if (e.lock_mode === "ecash" && window.fediInternal && window.fediInternal.receiveEcash) {
-        // First claim on server
-        if (status !== "CLAIMED" && !claimRetry) {
+      if (e.lockMode === "ecash" && window.fediInternal && window.fediInternal.receiveEcash) {
+        // First claim on server (skip if already CLAIMED)
+        if (status !== "CLAIMED" && status !== "COMPLETED" && !claimRetry) {
           const claim = await api("/" + e.id + "/claim", { method: "POST" });
-          if (claim.error) throw new Error(claim.error);
+          if (claim.error && !claim.error.includes("CLAIMED")) throw new Error(claim.error);
         }
         // Fetch e-cash notes from server
         showToast("Retrieving e-cash notes...");
@@ -1320,7 +1320,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         try {
           await window.fediInternal.receiveEcash(ecashData.notes);
         } catch (redeemErr) {
-          showToast("Failed to redeem e-cash. Are you on the same federation? Try again.", "error");
+          showToast("E-cash redeem cancelled or failed. Tap Receive to try again.", "error");
           setLoading(false);
           return;
         }
