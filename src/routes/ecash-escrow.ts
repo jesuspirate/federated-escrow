@@ -667,7 +667,7 @@ router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
 
     const allPks = [row.seller_pubkey, row.buyer_pubkey, row.arbiter_pubkey].filter(Boolean) as string[];
     if (tally.outcome) {
-      if (!isDevPubkey(row.seller_pubkey)) matrixBot.notifyResolved({ id: row.id, amountMsats: row.amount_msats, description: row.description, communityLink: row.community_link, sellerPubkey: row.seller_pubkey, buyerPubkey: row.buyer_pubkey, arbiterPubkey: row.arbiter_pubkey }, tally.outcome);
+      const isDispute = updatedVotes.some(v => v.role === "arbiter"); if (isDispute && !isDevPubkey(row.seller_pubkey)) matrixBot.notifyResolved({ id: row.id, amountMsats: row.amount_msats, description: row.description, communityLink: row.community_link, sellerPubkey: row.seller_pubkey, buyerPubkey: row.buyer_pubkey, arbiterPubkey: row.arbiter_pubkey }, tally.outcome);
       // Nostr DM: detailed resolution notification to all participants
       if (!isDevPubkey(row.seller_pubkey)) {
         const voterPks = [row.seller_pubkey, row.buyer_pubkey, row.arbiter_pubkey].filter(Boolean);
