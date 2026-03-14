@@ -516,6 +516,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [profilePubkey, setProfilePubkey] = useState(null);
+  const [prevView, setPrevView] = useState("browse");
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState({ msg: "", type: "ok", visible: false });
   const [locale, setLocaleState] = useState(getLocale);
@@ -671,6 +672,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   };
 
   const openProfile = (pk) => {
+    setPrevView(view);
     setProfilePubkey(pk);
     setView("profile");
   };
@@ -790,7 +792,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
       {view === "profile" && profilePubkey && (
         <SellerProfileView
           pubkey={profilePubkey} myPubkey={pubkey}
-          onBack={() => { setProfilePubkey(null); setView("browse"); }}
+          onBack={() => { setProfilePubkey(null); setView(prevView || "browse"); }}
           onOpen={openListing}
           showToast={showToast}
         />
@@ -1703,35 +1705,51 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
         <div style={{ width: 36 }} />
       </div>
 
-      {/* ── Category selection (always visible at top) ── */}
+      {/* ── Category selection — grouped ── */}
       <div style={M.formGroup}>
         <label style={M.label}>{t("mkCategory")}</label>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+
+        {/* Bitcoin categories */}
+        <div style={{ fontSize: 10, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>₿ Bitcoin</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
           {[
-            { value: SATS_FOR_FIAT, label: "₿ Sats for Fiat", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
+            { value: SATS_FOR_FIAT, label: "₿ P2P Trade", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
             { value: LENDING, label: "🤝 Lending", color: "#10b981", bg: "rgba(16,185,129,0.12)" },
-            { value: "electronics", label: "Electronics" },
-            { value: "clothing", label: "Clothing" },
-            { value: "shipping", label: "📦 Shipping" },
-            { value: "art", label: "Art" },
-            { value: "services", label: "Services" },
           ].map(cat => {
             const active = category === cat.value;
-            const handleCatClick = () => {
-              // Special categories (P2P, Lending) are exclusive
-              if (cat.value === SATS_FOR_FIAT || cat.value === LENDING) {
+            return (
+              <button key={cat.value} onClick={() => {
                 setCategory(active ? "" : cat.value);
                 if (active) { setPaymentMethod && setPaymentMethod(""); setFiatCurrency && setFiatCurrency(""); }
-              } else {
-                // Deselect special categories if active
+              }} style={{
+                ...M.chipBtn, padding: "8px 14px",
+                ...(active ? { ...M.chipBtnActive, borderColor: cat.color, color: cat.color, background: cat.bg } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
+              }}>
+                {cat.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Marketplace categories */}
+        <div style={{ fontSize: 10, color: "#a78bfa", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>🛒 Marketplace</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+          {[
+            { value: "electronics", label: "📱 Electronics" },
+            { value: "clothing", label: "👕 Clothing" },
+            { value: "shipping", label: "📦 Shipping" },
+            { value: "art", label: "🎨 Art" },
+            { value: "services", label: "🛠 Services" },
+            { value: "digital", label: "💾 Digital" },
+          ].map(cat => {
+            const active = category === cat.value;
+            return (
+              <button key={cat.value} onClick={() => {
                 if (isSpecialCategory(category)) setCategory(cat.value);
                 else setCategory(active ? "" : cat.value);
-              }
-            };
-            return (
-              <button key={cat.value} onClick={handleCatClick} style={{
+              }} style={{
                 ...M.chipBtn,
-                ...(active ? { ...M.chipBtnActive, borderColor: cat.color || "#f59e0b", color: cat.color || "#f8fafc", background: cat.bg || "rgba(245,158,11,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
+                ...(active ? { ...M.chipBtnActive, borderColor: "#a78bfa", color: "#f8fafc", background: "rgba(139,92,246,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
               }}>
                 {cat.label}
               </button>
@@ -1739,7 +1757,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           })}
         </div>
         {!isP2P && !isLoan && (
-          <input style={M.input} placeholder={t("mkFieldCategoryHint")} value={category} onChange={e => setCategory(e.target.value)} />
+          <input style={M.input} placeholder="Or type a custom category..." value={isSpecialCategory(category) ? "" : category} onChange={e => setCategory(e.target.value)} />
         )}
       </div>
 
