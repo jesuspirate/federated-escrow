@@ -1063,17 +1063,18 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
   const mineCount = useMemo(() => listings.filter(l => l.sellerPubkey === pubkey).length, [listings, pubkey]);
   const filteredListings = (activeCategory === "all"
-    ? listings
+    ? listings.filter(l => l.sellerPubkey !== pubkey)
+    : activeCategory === "mine"
+    ? listings.filter(l => l.sellerPubkey === pubkey)
     : listings.filter(l => {
+        if (l.sellerPubkey === pubkey) return false;
         if (activeCategory === "sats-for-fiat") return isSatsForFiat(l.category);
         if (activeCategory === "lending") return isLending(l.category);
-	// Exclude special categories from other category matches
         if (isSpecialCategory(l.category)) return false;
         return l.category?.toLowerCase() === activeCategory;
       })
   ).filter(l => {
-    if (activeCategory === "mine") return l.sellerPubkey === pubkey;
-    return true;
+    if (!searchQuery.trim()) return true;
   }).filter(l => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();
@@ -1083,7 +1084,12 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       || (l.id || "").toLowerCase().includes(q);
   }).slice().sort((a, b) => {
     // Urgent (1 left) first, then available, then sold out
-    const rank = (l) => l.quantity === 1 ? 0 : l.quantity > 1 ? 1 : 2;
+    const rank = (l) => {
+      if (l.status === "paused") return 3;
+      if (l.quantity <= 0 || l.status === "sold") return 4;
+      if (l.quantity === 1) return 0;
+      return 1;
+    };
     return rank(a) - rank(b);
   });
 
@@ -1186,11 +1192,17 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       {filteredListings.length === 0 && !loading && listings.length > 0 && activeCategory !== "all" ? (
         <div style={M.emptyState}>
           <p style={{ color: "#64748b", fontSize: 14 }}>
-            No listings in this category yet.
+            {activeCategory === "mine" ? "You haven't created any listings yet!" : "No listings in this category yet."}
           </p>
-          <button onClick={() => setActiveCategory("all")} style={{ ...M.secondaryBtn, flex: "none", marginTop: 8, padding: "8px 16px", fontSize: 12 }}>
-            Show all listings
-          </button>
+          {activeCategory === "mine" ? (
+            <button onClick={onCreate} style={{ ...M.primaryBtn, flex: "none", marginTop: 8, padding: "8px 16px", fontSize: 12 }}>
+              + Create your first listing
+            </button>
+          ) : (
+            <button onClick={() => setActiveCategory("all")} style={{ ...M.secondaryBtn, flex: "none", marginTop: 8, padding: "8px 16px", fontSize: 12 }}>
+              Show all listings
+            </button>
+          )}
         </div>
       ) : filteredListings.length === 0 ? (
         <div style={M.emptyState}>
@@ -2018,7 +2030,7 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
             <button key={o.id} style={{
               ...M.listingCard,
               ...(o.needsRating ? { borderColor: "rgba(245,158,11,0.3)", boxShadow: "0 0 12px rgba(245,158,11,0.08)" } : {}),
-              ...(o.status === "completed" && !o.needsRating ? { opacity: 0.45 } : {}),
+              /* opacity removed for cleaner look */
               ...(o.status === "expired" || o.status === "cancelled" ? { opacity: 0.35 } : {}),
             }} onClick={() => onOpenOrder(o)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
