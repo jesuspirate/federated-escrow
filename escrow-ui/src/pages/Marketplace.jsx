@@ -904,6 +904,7 @@ function MarketplaceOnboarding({ onComplete }) {
 
 const CATEGORIES = [
   { key: "all", label: "All", icon: "🏪" },
+  { key: "mine", label: "Mine", icon: "🏠" },
   { key: "sats-for-fiat", label: "P2P", icon: "₿" },
   { key: "lending", label: "Lending", icon: "🤝" },
   { key: "electronics", label: "Electronics", icon: "📱" },
@@ -1060,6 +1061,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   const [activeCategory, setActiveCategory] = useState("all");
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
   const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
+  const mineCount = useMemo(() => listings.filter(l => l.sellerPubkey === pubkey).length, [listings, pubkey]);
   const filteredListings = (activeCategory === "all"
     ? listings
     : listings.filter(l => {
@@ -1070,6 +1072,9 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         return l.category?.toLowerCase() === activeCategory;
       })
   ).filter(l => {
+    if (activeCategory === "mine") return l.sellerPubkey === pubkey;
+    return true;
+  }).filter(l => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();
     return (l.title || "").toLowerCase().includes(q)
@@ -1104,6 +1109,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
             <span><span style={{ fontWeight: 800, color: "#a78bfa" }}>{listings.length - p2pCount - lendingCount}</span> listings</span>
             {p2pCount > 0 && <span><span style={{ fontWeight: 800, color: "#f59e0b" }}>{p2pCount}</span> P2P</span>}
             {lendingCount > 0 && <span><span style={{ fontWeight: 800, color: "#10b981" }}>{lendingCount}</span> loans</span>}
+            {mineCount > 0 && <span><span style={{ fontWeight: 800, color: "#8b5cf6" }}>{mineCount}</span> mine</span>}
             <span style={{ marginLeft: "auto", color: "#475569" }}>2-of-3 escrow</span>
           </div>
         )}
@@ -1942,8 +1948,15 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
 
 function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, onProfile, fiatRates }) {
   const [orderSearch, setOrderSearch] = useState("");
+  const [orderFilter, setOrderFilter] = useState("all");
   // Sort: needs-rating first, then by date
   const sorted = [...orders].filter(o => {
+    // Status filter
+    if (orderFilter === "active") return o.status === "active" || o.status === "pending";
+    if (orderFilter === "completed") return o.status === "completed";
+    if (orderFilter === "cancelled") return o.status === "cancelled" || o.status === "expired";
+    return true;
+  }).filter(o => {
     if (!orderSearch.trim()) return true;
     const q = orderSearch.toLowerCase().trim();
     return (o.id || "").toLowerCase().includes(q)
@@ -1970,8 +1983,26 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
         <h2 style={M.viewTitle}>{t("mkMyOrders")}</h2>
         <button style={M.iconBtn} onClick={onRefresh}><Icons.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
       </div>
-      <div style={{ marginBottom: 12 }}>
-        <input style={{ ...M.input, fontSize: 13 }} placeholder="Search by order ID, escrow ID, title, or status…" value={orderSearch} onChange={e => setOrderSearch(e.target.value)} />
+      <div style={{ marginBottom: 8 }}>
+        <input style={{ ...M.input, fontSize: 13 }} placeholder="Search orders…" value={orderSearch} onChange={e => setOrderSearch(e.target.value)} />
+      </div>
+      <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto" }}>
+        {[
+          { key: "all", label: "All", count: orders.length },
+          { key: "active", label: "Active", count: orders.filter(o => o.status === "active" || o.status === "pending").length },
+          { key: "completed", label: "Done", count: orders.filter(o => o.status === "completed").length },
+          { key: "cancelled", label: "Closed", count: orders.filter(o => o.status === "cancelled" || o.status === "expired").length },
+        ].map(f => (
+          <button key={f.key} onClick={() => setOrderFilter(f.key)} style={{
+            padding: "6px 12px", borderRadius: 99, border: "1px solid",
+            fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
+            background: orderFilter === f.key ? "rgba(139,92,246,0.15)" : "transparent",
+            color: orderFilter === f.key ? "#a78bfa" : "#64748b",
+            borderColor: orderFilter === f.key ? "rgba(139,92,246,0.3)" : "#1e293b",
+          }}>
+            {f.label} {f.count > 0 ? "(" + f.count + ")" : ""}
+          </button>
+        ))}
       </div>
 
       {sorted.length === 0 ? (
