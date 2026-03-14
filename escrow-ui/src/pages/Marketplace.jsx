@@ -1978,7 +1978,7 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
 
 function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, onProfile, fiatRates }) {
   const [orderSearch, setOrderSearch] = useState("");
-  const [orderFilter, setOrderFilter] = useState("all");
+  const [orderFilter, setOrderFilter] = useState("active");
   // Sort: needs-rating first, then by date
   const sorted = [...orders].filter(o => {
     // Status filter
