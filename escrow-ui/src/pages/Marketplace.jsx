@@ -472,6 +472,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   const [listings, setListings] = useState([]);
   const [fiatRates, setFiatRates] = useState(null);
   const [selected, setSelected] = useState(null);
+  const [orderFilterHint, setOrderFilterHint] = useState(null);
   const [editingListing, setEditingListing] = useState(null);
   const [orders, setOrders] = useState([]);
   // Cached active order count for glow badge on cold start (no auth needed)
@@ -777,12 +778,14 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
           onOpenOrder={(order) => { setSelected(order); setView("orderDetail"); }}
           onProfile={openProfile}
           fiatRates={fiatRates}
+          initialFilter={orderFilterHint}
+          onFilterConsumed={() => setOrderFilterHint(null)}
         />
       )}
       {view === "orderDetail" && selected && (
         <OrderDetailView
           order={selected} pubkey={pubkey}
-          onBack={() => { setSelected(null); openOrders(); }}
+          onBack={() => { const s = selected?.status; setSelected(null); openOrders(); if (s === "completed") setTimeout(() => setOrderFilter("completed"), 50); else if (s === "cancelled" || s === "expired") setTimeout(() => setOrderFilter("cancelled"), 50); }}
           onProfile={openProfile}
           onSwitchToEscrow={onSwitchToEscrow}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
@@ -1976,11 +1979,13 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
 // ORDERS VIEW
 // ═══════════════════════════════════════════════════════════════════════
 
-function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, onProfile, fiatRates }) {
+function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, onProfile, fiatRates, initialFilter, onFilterConsumed }) {
   const [orderSearch, setOrderSearch] = useState("");
   const activeCount = orders.filter(o => o.status === "active" || o.status === "pending").length;
   const needsRatingCount = orders.filter(o => o.needsRating).length;
-  const [orderFilter, setOrderFilter] = useState(activeCount > 0 ? "active" : needsRatingCount > 0 ? "all" : "active");
+  const defaultFilter = initialFilter || (activeCount > 0 ? "active" : needsRatingCount > 0 ? "all" : "active");
+  const [orderFilter, setOrderFilter] = useState(defaultFilter);
+  useEffect(() => { if (initialFilter) { setOrderFilter(initialFilter); if (onFilterConsumed) onFilterConsumed(); } }, [initialFilter]);
   // Sort: needs-rating first, then by date
   const sorted = [...orders].filter(o => {
     // Status filter
@@ -2266,11 +2271,9 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
         {/* ── Rating prompt ── */}
         {needsRating && (
           <div style={{ borderRadius: 12, padding: "12px 16px", marginBottom: 12, background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03))", border: "1px solid rgba(245,158,11,0.2)" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ textAlign: "center", marginBottom: 8 }}>
               <span style={{ fontSize: 20 }}>⭐</span>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>Rate your {otherRole}</div>
-              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc", marginTop: 4 }}>Rate your {otherRole}</div>
             </div>
             <div style={{ textAlign: "center", marginBottom: 8 }}>
               <StarRating score={rateScore} onChange={setRateScore} size={28} />
