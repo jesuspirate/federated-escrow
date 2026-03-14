@@ -731,9 +731,17 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
   const loadDetail = useCallback(async (id) => {
     setLoading(true);
     try { const data = await api(`/${id}`); if (data.error) throw new Error(data.error); setSelected(data); }
-    catch (err) { showToast(err.message, "error"); }
+    catch (err) {
+      showToast(err.message, "error");
+      // If auth failed and we came from marketplace, go back
+      if (err.name === "NostrRejectedError" && onSwitchToMarketplace) {
+        onSwitchToMarketplace();
+        return;
+      }
+      setView("list");
+    }
     setLoading(false);
-  }, [showToast]);
+  }, [showToast, onSwitchToMarketplace]);
 
   const openDetail = (id) => {
     if (selected && selected.id !== id) setSelected(null);

@@ -903,7 +903,7 @@ function MarketplaceOnboarding({ onComplete }) {
 // ═══════════════════════════════════════════════════════════════════════
 
 const CATEGORIES = [
-  { key: "all", label: "All", icon: "🏪" },
+  { key: "all", label: "Public", icon: "🌍" },
   { key: "mine", label: "Mine", icon: "🏠" },
   { key: "sats-for-fiat", label: "P2P", icon: "₿" },
   { key: "lending", label: "Lending", icon: "🤝" },
@@ -912,7 +912,7 @@ const CATEGORIES = [
   { key: "digital", label: "Digital", icon: "💾" },
   { key: "clothing", label: "Clothing", icon: "👕" },
   { key: "shipping", label: "Shipping", icon: "📦" },
-  { key: "other", label: "Other", icon: "📦" },
+  { key: "other", label: "Other", icon: "🏷️" },
 ];
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1115,7 +1115,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
             <span><span style={{ fontWeight: 800, color: "#a78bfa" }}>{listings.length - p2pCount - lendingCount}</span> listings</span>
             {p2pCount > 0 && <span><span style={{ fontWeight: 800, color: "#f59e0b" }}>{p2pCount}</span> P2P</span>}
             {lendingCount > 0 && <span><span style={{ fontWeight: 800, color: "#10b981" }}>{lendingCount}</span> loans</span>}
-            {mineCount > 0 && <span><span style={{ fontWeight: 800, color: "#8b5cf6" }}>{mineCount}</span> mine</span>}
+            {mineCount > 0 && <span><span style={{ fontWeight: 800, color: "#f472b6" }}>{mineCount}</span> mine</span>}
             <span style={{ marginLeft: "auto", color: "#475569" }}>2-of-3 escrow</span>
           </div>
         )}
