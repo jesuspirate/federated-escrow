@@ -1228,10 +1228,28 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     try {
       const amountSats = Math.floor(e.amountMsats / 1000);
       showToast("Generating " + amountSats.toLocaleString() + " sats e-cash...");
-      const notes = await window.fediInternal.generateEcash({ amount: amountSats });
+
+      // Wrap generateEcash with timeout to prevent app freeze
+      let notes;
+      try {
+        notes = await Promise.race([
+          window.fediInternal.generateEcash({ amount: amountSats }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 30000))
+        ]);
+      } catch (genErr) {
+        if (genErr.message === "timeout") {
+          showToast("E-cash generation timed out. Please try again.", "error");
+        } else {
+          showToast("E-cash cancelled or failed. Tap to try again.", "error");
+        }
+        setLocking(false);
+        return;
+      }
 
       if (!notes || typeof notes !== "string" || notes.length < 20) {
-        throw new Error("Failed to generate e-cash notes");
+        showToast("No e-cash notes generated. Tap to try again.", "error");
+        setLocking(false);
+        return;
       }
 
       showToast("Locking e-cash in escrow...");
@@ -1243,7 +1261,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       if (lock.error) throw new Error(lock.error);
 
       showToast("E-cash locked! Instant. Pure Fedimint.");
-      onRefresh();
+      try { onRefresh(); } catch {}
     } catch (err) {
       showToast(err.message || "E-cash lock failed", "error");
     }

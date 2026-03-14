@@ -2265,19 +2265,20 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
 
         {/* ── Rating prompt ── */}
         {needsRating && (
-          <div style={{ borderRadius: 16, padding: 20, marginBottom: 16, background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03))", border: "1px solid rgba(245,158,11,0.2)" }}>
-            <div style={{ textAlign: "center", marginBottom: 14 }}>
-              <div style={{ fontSize: 28, marginBottom: 6 }}>⭐</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc" }}>How was your trade?</div>
-              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 4 }}>Rate your {otherRole} to help the community</div>
+          <div style={{ borderRadius: 12, padding: "12px 16px", marginBottom: 12, background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.03))", border: "1px solid rgba(245,158,11,0.2)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 20 }}>⭐</span>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>Rate your {otherRole}</div>
+              </div>
             </div>
-            <div style={{ textAlign: "center", marginBottom: 14 }}>
-              <StarRating score={rateScore} onChange={setRateScore} size={32} />
+            <div style={{ textAlign: "center", marginBottom: 8 }}>
+              <StarRating score={rateScore} onChange={setRateScore} size={28} />
             </div>
             {rateScore > 0 && (
               <>
-                <textarea value={rateComment} onChange={(e) => setRateComment(e.target.value)} placeholder={"Optional: tell others about this " + otherRole + "..."} maxLength={500} style={{ ...M.input, minHeight: 60, resize: "vertical", marginBottom: 12, fontSize: 13 }} />
-                <button style={{ ...M.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17" }} onClick={handleRate} disabled={loading || !rateScore}>
+                <textarea value={rateComment} onChange={(e) => setRateComment(e.target.value)} placeholder="Optional comment..." maxLength={500} style={{ ...M.input, minHeight: 44, resize: "vertical", marginBottom: 8, fontSize: 12 }} />
+                <button style={{ ...M.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", padding: "10px 16px", fontSize: 13 }} onClick={handleRate} disabled={loading || !rateScore}>
                   {loading ? "Submitting…" : "⭐ Submit " + rateScore + "-Star Rating"}
                 </button>
               </>
