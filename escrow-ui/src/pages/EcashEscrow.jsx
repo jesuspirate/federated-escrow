@@ -1300,14 +1300,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       const res = await api(`/${e.id}/approve`, { method: "POST", body: JSON.stringify({ outcome }) });
       if (res.error) throw new Error(res.error);
       showToast(outcome === "release" ? t("votedRelease") : t("votedRefund"));
-      // Update local escrow state from vote response — avoids second auth popup
-      if (res && !res.error && e) {
-        const updated = { ...e };
-        if (res.votes) updated.votes = res.votes;
-        if (res.resolvedOutcome) { updated.resolvedOutcome = res.resolvedOutcome; updated.status = "APPROVED"; }
-        if (res.status) updated.status = res.status;
-        setSelected(updated);
-      }
+      // Silently refresh — if auth fails for refresh, that's ok, vote was recorded
+      try { onRefresh(); } catch {}
     } catch (err) { showToast(err.message, "error"); }
     setLoading(false);
   };
