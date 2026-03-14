@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fedi Deep Probe</title>
+  <style>
+    body { background: #0c0f17; color: #f8fafc; font-family: system-ui; padding: 20px; font-size: 12px; }
+    #log { white-space: pre-wrap; line-height: 1.5; }
+    button { padding: 8px 14px; border-radius: 8px; border: none; font-size: 12px; font-weight: 700; cursor: pointer; margin: 3px; background: #f59e0b; color: #0c0f17; }
+    .grp { margin: 10px 0; padding: 10px; border: 1px solid #1e293b; border-radius: 8px; }
+    .grp h3 { margin: 0 0 6px; color: #f59e0b; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <h2>Fedi Deep Probe</h2>
+
+  <div class="grp">
+    <h3>sendMessage</h3>
+    <button onclick="testFn('sendMessage')">No args</button>
+    <button onclick="testFn('sendMessage', 'Hello test')">String arg</button>
+    <button onclick="testFn('sendMessage', {body: 'test'})">Object {body}</button>
+    <button onclick="testFn('sendMessage', {message: 'test'})">Object {message}</button>
+    <button onclick="testFn('sendMessage', {content: 'test', roomId: '!'})">Object {content, roomId}</button>
+  </div>
+
+  <div class="grp">
+    <h3>previewMatrixRoom</h3>
+    <button onclick="testFn('previewMatrixRoom')">No args</button>
+    <button onclick="testFn('previewMatrixRoom', '!kENaQZKCKhRhawCjxf:m1.8fa.in')">EN room</button>
+  </div>
+
+  <div class="grp">
+    <h3>selectPublicChats</h3>
+    <button onclick="testFn('selectPublicChats')">No args</button>
+  </div>
+
+  <div class="grp">
+    <h3>navigateHome</h3>
+    <button onclick="testFn('navigateHome')">No args</button>
+  </div>
+
+  <div class="grp">
+    <h3>getInstalledMiniApps</h3>
+    <button onclick="testFn('getInstalledMiniApps')">No args</button>
+  </div>
+
+  <div class="grp">
+    <h3>getLanguageCode</h3>
+    <button onclick="testFn('getLanguageCode')">No args</button>
+  </div>
+
+  <div class="grp">
+    <h3>webln methods</h3>
+    <button onclick="testWebln('getInfo')">getInfo</button>
+    <button onclick="testWebln('signMessage', 'test123')">signMessage</button>
+  </div>
+
+  <div id="log">Waiting 2s...</div>
+
+  <script>
+    var log = document.getElementById('log');
+    function out(msg) { log.textContent += msg + '\n'; }
+
+    setTimeout(function() {
+      log.textContent = '';
+      if (!window.fediInternal) { out('fediInternal not available'); return; }
+      out('Ready! Tap buttons above.\n');
+
+      // Show function signatures
+      var fns = ['sendMessage', 'previewMatrixRoom', 'selectPublicChats', 'navigateHome', 'getInstalledMiniApps', 'getLanguageCode'];
+      fns.forEach(function(fn) {
+        if (window.fediInternal[fn]) {
+          out(fn + '.length = ' + window.fediInternal[fn].length);
+        }
+      });
+      out('');
+    }, 2000);
+
+    async function testFn(name, arg) {
+      out('--- ' + name + '(' + (arg !== undefined ? JSON.stringify(arg) : '') + ') ---');
+      try {
+        var result;
+        if (arg !== undefined) result = await window.fediInternal[name](arg);
+        else result = await window.fediInternal[name]();
+        out('Type: ' + typeof result);
+        out('Result: ' + JSON.stringify(result, null, 2)?.substring(0, 500));
+      } catch(e) {
+        out('Error: ' + (e.message || e));
+        out('JSON: ' + JSON.stringify(e));
+      }
+      out('');
+    }
+
+    async function testWebln(name, arg) {
+      if (!window.webln) { out('webln not available'); return; }
+      out('--- webln.' + name + '(' + (arg !== undefined ? JSON.stringify(arg) : '') + ') ---');
+      try {
+        await window.webln.enable();
+        var result;
+        if (arg !== undefined) result = await window.webln[name](arg);
+        else result = await window.webln[name]();
+        out('Type: ' + typeof result);
+        out('Result: ' + JSON.stringify(result, null, 2)?.substring(0, 500));
+      } catch(e) {
+        out('Error: ' + (e.message || e));
+      }
+      out('');
+    }
+  </script>
+</body>
+</html>

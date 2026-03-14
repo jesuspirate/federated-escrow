@@ -342,7 +342,7 @@ if (!sellerIsDev && joinerIsDev) {
 
     const otherPks = [updated.seller_pubkey, updated.buyer_pubkey, updated.arbiter_pubkey].filter(Boolean) as string[];
     if (updated.status === "FUNDED") {
-      if (!isDevPubkey(updated.seller_pubkey)) matrixBot.notifyJoin({ id: updated.id, amountMsats: updated.amount_msats, description: updated.description, communityLink: updated.community_link, sellerPubkey: updated.seller_pubkey, buyerPubkey: updated.buyer_pubkey, arbiterPubkey: updated.arbiter_pubkey }, role);
+      if (false && !isDevPubkey(updated.seller_pubkey)) matrixBot.notifyJoin({ id: updated.id, amountMsats: updated.amount_msats, description: updated.description, communityLink: updated.community_link, sellerPubkey: updated.seller_pubkey, buyerPubkey: updated.buyer_pubkey, arbiterPubkey: updated.arbiter_pubkey }, role);
       // Nostr DM: detailed private notification to other participants
       if (!isDevPubkey(updated.seller_pubkey)) {
         const otherPks = [updated.seller_pubkey, updated.buyer_pubkey, updated.arbiter_pubkey].filter(Boolean);
@@ -512,7 +512,7 @@ router.post("/:id/lock-ecash", async (req: AuthenticatedRequest, res: Response) 
     }
 
     // Matrix notification
-    if (!isDevPubkey(row.seller_pubkey)) matrixBot.notifyLocked({ id: row.id, amountMsats: row.amount_msats, description: row.description, communityLink: row.community_link, sellerPubkey: row.seller_pubkey, buyerPubkey: row.buyer_pubkey, arbiterPubkey: row.arbiter_pubkey });
+    if (false && !isDevPubkey(row.seller_pubkey)) matrixBot.notifyLocked({ id: row.id, amountMsats: row.amount_msats, description: row.description, communityLink: row.community_link, sellerPubkey: row.seller_pubkey, buyerPubkey: row.buyer_pubkey, arbiterPubkey: row.arbiter_pubkey });
 
     console.log("  \u{1F512} E-cash lock: " + row.id + " — " + Math.floor(row.amount_msats / 1000) + " sats locked via browser WASM wallet");
 
@@ -592,7 +592,7 @@ router.post("/:id/lock", async (req: AuthenticatedRequest, res: Response) => {
     const updated = DB.getEscrow(row.id)!;
 
     if (updated.buyer_pubkey && updated.arbiter_pubkey) {
-      if (!isDevPubkey(updated.seller_pubkey)) matrixBot.notifyLocked({ id: updated.id, amountMsats: updated.amount_msats, description: updated.description, communityLink: updated.community_link, sellerPubkey: updated.seller_pubkey, buyerPubkey: updated.buyer_pubkey, arbiterPubkey: updated.arbiter_pubkey });
+      if (false && !isDevPubkey(updated.seller_pubkey)) matrixBot.notifyLocked({ id: updated.id, amountMsats: updated.amount_msats, description: updated.description, communityLink: updated.community_link, sellerPubkey: updated.seller_pubkey, buyerPubkey: updated.buyer_pubkey, arbiterPubkey: updated.arbiter_pubkey });
       // Nostr DM: notify buyer + arbiter that sats are locked
       if (!isDevPubkey(updated.seller_pubkey)) {
         Notify.notifyEscrowLocked(updated.id, updated.seller_pubkey, updated.buyer_pubkey, updated.arbiter_pubkey, updated.amount_msats, updated.description);

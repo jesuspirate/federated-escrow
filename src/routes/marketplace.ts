@@ -1179,7 +1179,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
 
   // ── Matrix bot: notify all participants about the new trade ──
     // Skip notifications for sandbox trades
-    if (!isSandboxTrade) matrixBot.notifyJoin({
+    if (false && !isSandboxTrade) matrixBot.notifyJoin({
       id: escrowId,
       amountMsats: listing.price_msats,
       communityLink: listing.community_link,
