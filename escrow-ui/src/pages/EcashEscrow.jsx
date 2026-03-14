@@ -1162,6 +1162,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const [lockInvoice, setLockInvoice] = useState(null); // { invoice, bolt11 }
   const [lockStep, setLockStep] = useState("idle"); // idle | fetching | ready | paying | done
   const [claimRetry, setClaimRetry] = useState(() => status === "CLAIMED"); // auto-detect if escrow is already claimed (user rejected invoice on prior attempt)
+  const [pendingNotes, setPendingNotes] = useState(null);
 
   const handleLockFetch = async () => {
     const amountSats = Math.floor((e.amountMsats || 0) / 1000);
@@ -1312,40 +1313,39 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     try {
       let amountSats = Math.floor((e.amountMsats || 0) / 1000);
 
-      // ── E-CASH PAYOUT: If locked with e-cash, redeem directly into Fedi wallet ──
+      // ── E-CASH PAYOUT: Two-step flow to ensure receiveEcash runs from user tap ──
       if (e.lockMode === "ecash" && window.fediInternal && window.fediInternal.receiveEcash) {
-        // First claim on server (skip if already CLAIMED)
+
+        // STEP 2: If we already have notes, redeem them (called from direct user tap)
+        if (pendingNotes) {
+          try {
+            showToast("Redeeming " + amountSats.toLocaleString() + " sats...");
+            const redeemResult = await window.fediInternal.receiveEcash(pendingNotes);
+            // Confirm successful receipt
+            await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
+            setPendingNotes(null);
+            showToast("E-cash received! " + amountSats.toLocaleString() + " sats in your wallet!");
+            onRefresh();
+          } catch (redeemErr) {
+            showToast("E-cash redeem failed. Tap the redeem button to try again.", "error");
+          }
+          setLoading(false);
+          return;
+        }
+
+        // STEP 1: Claim on server + fetch notes (stores in state for step 2)
         if (status !== "CLAIMED" && status !== "COMPLETED" && !claimRetry) {
           const claim = await api("/" + e.id + "/claim", { method: "POST" });
           if (claim.error && !claim.error.includes("CLAIMED")) throw new Error(claim.error);
         }
-        // Fetch e-cash notes from server
         showToast("Retrieving e-cash notes...");
         const ecashData = await api("/" + e.id + "/ecash-payout", {}, 0);
         if (ecashData.error) throw new Error(ecashData.error);
         if (ecashData.mode !== "ecash" || !ecashData.notes) throw new Error("No e-cash notes available");
 
-        // Check if buyer is on the same federation as the notes
-        const notesFedPrefix = extractFedIdFromNotes(ecashData.notes);
-        const escrowFedId = e.federationId || "";
-        const notesFedMatch = notesFedPrefix && escrowFedId.startsWith(notesFedPrefix);
-
-        if (notesFedPrefix && escrowFedId && !notesFedMatch) {
-          showToast("These notes are from a different federation (" + escrowFedId.substring(0, 8) + "...). Select the correct one if prompted.", "error");
-        } else {
-          showToast("Redeeming " + amountSats.toLocaleString() + " sats...");
-        }
-
-        try {
-          await window.fediInternal.receiveEcash(ecashData.notes);
-        } catch (redeemErr) {
-          console.error("[ecash-claim] receiveEcash failed:", redeemErr);
-          showToast("E-cash redeem failed. If you have multiple federations, select the same one the seller used. Tap Receive to try again.", "error");
-          setLoading(false);
-          return;
-        }
-        showToast("E-cash received! " + amountSats.toLocaleString() + " sats in your wallet. Pure Fedimint.");
-        onRefresh();
+        // Store notes and prompt user to tap again
+        setPendingNotes(ecashData.notes);
+        showToast("Notes ready! Tap the redeem button below.");
         setLoading(false);
         return;
       }
@@ -1600,7 +1600,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         )}
         {(canClaim || canReclaimExpired) && !claimRetry && (
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "4px 0 12px", animation: "pulseGreen 2s ease infinite", fontSize: 16, padding: "16px 20px" }} onClick={handleClaim} disabled={loading}>
-            {loading ? t("claiming") : `⚡ Receive ${fmtSats(e.amountMsats)} sats`}
+            {loading ? t("claiming") : pendingNotes ? "🔐 Redeem E-cash Now" : "⚡ Receive " + fmtSats(e.amountMsats) + " sats"}
           </button>
         )}
         {claimRetry && (
@@ -1609,7 +1609,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
               Your ₿ sats are ready! Tap below and approve the invoice in Fedi to receive them.
             </div>
             <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", animation: "pulseGreen 2s ease infinite", fontSize: 16, padding: "16px 20px" }} onClick={() => { setClaimRetry(false); handleClaim(); }} disabled={loading}>
-              {loading ? t("claiming") : `⚡ Receive ${fmtSats(e.amountMsats)} sats`}
+              {loading ? t("claiming") : pendingNotes ? "🔐 Redeem E-cash Now" : "⚡ Receive " + fmtSats(e.amountMsats) + " sats"}
             </button>
           </div>
         )}
