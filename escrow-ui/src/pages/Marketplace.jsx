@@ -131,23 +131,15 @@ async function mapi(path, opts = {}, _retries = 1) {
   const needsAuth = method !== "GET" || path.includes("/orders");
 
   if (needsAuth) {
-    // Get or create session token — blocks until ready
+    // Get or create session token — blocks until ready, NO NIP-98 fallback
     const token = await getMSessionToken();
     if (token) {
       headers["Authorization"] = "Bearer " + token;
     } else if (_devPubkey) {
       headers["X-Dev-Pubkey"] = _devPubkey;
     } else {
-      try {
-        const nip98 = await getCachedNip98Header(url, method);
-        if (nip98) headers["Authorization"] = nip98;
-      } catch (err) {
-        if (err.name === "NostrRejectedError") {
-          if (method !== "GET") throw err;
-          if (_retries > 0) return mapi(path, opts, _retries - 1);
-        }
-        throw err;
-      }
+      // Session creation failed — throw instead of falling back to per-request NIP-98
+      throw new Error("Session authentication required — please approve the signing request");
     }
   } else if (_devPubkey) {
     headers["X-Dev-Pubkey"] = _devPubkey;
@@ -620,6 +612,8 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   }, []);
 
   const loadOrders = useCallback(async () => {
+    await getMSessionToken(); // ensure session before loading
+
     setOrdersLoading(true);
     try {
       // Fetch independently — if one fails, still show the other

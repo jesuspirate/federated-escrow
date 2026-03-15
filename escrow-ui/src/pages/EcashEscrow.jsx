@@ -164,24 +164,24 @@ function getSessionToken_escrow() {
   if (window.__smToken && window.__smTokenExpiry > Date.now() + 60000) {
     return Promise.resolve(window.__smToken);
   }
-  // If another call is already fetching, wait for it
-  if (window.__smTokenFetching) return window.__smTokenFetching;
+  // If marketplace or another call is already fetching, wait for THAT promise
+  if (window.__smTokenPromise) {
+    return window.__smTokenPromise.then(() => window.__smToken || null);
+  }
   
-  window.__smTokenFetching = (async () => {
+  const fetchPromise = (async () => {
     try {
       const url = `${location.origin}${API}/auth/session`;
       const headers = { "Content-Type": "application/json" };
       const nip98 = await makeNip98Header(url, "POST");
-      if (!nip98) { window.__smTokenFetching = null; return null; }
+      if (!nip98) return null;
       headers["Authorization"] = nip98;
       const res = await fetch(url, { method: "POST", headers });
       const data = await res.json();
       if (data.token) {
         window.__smToken = data.token;
         window.__smTokenExpiry = Date.now() + (data.expiresIn || 1800) * 1000;
-        console.log("[session] Token acquired for", data.pubkey?.substring(0, 8));
       }
-      window.__smTokenFetching = null;
       return window.__smToken || null;
     } catch (err) {
       console.warn("[session] Failed:", err);
@@ -196,24 +196,14 @@ async function api(path, opts = {}, _retries = 2) {
   const method = opts.method || "GET";
   const url = `${location.origin}${API}${path}`;
   const headers = { "Content-Type": "application/json" };
-  // Try session token first (no popup needed)
+  // Session token — no NIP-98 fallback
   const token = await getSessionToken_escrow();
   if (token) {
     headers["Authorization"] = "Bearer " + token;
   } else if (_devPubkey) {
     headers["X-Dev-Pubkey"] = _devPubkey;
   } else {
-    // Fallback to NIP-98 (will prompt user)
-    try {
-      const nip98 = await makeNip98Header(url, method);
-      if (nip98) headers["Authorization"] = nip98;
-    } catch (err) {
-      if (err.name === "NostrRejectedError") {
-        if (method !== "GET") throw err;
-        if (_retries > 0) return api(path, opts, _retries - 1);
-      }
-      throw err;
-    }
+    throw new Error("Session authentication required — please approve the signing request");
   }
   const res = await fetch(url, { ...opts, headers });
   if ((res.status === 401 || res.status === 403) && _retries > 0) {
