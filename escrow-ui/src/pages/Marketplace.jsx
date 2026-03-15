@@ -96,6 +96,32 @@ async function getCachedNip98Header(url, method) {
   return header;
 }
 
+// ── Session token management (shared with escrow) ─────────────────────
+let _mSessionToken = null;
+let _mSessionExpiry = 0;
+
+async function getMSessionToken() {
+  if (_mSessionToken && _mSessionExpiry > Date.now() + 60000) return _mSessionToken;
+  // Use escrow auth endpoint to create session
+  const url = `${location.origin}/api/escrow/auth/session`;
+  const headers = { "Content-Type": "application/json" };
+  try {
+    const nip98 = await getCachedNip98Header(url, "POST");
+    if (nip98) headers["Authorization"] = nip98;
+    else return null;
+  } catch { return null; }
+  try {
+    const res = await fetch(url, { method: "POST", headers });
+    const data = await res.json();
+    if (data.token) {
+      _mSessionToken = data.token;
+      _mSessionExpiry = Date.now() + (data.expiresIn || 1800) * 1000;
+      return _mSessionToken;
+    }
+  } catch {}
+  return null;
+}
+
 async function mapi(path, opts = {}, _retries = 1) {
   const method = opts.method || "GET";
   const url = `${location.origin}${MAPI}${path}`;
@@ -105,16 +131,23 @@ async function mapi(path, opts = {}, _retries = 1) {
   const needsAuth = method !== "GET" || path.includes("/orders");
 
   if (needsAuth) {
-    try {
-      const nip98 = await getCachedNip98Header(url, method);
-      if (nip98) headers["Authorization"] = nip98;
-      else if (_devPubkey) headers["X-Dev-Pubkey"] = _devPubkey;
-    } catch (err) {
-      if (err.name === "NostrRejectedError") {
-        if (method !== "GET") throw err;
-        if (_retries > 0) return mapi(path, opts, _retries - 1);
+    // Try session token first (no popup)
+    const token = await getMSessionToken();
+    if (token) {
+      headers["Authorization"] = "Bearer " + token;
+    } else if (_devPubkey) {
+      headers["X-Dev-Pubkey"] = _devPubkey;
+    } else {
+      try {
+        const nip98 = await getCachedNip98Header(url, method);
+        if (nip98) headers["Authorization"] = nip98;
+      } catch (err) {
+        if (err.name === "NostrRejectedError") {
+          if (method !== "GET") throw err;
+          if (_retries > 0) return mapi(path, opts, _retries - 1);
+        }
+        throw err;
       }
-      throw err;
     }
   } else if (_devPubkey) {
     headers["X-Dev-Pubkey"] = _devPubkey;
@@ -126,7 +159,7 @@ async function mapi(path, opts = {}, _retries = 1) {
   } catch (err) {
     throw new Error(t("mkNetworkError"));
   }
-  if ((res.status === 401 || res.status === 403) && _retries > 0) return mapi(path, opts, _retries - 1);
+  if ((res.status === 401 || res.status === 403) && _retries > 0) { _mSessionToken = null; _mSessionExpiry = 0; return mapi(path, opts, _retries - 1); }
   if (res.status === 401 || res.status === 403) throw new Error(t("mkAuthRequired"));
   const text = await res.text();
   try { return JSON.parse(text); } catch { return { error: text || `HTTP ${res.status}` }; }

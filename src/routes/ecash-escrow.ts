@@ -110,6 +110,42 @@ function rateLimit(req: AuthenticatedRequest, res: Response, next: NextFunction)
 
 // ── NIP-98 Auth Middleware ────────────────────────────────────────────────
 
+// ── Session tokens — reduces NIP-98 auth to one-time per session ──────────
+const SESSION_SECRET = process.env.ESCROW_ENCRYPTION_KEY || "dev-session-secret";
+const activeSessions: Map<string, { pubkey: string, expiresAt: number }> = new Map();
+
+function createSessionToken(pubkey: string): string {
+  const expiresAt = Date.now() + 30 * 60 * 1000; // 30 minutes
+  const payload = pubkey + ":" + expiresAt;
+  const hmac = require("crypto").createHmac("sha256", SESSION_SECRET).update(payload).digest("hex");
+  const token = Buffer.from(payload + ":" + hmac).toString("base64");
+  activeSessions.set(token, { pubkey, expiresAt });
+  // Clean expired sessions periodically
+  if (activeSessions.size > 1000) {
+    const now = Date.now();
+    for (const [k, v] of activeSessions) { if (v.expiresAt < now) activeSessions.delete(k); }
+  }
+  return token;
+}
+
+function validateSessionToken(token: string): string | null {
+  const session = activeSessions.get(token);
+  if (session && session.expiresAt > Date.now()) return session.pubkey;
+  // Verify HMAC if not in cache (server restart)
+  try {
+    const decoded = Buffer.from(token, "base64").toString("utf8");
+    const parts = decoded.split(":");
+    if (parts.length !== 3) return null;
+    const [pubkey, expiresStr, hmac] = parts;
+    const expiresAt = parseInt(expiresStr);
+    if (expiresAt < Date.now()) return null;
+    const expectedHmac = require("crypto").createHmac("sha256", SESSION_SECRET).update(pubkey + ":" + expiresStr).digest("hex");
+    if (hmac !== expectedHmac) return null;
+    activeSessions.set(token, { pubkey, expiresAt });
+    return pubkey;
+  } catch { return null; }
+}
+
 function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   DB.processExpiredEscrows();
   // Process arbiter dispute timeouts (4h rotation)
@@ -122,6 +158,17 @@ function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunct
   });
 
   const authHeader = req.headers.authorization;
+
+  // Session token auth (Bearer) — fast path, no NIP-98 needed
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    const pubkey = validateSessionToken(token);
+    if (pubkey) {
+      req.pubkey = pubkey;
+      return next();
+    }
+    // Token expired/invalid — fall through to NIP-98
+  }
 
   if (authHeader && authHeader.startsWith("Nostr ")) {
     try {
@@ -242,6 +289,29 @@ const pendingInvoices = new Map<string, { invoice: string; operationId: string; 
 // ── Router ────────────────────────────────────────────────────────────────
 
 const router = Router();
+// ── POST /auth/session — Exchange NIP-98 for a session token ──────────────
+router.post("/auth/session", (req: AuthenticatedRequest, res: Response) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Nostr ")) {
+    return res.status(401).json({ error: "NIP-98 auth required to create session" });
+  }
+  try {
+    const json = Buffer.from(authHeader.slice(6), "base64").toString("utf8");
+    const event = JSON.parse(json);
+    if (event.kind !== 27235) return res.status(401).json({ error: "Invalid auth event kind" });
+    const now = Math.floor(Date.now() / 1000);
+    if (Math.abs(now - event.created_at) > 120) return res.status(401).json({ error: "Auth event expired" });
+    if (!event.pubkey || event.pubkey.length !== 64) return res.status(401).json({ error: "Invalid pubkey" });
+    if (!verifyEvent(event)) return res.status(401).json({ error: "Invalid signature" });
+    
+    const token = createSessionToken(event.pubkey);
+    console.log("[auth] Session created for", event.pubkey.substring(0, 8) + "...");
+    res.json({ token, pubkey: event.pubkey, expiresIn: 1800 });
+  } catch (err: any) {
+    res.status(401).json({ error: "Auth failed: " + err.message });
+  }
+});
+
 router.use(extractPubkey);
 router.use(rateLimit);
 

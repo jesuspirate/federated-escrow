@@ -22,7 +22,30 @@ type AuthenticatedRequest = Request & { pubkey?: string };
 // ── NIP-98 Auth Middleware (same as ecash-escrow.ts) ──────────────────────
 
 function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-  const authHeader = req.headers.authorization;
+    const authHeader = req.headers.authorization;
+  
+  // Session token auth (Bearer) — fast path
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.slice(7);
+    // Validate against escrow router's session store (shared via import)
+    try {
+      const decoded = Buffer.from(token, "base64").toString("utf8");
+      const parts = decoded.split(":");
+      if (parts.length === 3) {
+        const [pubkey, expiresStr, hmac] = parts;
+        const expiresAt = parseInt(expiresStr);
+        if (expiresAt > Date.now()) {
+          const crypto = require("crypto");
+          const SESSION_SECRET = process.env.ESCROW_ENCRYPTION_KEY || "dev-session-secret";
+          const expectedHmac = crypto.createHmac("sha256", SESSION_SECRET).update(pubkey + ":" + expiresStr).digest("hex");
+          if (hmac === expectedHmac) {
+            req.pubkey = pubkey;
+            return next();
+          }
+        }
+      }
+    } catch {}
+  }
 
   if (authHeader && authHeader.startsWith("Nostr ")) {
     try {
