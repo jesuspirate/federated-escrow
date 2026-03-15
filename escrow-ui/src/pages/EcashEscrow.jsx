@@ -196,14 +196,23 @@ async function api(path, opts = {}, _retries = 2) {
   const method = opts.method || "GET";
   const url = `${location.origin}${API}${path}`;
   const headers = { "Content-Type": "application/json" };
-  // Session token — no NIP-98 fallback
+  // Session token first, NIP-98 fallback
   const token = await getSessionToken_escrow();
   if (token) {
     headers["Authorization"] = "Bearer " + token;
   } else if (_devPubkey) {
     headers["X-Dev-Pubkey"] = _devPubkey;
   } else {
-    throw new Error("Session authentication required — please approve the signing request");
+    try {
+      const nip98 = await makeNip98Header(url, method);
+      if (nip98) headers["Authorization"] = nip98;
+    } catch (err) {
+      if (err.name === "NostrRejectedError") {
+        if (method !== "GET") throw err;
+        if (_retries > 0) return api(path, opts, _retries - 1);
+      }
+      throw err;
+    }
   }
   const res = await fetch(url, { ...opts, headers });
   if ((res.status === 401 || res.status === 403) && _retries > 0) {

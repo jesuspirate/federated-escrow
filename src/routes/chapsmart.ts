@@ -140,6 +140,54 @@ router.post("/buy-sats/send", async (req: Request, res: Response) => {
   }
 });
 
+// ── POST /nostr/signup — Create ChapSmart account with Nostr ─────────
+router.post("/nostr/signup", async (req: Request, res: Response) => {
+  try {
+    const { signedEvent } = req.body;
+    if (!signedEvent) return res.status(400).json({ success: false, error: "Missing signedEvent" });
+    const r = await fetch(`${CHAPSMART_API}/api/v1/auth/nostr/signup`, {
+      method: "POST", headers: chapHeaders(),
+      body: JSON.stringify({ signedEvent }),
+    });
+    const data = await r.json();
+    res.status(r.status).json(data);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── POST /nostr/login — Login with existing Nostr-linked account ─────
+router.post("/nostr/login", async (req: Request, res: Response) => {
+  try {
+    const { signedEvent } = req.body;
+    if (!signedEvent) return res.status(400).json({ success: false, error: "Missing signedEvent" });
+    const r = await fetch(`${CHAPSMART_API}/api/v1/auth/nostr/login`, {
+      method: "POST", headers: chapHeaders(),
+      body: JSON.stringify({ signedEvent }),
+    });
+    const data = await r.json();
+    res.status(r.status).json(data);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── POST /nostr/link — Link Nostr key to existing account ────────────
+router.post("/nostr/link", async (req: Request, res: Response) => {
+  try {
+    const { accountNumber, signedEvent } = req.body;
+    if (!accountNumber || !signedEvent) return res.status(400).json({ success: false, error: "Missing accountNumber or signedEvent" });
+    const r = await fetch(`${CHAPSMART_API}/api/v1/auth/nostr/link`, {
+      method: "POST", headers: chapHeaders(),
+      body: JSON.stringify({ accountNumber, signedEvent }),
+    });
+    const data = await r.json();
+    res.status(r.status).json(data);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 if (CHAPSMART_KEY) {
   console.log("[chapsmart] ✅ ChapSmart integration enabled");
 } else {
