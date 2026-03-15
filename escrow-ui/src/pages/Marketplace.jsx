@@ -159,7 +159,12 @@ async function mapi(path, opts = {}, _retries = 1) {
   } catch (err) {
     throw new Error(t("mkNetworkError"));
   }
-  if ((res.status === 401 || res.status === 403) && _retries > 0) { window.__smToken = null; window.__smTokenExpiry = 0; return mapi(path, opts, _retries - 1); }
+  if ((res.status === 401 || res.status === 403) && _retries > 0) {
+    window.__smToken = null; window.__smTokenExpiry = 0; window.__smTokenPromise = null;
+    // Re-create session before retry
+    await getMSessionToken();
+    return mapi(path, opts, _retries - 1);
+  }
   if (res.status === 401 || res.status === 403) throw new Error(t("mkAuthRequired"));
   const text = await res.text();
   try { return JSON.parse(text); } catch { return { error: text || `HTTP ${res.status}` }; }
@@ -488,6 +493,11 @@ function Toast({ msg, type, visible }) {
 // ═══════════════════════════════════════════════════════════════════════
 
 export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initialEscrowId, onOpened }) {
+  const [sessionReady, setSessionReady] = useState(false);
+  useEffect(() => {
+    if (!pubkey || isDevMode()) { setSessionReady(true); return; }
+    getMSessionToken().then(() => setSessionReady(true)).catch(() => setSessionReady(true));
+  }, [pubkey]);
   // Auto-blur buttons on touch to prevent persistent focus rectangles in WebView
   useEffect(() => {
     const handler = (e) => {
@@ -513,7 +523,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
 
   // Deep-link: if arriving from escrow with an escrowId, find the linked order and open it
   useEffect(() => {
-    if (!initialEscrowId || !pubkey) return;
+    if (!sessionReady || !initialEscrowId || !pubkey) return;
 
     // Special marker: go directly to orders list (no API lookup)
     if (initialEscrowId === "__ORDERS__") {
@@ -560,8 +570,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
     if (devRole && isDevMode()) {
       _devPubkey = DEV_IDENTITIES[devRole];
       // Reload data for new role
-      loadListings();
-      loadOrders();
+      if (sessionReady) { loadListings(); loadOrders(); }
     }
   }, [devRole]);
 
@@ -644,6 +653,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   // Only refetch if stale (>30s) or empty
   const lastBrowseLoad = useRef(0);
   useEffect(() => {
+    if (!sessionReady) return;
     if (view === "browse") {
       const now = Date.now();
       if (now - lastBrowseLoad.current > 30_000 || listings.length === 0) {
@@ -651,7 +661,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
         loadListings(searchQuery);
       }
     }
-  }, [view]);
+  }, [view, sessionReady]);
 
   const openListing = async (id) => {
     setView("detail");
@@ -665,7 +675,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
     setActionLoading(false);
   };
 
-  const openOrders = async () => { setView("orders"); if (!window.__smToken) await getMSessionToken(); loadOrders(); };
+  const openOrders = async () => { setView("orders"); loadOrders(); };
 
   const handleEdit = (listing) => { setEditingListing(listing); setView("edit"); };
 
