@@ -765,7 +765,12 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
     try { const data = await api(`/${id}`); if (data.error) throw new Error(data.error); setSelected(data); }
     catch (err) {
       showToast(err.message, "error");
-      // If auth failed and we came from marketplace, go back
+      // If we came from marketplace, always go back on error — never show escrow list
+      if (cameFromMarketplace && onSwitchToMarketplace) {
+        showToast(err.message || "Failed to load trade", "error");
+        onSwitchToMarketplace();
+        return;
+      }
       if (err.name === "NostrRejectedError" && onSwitchToMarketplace) {
         onSwitchToMarketplace();
         return;
