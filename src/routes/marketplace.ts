@@ -31,6 +31,7 @@ function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunct
     console.log("[marketplace-auth] Bearer token received, validating...");
     try {
       const decoded = Buffer.from(token, "base64").toString("utf8");
+      console.log("[marketplace-auth] Bearer pubkey:", decoded.split(":")[0]?.substring(0, 16) + "...");
       const parts = decoded.split(":");
       if (parts.length === 3) {
         const [pubkey, expiresStr, hmac] = parts;
@@ -40,12 +41,13 @@ function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunct
           const SESSION_SECRET = process.env.ESCROW_ENCRYPTION_KEY || "dev-session-secret";
           const expectedHmac = crypto.createHmac("sha256", SESSION_SECRET).update(pubkey + ":" + expiresStr).digest("hex");
           if (hmac === expectedHmac) {
+            console.log("[marketplace-auth] Bearer VALID for", pubkey.substring(0, 8));
             req.pubkey = pubkey;
             return next();
-          }
-        }
-      }
-    } catch {}
+          } else { console.log("[marketplace-auth] Bearer HMAC MISMATCH"); }
+        } else { console.log("[marketplace-auth] Bearer EXPIRED", expiresAt, "<", Date.now()); }
+      } else { console.log("[marketplace-auth] Bearer BAD FORMAT, parts:", parts.length); }
+    } catch (e) { console.log("[marketplace-auth] Bearer EXCEPTION:", e); }
   }
 
   if (authHeader && authHeader.startsWith("Nostr ")) {

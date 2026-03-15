@@ -138,8 +138,17 @@ async function mapi(path, opts = {}, _retries = 1) {
     } else if (_devPubkey) {
       headers["X-Dev-Pubkey"] = _devPubkey;
     } else {
-      // Session creation failed — throw instead of falling back to per-request NIP-98
-      throw new Error("Session authentication required — please approve the signing request");
+      try {
+        const nip98 = await getCachedNip98Header(url, method);
+        if (nip98) headers["Authorization"] = nip98;
+        else throw new Error("Authentication required");
+      } catch (err) {
+        if (err.name === "NostrRejectedError") {
+          if (method !== "GET") throw err;
+          if (_retries > 0) return mapi(path, opts, _retries - 1);
+        }
+        throw err;
+      }
     }
   } else if (_devPubkey) {
     headers["X-Dev-Pubkey"] = _devPubkey;
@@ -485,9 +494,10 @@ function Toast({ msg, type, visible }) {
 // ═══════════════════════════════════════════════════════════════════════
 
 export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initialEscrowId, onOpened }) {
-  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionReady, setSessionReady] = useState(isDevMode());
   useEffect(() => {
-    if (!pubkey || isDevMode()) { setSessionReady(true); return; }
+    if (sessionReady) return;
+    if (!pubkey) return;
     getMSessionToken().then(() => setSessionReady(true)).catch(() => setSessionReady(true));
   }, [pubkey]);
   // Auto-blur buttons on touch to prevent persistent focus rectangles in WebView
@@ -618,8 +628,8 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
     try {
       // Fetch independently — if one fails, still show the other
       let buyerOrders = [], sellerOrders = [];
-      try { const b = await mapi("/orders/mine?role=buyer"); buyerOrders = b.orders || []; } catch (e) { console.warn("[marketplace-ui] buyer orders:", e.message); }
-      try { const s = await mapi("/orders/mine?role=seller"); sellerOrders = s.orders || []; } catch (e) { console.warn("[marketplace-ui] seller orders:", e.message); }
+      try { const b = await mapi("/orders/mine?role=buyer"); buyerOrders = b.orders || []; } catch (e) { console.warn("[marketplace-ui] buyer orders FAILED:", e.message); showToast && showToast("Orders: " + e.message, "error"); }
+      try { const s = await mapi("/orders/mine?role=seller"); sellerOrders = s.orders || []; } catch (e) { console.warn("[marketplace-ui] seller orders FAILED:", e.message); }
       const all = [...buyerOrders, ...sellerOrders];
       const seen = new Set();
       const unique = all.filter(o => { if (seen.has(o.id)) return false; seen.add(o.id); return true; });

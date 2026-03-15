@@ -22,10 +22,19 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/ecash-escrows", ecashEscrowRoutes);
 app.use("/api/marketplace/listings", marketplaceRoutes);
 
-// Serve UI static files from escrow-ui/dist
+// Serve UI static files from escrow-ui/dist — no cache on HTML, fingerprinted assets cached
 const distPath = path.join(__dirname, "..", "escrow-ui", "dist");
-app.use(express.static(distPath));
+app.use(express.static(distPath, {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith(".html")) {
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    } else if (filePath.includes("/assets/")) {
+      res.setHeader("Cache-Control", "public, max-age=86400");
+    }
+  }
+}));
 app.get("/{0,}", (_req, res) => {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
   res.sendFile(path.join(distPath, "index.html"));
 });
 
