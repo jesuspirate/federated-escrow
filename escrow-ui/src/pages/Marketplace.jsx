@@ -839,6 +839,13 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
           fiatRates={fiatRates}
         />
       )}
+      {view === "chapsmart" && (
+        <ChapSmartView
+          onBack={() => setView("browse")}
+          showToast={showToast}
+          pubkey={pubkey}
+        />
+      )}
       {view === "profile" && profilePubkey && (
         <SellerProfileView
           pubkey={profilePubkey} myPubkey={pubkey}
@@ -2142,6 +2149,296 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
 // ═══════════════════════════════════════════════════════════════════════
 // ORDER DETAIL VIEW
 // ═══════════════════════════════════════════════════════════════════════
+
+// ── ChapSmart Integration View ──────────────────────────────────────────
+// Bitcoin → M-Pesa remittance, airtime top-up, buy sats
+
+function ChapSmartView({ onBack, showToast, pubkey }) {
+  const [tab, setTab] = useState("send"); // send | airtime | buy
+  const [step, setStep] = useState(0); // 0=form, 1=quote, 2=pay, 3=done
+  const [loading, setLoading] = useState(false);
+  const [account, setAccount] = useState(() => { try { return localStorage.getItem("sm_chap_account") || ""; } catch { return ""; } });
+
+  // Form state
+  const [amountTZS, setAmountTZS] = useState("");
+  const [phone, setPhone] = useState("");
+  const [recipientName, setRecipientName] = useState("");
+  const [quote, setQuote] = useState(null);
+  const [invoice, setInvoice] = useState(null);
+  const [result, setResult] = useState(null);
+  const [polling, setPolling] = useState(false);
+  const pollRef = useRef(null);
+
+  // Create ChapSmart account if needed
+  const ensureAccount = async () => {
+    if (account) return account;
+    try {
+      const res = await fetch("/api/chapsmart/create-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const data = await res.json();
+      if (data.success && data.accountNumber) {
+        setAccount(data.accountNumber);
+        try { localStorage.setItem("sm_chap_account", data.accountNumber); } catch {}
+        return data.accountNumber;
+      }
+    } catch {}
+    showToast("Failed to create ChapSmart account", "error");
+    return null;
+  };
+
+  const getQuote = async () => {
+    if (!amountTZS || !phone) { showToast("Enter amount and phone number", "error"); return; }
+    setLoading(true);
+    const acct = await ensureAccount();
+    if (!acct) { setLoading(false); return; }
+    try {
+      const endpoint = tab === "airtime" ? "/api/chapsmart/airtime/quote" : "/api/chapsmart/quote";
+      const body = tab === "airtime"
+        ? { amountTZS, phoneNumber: phone.startsWith("255") ? phone : "255" + phone.replace(/^0/, ""), accountNumber: acct }
+        : { amountTZS, phoneNumber: phone, recipientName: recipientName || "Recipient", accountNumber: acct };
+      const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Quote failed");
+      setQuote(data);
+      setStep(1);
+    } catch (err) { showToast(err.message, "error"); }
+    setLoading(false);
+  };
+
+  const generateInvoice = async () => {
+    setLoading(true);
+    try {
+      const endpoint = tab === "airtime" ? "/api/chapsmart/airtime/generate" : "/api/chapsmart/generate-invoice";
+      const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quoteId: quote.quoteId }) });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || "Invoice generation failed");
+      setInvoice(data);
+      setStep(2);
+      // Start polling for payment status
+      startPolling(data.invoiceId);
+    } catch (err) { showToast(err.message, "error"); }
+    setLoading(false);
+  };
+
+  const startPolling = (invoiceId) => {
+    setPolling(true);
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch("/api/chapsmart/status/" + invoiceId);
+        const data = await res.json();
+        if (data.status === "completed") {
+          clearInterval(pollRef.current);
+          setPolling(false);
+          setResult({ amountTZS, phone, status: "completed" });
+          setStep(3);
+          showToast("M-Pesa delivered!", "ok");
+        } else if (data.status === "failed" || data.status === "expired") {
+          clearInterval(pollRef.current);
+          setPolling(false);
+          showToast("Transaction " + data.status + ". " + (data.message || ""), "error");
+        }
+      } catch {}
+    }, 5000);
+  };
+
+  useEffect(() => { return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
+
+  const payWithWallet = async () => {
+    if (!window.webln) { showToast("No Lightning wallet detected", "error"); return; }
+    try {
+      await window.webln.enable();
+      await window.webln.sendPayment(invoice.bolt11);
+      showToast("Payment sent! Waiting for M-Pesa delivery...");
+    } catch (err) { showToast("Payment failed: " + (err.message || ""), "error"); }
+  };
+
+  const copyBolt11 = () => {
+    navigator.clipboard.writeText(invoice.bolt11).then(
+      () => showToast("Invoice copied!"),
+      () => showToast("Copy failed", "error")
+    );
+  };
+
+  const reset = () => { setStep(0); setQuote(null); setInvoice(null); setResult(null); setAmountTZS(""); setPhone(""); setRecipientName(""); };
+
+  // Tab button style
+  const tabStyle = (active) => ({
+    flex: 1, padding: "10px 0", borderRadius: 10, border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer",
+    background: active ? "rgba(59,130,246,0.15)" : "transparent",
+    color: active ? "#3b82f6" : "#64748b",
+  });
+
+  return (
+    <div style={M.container}>
+      {/* Header */}
+      <div style={M.viewHeader}>
+        <button style={M.iconBtn} onClick={onBack}><Icons.Back /></button>
+        <h2 style={{ ...M.viewTitle, fontSize: 16 }}>
+          <span style={{ color: "#3b82f6" }}>Chap</span><span style={{ color: "#f59e0b" }}>Smart</span>
+        </h2>
+        <span style={{ fontSize: 10, color: "#64748b", padding: "3px 8px", borderRadius: 99, border: "1px solid #1e293b" }}>TZ</span>
+      </div>
+
+      {/* Tabs */}
+      {step === 0 && (
+        <div style={{ display: "flex", gap: 4, marginBottom: 14, background: "#111827", borderRadius: 12, padding: 4 }}>
+          <button style={tabStyle(tab === "send")} onClick={() => setTab("send")}>💸 Send TZS</button>
+          <button style={tabStyle(tab === "airtime")} onClick={() => setTab("airtime")}>📱 Airtime</button>
+          <button style={tabStyle(tab === "buy")} onClick={() => setTab("buy")}>₿ Buy Sats</button>
+        </div>
+      )}
+
+      {/* Step 0: Form */}
+      {step === 0 && (tab === "send" || tab === "airtime") && (
+        <div style={{ ...M.card, padding: 16 }}>
+          <div style={{ fontSize: 11, color: "#3b82f6", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
+            {tab === "send" ? "Send Bitcoin → Receive M-Pesa" : "Buy Airtime with Bitcoin"}
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>Amount (TZS)</div>
+            <input style={{ ...M.input, fontSize: 18, fontWeight: 700 }} type="number" value={amountTZS} onChange={e => setAmountTZS(e.target.value)}
+              placeholder={tab === "send" ? "2,500 — 1,000,000" : "500 — 15,000"} />
+          </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>{tab === "send" ? "Vodacom M-Pesa Number" : "Phone Number"}</div>
+            <input style={M.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="0741000000" />
+          </div>
+
+          {tab === "send" && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>Recipient Name</div>
+              <input style={M.input} value={recipientName} onChange={e => setRecipientName(e.target.value)} placeholder="John Doe" />
+            </div>
+          )}
+
+          <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.15)", marginBottom: 14, fontSize: 11, color: "#94a3b8" }}>
+            ⚡ Powered by ChapSmart × SatoshiMarket — Lightning fast, ~10s settlement
+          </div>
+
+          <button onClick={getQuote} disabled={loading || !amountTZS || !phone}
+            style={{ ...M.actionBtn, background: "linear-gradient(135deg, #3b82f6, #2563eb)", color: "#fff", opacity: loading ? 0.6 : 1 }}>
+            {loading ? "Getting quote..." : "⚡ Get Quote"}
+          </button>
+        </div>
+      )}
+
+      {/* Step 0: Buy Sats form */}
+      {step === 0 && tab === "buy" && (
+        <div style={{ ...M.card, padding: 16 }}>
+          <div style={{ fontSize: 11, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
+            Buy Sats with M-Pesa
+          </div>
+          <div style={{ textAlign: "center", padding: 20, color: "#64748b", fontSize: 13 }}>
+            Coming soon — send M-Pesa, receive Lightning sats directly to your Fedi wallet.
+          </div>
+        </div>
+      )}
+
+      {/* Step 1: Quote */}
+      {step === 1 && quote && (
+        <div style={{ ...M.card, padding: 16 }}>
+          <div style={{ textAlign: "center", marginBottom: 14 }}>
+            <div style={{ fontSize: 11, color: "#3b82f6", textTransform: "uppercase", letterSpacing: 1 }}>Quote Ready</div>
+            <div style={{ fontSize: 28, fontWeight: 800, marginTop: 4 }}>
+              <span style={{ color: "#f59e0b" }}>₿</span> {quote.youPay.sats.toLocaleString()}
+              <span style={{ fontSize: 13, color: "#94a3b8" }}> sats</span>
+            </div>
+            <div style={{ fontSize: 13, color: "#94a3b8", marginTop: 4 }}>
+              → <span style={{ color: "#10b981", fontWeight: 700 }}>{Number(amountTZS).toLocaleString()} TZS</span> to {phone}
+            </div>
+          </div>
+
+          <div style={{ height: 1, background: "#1e293b", margin: "12px 0" }} />
+
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13 }}>
+            <span style={{ color: "#64748b" }}>Fee ({quote.youPay.feePercent}%)</span>
+            <span style={{ fontWeight: 600, color: "#f59e0b" }}>{quote.youPay.feeSats} sats</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13 }}>
+            <span style={{ color: "#64748b" }}>Tier</span>
+            <span style={{ padding: "2px 8px", borderRadius: 99, fontSize: 10, fontWeight: 700, color: "#f59e0b", background: "rgba(245,158,11,0.12)" }}>{quote.userTier}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", fontSize: 13 }}>
+            <span style={{ color: "#64748b" }}>Settlement</span>
+            <span style={{ fontWeight: 600, color: "#10b981" }}>~10 seconds</span>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+            <button onClick={() => { setStep(0); setQuote(null); }} style={{ ...M.secondaryBtn, flex: 1 }}>← Back</button>
+            <button onClick={generateInvoice} disabled={loading}
+              style={{ ...M.actionBtn, flex: 2, background: "linear-gradient(135deg, #3b82f6, #2563eb)", color: "#fff", opacity: loading ? 0.6 : 1 }}>
+              {loading ? "Generating..." : "⚡ Pay with Lightning"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: Pay Invoice */}
+      {step === 2 && invoice && (
+        <div style={{ ...M.card, padding: 16 }}>
+          <div style={{ textAlign: "center", marginBottom: 14 }}>
+            <div style={{ fontSize: 36, marginBottom: 6 }}>⚡</div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>Pay Lightning Invoice</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#f59e0b", marginTop: 4 }}>
+              {invoice.youPay.sats.toLocaleString()} sats
+            </div>
+          </div>
+
+          {/* Checkout link */}
+          {invoice.checkoutLink && (
+            <a href={invoice.checkoutLink} target="_blank" rel="noopener noreferrer"
+              style={{ display: "block", textAlign: "center", padding: "12px", borderRadius: 10, background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: "#3b82f6", fontSize: 13, fontWeight: 600, textDecoration: "none", marginBottom: 12 }}>
+              🔗 Open BTCPay Checkout
+            </a>
+          )}
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+            <button onClick={copyBolt11} style={{ ...M.secondaryBtn, flex: 1, fontSize: 12 }}>📋 Copy Invoice</button>
+            {window.webln && (
+              <button onClick={payWithWallet} style={{ ...M.actionBtn, flex: 1, background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontSize: 12 }}>
+                ⚡ Pay with Wallet
+              </button>
+            )}
+          </div>
+
+          {/* BOLT11 display */}
+          <div style={{ padding: 10, borderRadius: 8, background: "#0f1629", fontSize: 10, color: "#64748b", wordBreak: "break-all", marginBottom: 12 }}>
+            {invoice.bolt11}
+          </div>
+
+          {polling && (
+            <div style={{ textAlign: "center", color: "#3b82f6", fontSize: 12, animation: "pulse 1.5s infinite" }}>
+              Waiting for payment confirmation...
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Step 3: Done */}
+      {step === 3 && result && (
+        <div style={{ ...M.card, padding: 16, borderColor: "rgba(16,185,129,0.3)", background: "linear-gradient(135deg, rgba(16,185,129,0.05), rgba(16,185,129,0.02))" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 8 }}>✅</div>
+            <div style={{ fontSize: 18, fontWeight: 800, color: "#10b981" }}>
+              {tab === "airtime" ? "Airtime Delivered!" : "M-Pesa Delivered!"}
+            </div>
+            <div style={{ fontSize: 14, color: "#94a3b8", marginTop: 8 }}>
+              {Number(amountTZS).toLocaleString()} TZS sent to {phone}
+            </div>
+          </div>
+
+          <div style={{ textAlign: "center", marginTop: 16, fontSize: 11, color: "#64748b" }}>
+            Powered by <span style={{ color: "#3b82f6", fontWeight: 700 }}>ChapSmart</span> × <span style={{ color: "#f59e0b", fontWeight: 700 }}>SatoshiMarket</span>
+          </div>
+
+          <button onClick={reset} style={{ ...M.secondaryBtn, width: "100%", marginTop: 14 }}>← New Transaction</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow, showToast, loading, setLoading, fiatRates }) {
   const [detail, setDetail] = useState(null);
