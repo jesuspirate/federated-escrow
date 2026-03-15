@@ -97,29 +97,29 @@ async function getCachedNip98Header(url, method) {
 }
 
 // ── Session token management (shared with escrow) ─────────────────────
-let _mSessionToken = null;
-let _mSessionExpiry = 0;
-
+// Session token — shared via window global with proper mutex
 async function getMSessionToken() {
-  if (_mSessionToken && _mSessionExpiry > Date.now() + 60000) return _mSessionToken;
-  // Use escrow auth endpoint to create session
-  const url = `${location.origin}/api/escrow/auth/session`;
-  const headers = { "Content-Type": "application/json" };
-  try {
+  // Fast path: token already cached and valid
+  if (window.__smToken && window.__smTokenExpiry > Date.now() + 60000) return window.__smToken;
+  // If another call is already fetching, wait for THAT promise (not a new one)
+  if (window.__smTokenPromise) {
+    try { await window.__smTokenPromise; } catch {}
+    return window.__smToken || null;
+  }
+  // Create the fetch promise and store it SYNCHRONOUSLY before any await
+  const fetchPromise = (async () => {
+    const url = location.origin + "/api/escrow/auth/session";
     const nip98 = await getCachedNip98Header(url, "POST");
-    if (nip98) headers["Authorization"] = nip98;
-    else return null;
-  } catch { return null; }
-  try {
-    const res = await fetch(url, { method: "POST", headers });
+    if (!nip98) return null;
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": nip98 } });
     const data = await res.json();
-    if (data.token) {
-      _mSessionToken = data.token;
-      _mSessionExpiry = Date.now() + (data.expiresIn || 1800) * 1000;
-      return _mSessionToken;
-    }
-  } catch {}
-  return null;
+    if (data.token) { window.__smToken = data.token; window.__smTokenExpiry = Date.now() + 1800000; }
+    return window.__smToken || null;
+  })();
+  window.__smTokenPromise = fetchPromise;
+  try { await fetchPromise; } catch {}
+  window.__smTokenPromise = null;
+  return window.__smToken || null;
 }
 
 async function mapi(path, opts = {}, _retries = 1) {
@@ -131,7 +131,7 @@ async function mapi(path, opts = {}, _retries = 1) {
   const needsAuth = method !== "GET" || path.includes("/orders");
 
   if (needsAuth) {
-    // Try session token first (no popup)
+    // Get or create session token — blocks until ready
     const token = await getMSessionToken();
     if (token) {
       headers["Authorization"] = "Bearer " + token;
@@ -159,7 +159,7 @@ async function mapi(path, opts = {}, _retries = 1) {
   } catch (err) {
     throw new Error(t("mkNetworkError"));
   }
-  if ((res.status === 401 || res.status === 403) && _retries > 0) { _mSessionToken = null; _mSessionExpiry = 0; return mapi(path, opts, _retries - 1); }
+  if ((res.status === 401 || res.status === 403) && _retries > 0) { window.__smToken = null; window.__smTokenExpiry = 0; return mapi(path, opts, _retries - 1); }
   if (res.status === 401 || res.status === 403) throw new Error(t("mkAuthRequired"));
   const text = await res.text();
   try { return JSON.parse(text); } catch { return { error: text || `HTTP ${res.status}` }; }
@@ -665,7 +665,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
     setActionLoading(false);
   };
 
-  const openOrders = () => { setView("orders"); loadOrders(); };
+  const openOrders = async () => { setView("orders"); if (!window.__smToken) await getMSessionToken(); loadOrders(); };
 
   const handleEdit = (listing) => { setEditingListing(listing); setView("edit"); };
 

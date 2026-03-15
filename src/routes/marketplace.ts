@@ -25,6 +25,7 @@ function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunct
     const authHeader = req.headers.authorization;
   
   // Session token auth (Bearer) — fast path
+  console.log("[marketplace-auth]", req.method, req.path, "auth:", authHeader ? authHeader.substring(0, 20) + "..." : "none");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
     // Validate against escrow router's session store (shared via import)
