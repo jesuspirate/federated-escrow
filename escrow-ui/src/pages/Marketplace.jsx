@@ -891,8 +891,8 @@ function MarketplaceOnboarding({ onComplete }) {
       icon: "⚡",
       title: isBrowser ? "Try it in Sandbox" : "Start Trading",
       desc: isBrowser
-        ? "This is a demo — explore listings, create test trades, and see how escrow works. For real trades, use the Fedi app."
-        : "List something for sale, browse what's available, or start a P2P sats-for-fiat trade. Welcome to the community economy.",
+        ? "This is a demo — explore listings, create test trades, and see how escrow works. For real trades, download the Fedi app!"
+        : "List something for sale, browse what's available, or start a P2P sats-for-fiat trade. Join our community to connect with other traders!",
     },
   ];
 
@@ -933,6 +933,33 @@ function MarketplaceOnboarding({ onComplete }) {
         <div key={`t-${step}`} style={{ animation: "obFadeUp 0.4s ease-out 0.1s both" }}>
           <h1 style={{ fontSize: 19, fontWeight: 700, color: "#f8fafc", margin: "0 0 8px", letterSpacing: -0.5 }}>{s.title}</h1>
           <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, margin: 0 }}>{s.desc}</p>
+          {isLast && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 16 }}>
+              <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" style={{
+                display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
+                background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)",
+                color: "#f59e0b", fontSize: 12, fontWeight: 600, textDecoration: "none",
+              }}>
+                🇬🇧 English Community
+              </a>
+              <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" style={{
+                display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
+                background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)",
+                color: "#3b82f6", fontSize: 12, fontWeight: 600, textDecoration: "none",
+              }}>
+                🇫🇷 Communauté Française
+              </a>
+              {isBrowser && (
+                <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{
+                  display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
+                  background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)",
+                  color: "#10b981", fontSize: 12, fontWeight: 600, textDecoration: "none",
+                }}>
+                  📲 Download Fedi
+                </a>
+              )}
+            </div>
+          )}
         </div>
 
         {/* ── Buttons right under content ── */}
