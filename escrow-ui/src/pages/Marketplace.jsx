@@ -986,8 +986,7 @@ const CATEGORIES = [
 const LEARN_DISMISSED_KEY = "fedi-mk-learn-dismissed";
 
 function NewToFediBanner() {
-  if (_isFediRuntime()) return null;  // User is already in Fedi
-  // ... rest unchanged
+  const inFedi = _isFediRuntime();
   const [dismissed, setDismissed] = useState(() => {
     try { return localStorage.getItem(LEARN_DISMISSED_KEY) === "1"; } catch { return false; }
   });
@@ -1012,7 +1011,7 @@ function NewToFediBanner() {
       >
         <span style={{ fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 16 }}>💡</span>
-          New to Bitcoin or Fedi?
+          {inFedi ? "Join Our Community!" : "New to Bitcoin or Fedi?"}
         </span>
         <span style={{ fontSize: 11, color: "#f59e0b", fontWeight: 600, transform: expanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }}>▼</span>
       </button>
@@ -1020,30 +1019,52 @@ function NewToFediBanner() {
       {expanded && (
         <div style={{ padding: "0 14px 14px", animation: "slideUp 0.2s ease-out" }}>
           <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.7, marginBottom: 12 }}>
-            This marketplace runs on Bitcoin through the Fedi app. Trades are secured by <strong style={{ color: "#f59e0b" }}>2-of-3 escrow</strong> — no trust needed between buyer and seller.
+            {inFedi
+              ? "Trade with real sats, secured by 2-of-3 escrow. Join our community to connect with other traders and get help."
+              : "This marketplace runs on Bitcoin through the Fedi app. Trades are secured by 2-of-3 escrow — no trust needed between buyer and seller."}
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{
+            {/* Community links — always show */}
+            <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" style={{
               display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
-              background: "rgba(247,147,26,0.06)", border: "1px solid rgba(247,147,26,0.15)",
-              color: "#f7931a", fontSize: 12, fontWeight: 600, textDecoration: "none",
+              background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)",
+              color: "#f59e0b", fontSize: 12, fontWeight: 600, textDecoration: "none",
             }}>
-              ₿ What is Bitcoin?
+              🇬🇧 English Community
             </a>
-            <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{
+            <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" style={{
               display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
-              background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)",
-              color: "#a78bfa", fontSize: 12, fontWeight: 600, textDecoration: "none",
+              background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.15)",
+              color: "#3b82f6", fontSize: 12, fontWeight: 600, textDecoration: "none",
             }}>
-              🛡️ What is Fedi?
+              🇫🇷 Communauté Française
             </a>
-            <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{
-              display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
-              background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)",
-              color: "#10b981", fontSize: 12, fontWeight: 600, textDecoration: "none",
-            }}>
-              📲 Download Fedi
-            </a>
+            {/* Learn links — browser only */}
+            {!inFedi && (
+              <>
+                <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{
+                  display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
+                  background: "rgba(247,147,26,0.06)", border: "1px solid rgba(247,147,26,0.15)",
+                  color: "#f7931a", fontSize: 12, fontWeight: 600, textDecoration: "none",
+                }}>
+                  ₿ What is Bitcoin?
+                </a>
+                <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{
+                  display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
+                  background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)",
+                  color: "#a78bfa", fontSize: 12, fontWeight: 600, textDecoration: "none",
+                }}>
+                  🛡️ What is Fedi?
+                </a>
+                <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{
+                  display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
+                  background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)",
+                  color: "#10b981", fontSize: 12, fontWeight: 600, textDecoration: "none",
+                }}>
+                  📲 Download Fedi
+                </a>
+              </>
+            )}
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); try { localStorage.setItem(LEARN_DISMISSED_KEY, "1"); } catch {} setDismissed(true); }}
