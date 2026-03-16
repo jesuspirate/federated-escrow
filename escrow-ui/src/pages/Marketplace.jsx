@@ -108,7 +108,7 @@ async function getMSessionToken() {
   }
   // Create the fetch promise and store it SYNCHRONOUSLY before any await
   const fetchPromise = (async () => {
-    const url = location.origin + "/api/escrow/auth/session";
+    const url = location.origin + "/api/ecash-escrows/auth/session";
     const nip98 = await getCachedNip98Header(url, "POST");
     if (!nip98) return null;
     const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", "Authorization": nip98 } });
