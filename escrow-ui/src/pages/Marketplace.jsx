@@ -557,7 +557,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
       }
       if (onOpened) onOpened();
     })();
-  }, [initialEscrowId, pubkey]);
+  }, [initialEscrowId, pubkey, sessionReady]);
   const [browseLoading, setBrowseLoading] = useState(false);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
