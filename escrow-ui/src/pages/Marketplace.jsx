@@ -934,29 +934,65 @@ function MarketplaceOnboarding({ onComplete }) {
           <h1 style={{ fontSize: 19, fontWeight: 700, color: "#f8fafc", margin: "0 0 8px", letterSpacing: -0.5 }}>{s.title}</h1>
           <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, margin: 0 }}>{s.desc}</p>
           {isLast && (
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginTop: 16 }}>
-              <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" style={{
-                display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
-                background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)",
-                color: "#f59e0b", fontSize: 12, fontWeight: 600, textDecoration: "none",
-              }}>
-                🇬🇧 English Community
-              </a>
-              <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" style={{
-                display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
-                background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)",
-                color: "#3b82f6", fontSize: 12, fontWeight: 600, textDecoration: "none",
-              }}>
-                🇫🇷 Communauté Française
-              </a>
-              {isBrowser && (
-                <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{
-                  display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
-                  background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)",
-                  color: "#10b981", fontSize: 12, fontWeight: 600, textDecoration: "none",
-                }}>
-                  📲 Download Fedi
-                </a>
+            <div style={{ marginTop: 16, textAlign: "left", width: "100%" }}>
+              {isBrowser ? (
+                <>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>1️⃣</span>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#10b981", marginBottom: 4 }}>Download the Fedi App to trade real sats</div>
+                      <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{
+                        display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
+                        background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)",
+                        color: "#10b981", fontSize: 12, fontWeight: 600, textDecoration: "none",
+                      }}>📲 Download Fedi</a>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>2️⃣</span>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#f59e0b", marginBottom: 4 }}>Join our community inside Fedi</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#f59e0b", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>🇬🇧 English</a>
+                        <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: "#3b82f6", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>🇫🇷 Français</a>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>3️⃣</span>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", marginBottom: 4 }}>Need help? Chat with us</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <a href="fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#a78bfa", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>💬 Support (EN)</a>
+                        <a href="fedi:room:!qHlVxBJBCKqUbetBnA:m1.8fa.in:::" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#a78bfa", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>💬 Support (FR)</a>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: 13, color: "#10b981", fontWeight: 700, textAlign: "center", marginBottom: 12 }}>🎉 You made it to SatoshiMarket!</div>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>1️⃣</span>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#f59e0b", marginBottom: 4 }}>Join our community</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#f59e0b", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>🇬🇧 English</a>
+                        <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: "#3b82f6", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>🇫🇷 Français</a>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <span style={{ fontSize: 18, lineHeight: 1 }}>2️⃣</span>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", marginBottom: 4 }}>Need help? Chat with us</div>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        <a href="fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#a78bfa", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>💬 Support (EN)</a>
+                        <a href="fedi:room:!qHlVxBJBCKqUbetBnA:m1.8fa.in:::" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#a78bfa", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>💬 Support (FR)</a>
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}
@@ -1050,47 +1086,32 @@ function NewToFediBanner() {
               ? "Trade with real sats, secured by 2-of-3 escrow. Join our community to connect with other traders and get help."
               : "This marketplace runs on Bitcoin through the Fedi app. Trades are secured by 2-of-3 escrow — no trust needed between buyer and seller."}
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {/* Community links — always show */}
-            <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" style={{
-              display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
-              background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)",
-              color: "#f59e0b", fontSize: 12, fontWeight: 600, textDecoration: "none",
-            }}>
-              🇬🇧 English Community
-            </a>
-            <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" style={{
-              display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
-              background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.15)",
-              color: "#3b82f6", fontSize: 12, fontWeight: 600, textDecoration: "none",
-            }}>
-              🇫🇷 Communauté Française
-            </a>
-            {/* Learn links — browser only */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {!inFedi && (
-              <>
-                <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{
-                  display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
-                  background: "rgba(247,147,26,0.06)", border: "1px solid rgba(247,147,26,0.15)",
-                  color: "#f7931a", fontSize: 12, fontWeight: 600, textDecoration: "none",
-                }}>
-                  ₿ What is Bitcoin?
-                </a>
-                <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{
-                  display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
-                  background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)",
-                  color: "#a78bfa", fontSize: 12, fontWeight: 600, textDecoration: "none",
-                }}>
-                  🛡️ What is Fedi?
-                </a>
-                <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{
-                  display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8,
-                  background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)",
-                  color: "#10b981", fontSize: 12, fontWeight: 600, textDecoration: "none",
-                }}>
-                  📲 Download Fedi
-                </a>
-              </>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 14 }}>1️⃣</span>
+                <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 14px", borderRadius: 8, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", color: "#10b981", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>📲 Download Fedi to trade real sats</a>
+              </div>
+            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 14 }}>{inFedi ? "1️⃣" : "2️⃣"}</span>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", color: "#f59e0b", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>🇬🇧 Join Community</a>
+                <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(59,130,246,0.06)", border: "1px solid rgba(59,130,246,0.15)", color: "#3b82f6", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>🇫🇷 Rejoindre</a>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 14 }}>{inFedi ? "2️⃣" : "3️⃣"}</span>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                <a href="fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)", color: "#a78bfa", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>💬 Support EN</a>
+                <a href="fedi:room:!qHlVxBJBCKqUbetBnA:m1.8fa.in:::" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)", color: "#a78bfa", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>💬 Support FR</a>
+              </div>
+            </div>
+            {!inFedi && (
+              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(247,147,26,0.06)", border: "1px solid rgba(247,147,26,0.15)", color: "#f7931a", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>₿ Learn Bitcoin</a>
+                <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)", color: "#a78bfa", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>🛡️ Learn Fedi</a>
+              </div>
             )}
           </div>
           <button
