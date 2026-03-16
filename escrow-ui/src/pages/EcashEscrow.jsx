@@ -1430,65 +1430,12 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         return;
       }
 
-      // ── LIGHTNING PAYOUT (existing flow) ──
-      let payoutReady = false;
-      let notes = null;
-
-      // If escrow is already CLAIMED (from previous attempt or server-side), skip claim call
-      if (status === "CLAIMED" || claimRetry) { payoutReady = true; }
-      else {
-        const claim = await api(`/${e.id}/claim`, { method: "POST" });
-        if (claim.error) throw new Error(claim.error);
-        payoutReady = claim.payoutReady; amountSats = claim.amountSats || amountSats; notes = claim.notes;
-        if (!payoutReady && (window.webln || isDevMode())) payoutReady = true;
-      }
-      if (payoutReady) {
-        // ── 2-step claim: keep retrying if user rejects invoice ──
-        let claimed = false;
-        while (!claimed) {
-          let invoice;
-          if (isDevMode()) {
-            invoice = `SANDBOX_INVOICE_${e.id}_${Date.now()}`;
-          } else if (window.webln) {
-            try {
-              await window.webln.enable();
-              showToast("Create an invoice in Fedi to receive sats…", "ok");
-              const result = await window.webln.makeInvoice({ amount: amountSats });
-              invoice = result.paymentRequest;
-            } catch {
-              // User rejected — mark retry so next attempt skips claim call
-              setLoading(false);
-              setClaimRetry(true);
-              // Refresh escrow state so status reflects CLAIMED
-              onRefresh();
-              return;
-            }
-          } else {
-            invoice = prompt(`Paste a BOLT-11 invoice for ${amountSats} sats:`);
-            if (!invoice) { setLoading(false); setClaimRetry(true); onRefresh(); return; }
-          }
-          showToast(t("sendingPayout"));
-          let payout, lastErr;
-          for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-              payout = await api(`/${e.id}/payout`, { method: "POST", body: JSON.stringify({ invoice }) });
-              if (!payout.error) break;
-              lastErr = payout.error;
-            } catch (err) { lastErr = err.message; }
-            if (attempt < 2) await new Promise(r => setTimeout(r, 1000));
-          }
-          if (payout?.error || !payout) throw new Error(lastErr || "Payout failed");
-          claimed = true;
-          showToast(isDevMode() ? (t("sandboxPayout") || `🧪 Sandbox: ${amountSats.toLocaleString()} sats claimed!`) : t("satsReceived"));
-        }
-      } else if (notes) {
-        try { await navigator.clipboard.writeText(notes); showToast(t("notesCopied")); }
-        catch { showToast(t("claimed")); }
-      } else {
-        showToast(t("claimed"));
-      }
-      setClaimRetry(false);
-      onRefresh();
+      // ── LIGHTNING PAYOUT — commented out, e-cash only ──
+      // Lightning claim path removed. All claims go through e-cash flow above.
+      showToast("This escrow uses e-cash. Use the Receive button above.", "error");
+      setLoading(false);
+      return;
+      /* LIGHTNING PAYOUT CODE REMOVED — see git history for reference */
     } catch (err) { showToast(err.message, "error"); }
     setLoading(false);
   };

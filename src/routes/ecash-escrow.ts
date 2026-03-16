@@ -854,7 +854,6 @@ router.get("/:id/ecash-payout", (req: AuthenticatedRequest, res: Response) => {
     if (!row.locked_notes) return res.status(400).json({ error: "E-cash notes already retrieved and confirmed. If you didn't receive them, contact the arbiter." });
     const notes = DB.decryptNotes(row.locked_notes);
     console.log("[ecash-payout]", row.id, "notes length:", notes.length, "starts:", notes.substring(0, 20));
-    console.log("[ecash-payout] FULL NOTES:", notes);
     
     // DON'T complete here — wait for confirm-ecash-received
 

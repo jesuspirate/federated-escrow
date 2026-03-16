@@ -25,13 +25,10 @@ function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunct
     const authHeader = req.headers.authorization;
   
   // Session token auth (Bearer) — fast path
-  console.log("[marketplace-auth]", req.method, req.path, "auth:", authHeader ? authHeader.substring(0, 20) + "..." : "none");
   if (authHeader && authHeader.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
-    console.log("[marketplace-auth] Bearer token received, validating...");
     try {
       const decoded = Buffer.from(token, "base64").toString("utf8");
-      console.log("[marketplace-auth] Bearer pubkey:", decoded.split(":")[0]?.substring(0, 16) + "...");
       const parts = decoded.split(":");
       if (parts.length === 3) {
         const [pubkey, expiresStr, hmac] = parts;
@@ -41,7 +38,6 @@ function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunct
           const SESSION_SECRET = process.env.ESCROW_ENCRYPTION_KEY || "dev-session-secret";
           const expectedHmac = crypto.createHmac("sha256", SESSION_SECRET).update(pubkey + ":" + expiresStr).digest("hex");
           if (hmac === expectedHmac) {
-            console.log("[marketplace-auth] Bearer VALID for", pubkey.substring(0, 8));
             req.pubkey = pubkey;
             return next();
           } else { console.log("[marketplace-auth] Bearer HMAC MISMATCH"); }
