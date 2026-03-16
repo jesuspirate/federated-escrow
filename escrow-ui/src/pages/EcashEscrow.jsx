@@ -1273,20 +1273,16 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     setLocking(true);
     try {
       const amountSats = Math.floor(e.amountMsats / 1000);
-      // Don't show toast here — it can block iOS federation picker
-      // Wrap generateEcash with timeout to prevent app freeze
+      // Call generateEcash — with iOS WebKit workaround for ghost overlay
       let notes;
       try {
-        notes = await Promise.race([
-          window.fediInternal.generateEcash({ amount: amountSats }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 30000))
-        ]);
+        notes = await window.fediInternal.generateEcash({ amount: amountSats });
+        // iOS WebKit workaround: force-dismiss any ghost overlay from native picker
+        document.body.focus();
+        document.body.click();
+        await new Promise(r => setTimeout(r, 100));
       } catch (genErr) {
-        if (genErr.message === "timeout") {
-          showToast("E-cash generation timed out. Please try again.", "error");
-        } else {
-          showToast("E-cash cancelled or failed. Tap to try again.", "error");
-        }
+        showToast("E-cash cancelled or failed. Tap to try again.", "error");
         setLocking(false);
         return;
       }
@@ -1397,9 +1393,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
             setPendingNotes(null);
             showToast("E-cash received! " + amountSats.toLocaleString() + " sats in your wallet!");
-            // Navigate to marketplace orders for rating
-            if (cameFromMarketplace && onSwitchToMarketplaceOrders) {
-              setTimeout(() => onSwitchToMarketplaceOrders(), 1500);
+            // Navigate to the specific order for rating
+            if (cameFromMarketplace && onSwitchToMarketplace) {
+              setTimeout(() => onSwitchToMarketplace(e.id), 1500);
             } else {
               onRefresh();
             }
@@ -1412,8 +1408,15 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
         // STEP 1: Claim on server + fetch notes (stores in state for step 2)
         if (status !== "CLAIMED" && status !== "COMPLETED" && !claimRetry) {
-          const claim = await api("/" + e.id + "/claim", { method: "POST" });
-          if (claim.error && !claim.error.includes("CLAIMED")) throw new Error(claim.error);
+          try {
+            const claim = await api("/" + e.id + "/claim", { method: "POST" });
+            if (claim.error && !String(claim.error).includes("CLAIMED")) throw new Error(claim.error);
+          } catch (claimErr) {
+            // Ignore "already claimed" errors — just proceed to fetch notes
+            if (!String(claimErr.message || "").includes("CLAIMED") && !String(claimErr.message || "").includes("APPROVED")) {
+              throw claimErr;
+            }
+          }
         }
         showToast("Retrieving e-cash notes...");
         const ecashData = await api("/" + e.id + "/ecash-payout", {}, 0);

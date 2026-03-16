@@ -658,6 +658,10 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
   const lastBrowseLoad = useRef(0);
   useEffect(() => {
     if (!sessionReady) return;
+    // Load orders in background for badge count
+    if (view === "browse" && orders.length === 0) {
+      loadOrders();
+    }
     if (view === "browse") {
       const now = Date.now();
       if (now - lastBrowseLoad.current > 30_000 || listings.length === 0) {
