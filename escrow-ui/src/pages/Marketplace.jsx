@@ -1115,7 +1115,7 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
 // BROWSE VIEW — Community homepage with hero + categories
 // ═══════════════════════════════════════════════════════════════════════
 
-function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale }) {
+function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale, onChapSmart }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
@@ -1220,7 +1220,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch" }}>
 
       {/* ── ChapSmart banner ── */}
-      <button onClick={() => setView("chapsmart")} style={{
+      <button onClick={() => onChapSmart && onChapSmart()} style={{
         width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(59,130,246,0.2)",
         background: "linear-gradient(135deg, rgba(59,130,246,0.08), rgba(245,158,11,0.05))",
         display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 10,
