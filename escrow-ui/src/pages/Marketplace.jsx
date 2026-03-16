@@ -1219,6 +1219,20 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       {/* ══ SCROLLABLE LISTINGS AREA ══ */}
       <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch" }}>
 
+      {/* ── ChapSmart banner ── */}
+      <button onClick={() => setView("chapsmart")} style={{
+        width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(59,130,246,0.2)",
+        background: "linear-gradient(135deg, rgba(59,130,246,0.08), rgba(245,158,11,0.05))",
+        display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 10,
+      }}>
+        <span style={{ fontSize: 20 }}>🇹🇿</span>
+        <div style={{ textAlign: "left" }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#f8fafc" }}><span style={{ color: "#3b82f6" }}>Chap</span><span style={{ color: "#f59e0b" }}>Smart</span> — Bitcoin → M-Pesa</div>
+          <div style={{ fontSize: 10, color: "#64748b" }}>Send TZS, buy airtime, or buy sats</div>
+        </div>
+        <span style={{ marginLeft: "auto", fontSize: 16, color: "#64748b" }}>→</span>
+      </button>
+
       {/* ── New to Bitcoin / Fedi? ── */}
       <NewToFediBanner />
 
