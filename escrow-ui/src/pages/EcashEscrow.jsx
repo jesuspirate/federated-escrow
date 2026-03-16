@@ -1551,8 +1551,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             <div style={{ fontSize: 24, marginBottom: 6 }}>🎉</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#10b981", marginBottom: 4 }}>Trade complete!</div>
             {cameFromMarketplace && (
-              <button onClick={onBack} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", marginTop: 12, borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontSize: 15, fontWeight: 700 }}>
-                ← Back to My Orders
+              <button onClick={() => onSwitchToMarketplace ? onSwitchToMarketplace(e.id) : onBack()} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", marginTop: 12, borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontSize: 15, fontWeight: 700 }}>
+                ← Back to My Order
               </button>
             )}
           </div>
