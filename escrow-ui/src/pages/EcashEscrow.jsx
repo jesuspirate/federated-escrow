@@ -570,7 +570,7 @@ function Vault({ status, amountMsats, showBurst, resolvedOutcome }) {
 function Toast({ msg, type, visible }) {
   if (!visible) return null;
   return (
-    <div style={{ position: "fixed", bottom: 90, left: 16, right: 16, padding: "12px 16px", borderRadius: 12, background: type === "error" ? "#7f1d1d" : "#064e3b", color: "#fff", fontSize: 13, fontWeight: 500, zIndex: 1000, textAlign: "center", animation: "slideUp 0.25s ease-out", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+    <div style={{ position: "fixed", bottom: 90, left: 16, right: 16, padding: "12px 16px", borderRadius: 12, background: type === "error" ? "#7f1d1d" : "#064e3b", color: "#fff", fontSize: 13, fontWeight: 500, zIndex: 1000, pointerEvents: "none", textAlign: "center", animation: "slideUp 0.25s ease-out", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
       {msg}
     </div>
   );
@@ -1273,8 +1273,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     setLocking(true);
     try {
       const amountSats = Math.floor(e.amountMsats / 1000);
-      showToast("Generating " + amountSats.toLocaleString() + " sats e-cash...");
-
+      // Don't show toast here — it can block iOS federation picker
       // Wrap generateEcash with timeout to prevent app freeze
       let notes;
       try {
