@@ -868,7 +868,7 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
         } else {
           setSelected(null); setView("list"); loadEscrows();
         }
-      }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} onSwitchToMarketplace={onSwitchToMarketplace} cameFromMarketplace={cameFromMarketplace} />}
+      }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} onSwitchToMarketplace={onSwitchToMarketplace} onSwitchToMarketplaceOrders={onSwitchToMarketplaceOrders} cameFromMarketplace={cameFromMarketplace} />}
       {view === "detail" && !selected && (
         <div style={S.container}>
           <div style={S.viewHeader}>
@@ -1184,7 +1184,7 @@ function JoinView({ pubkey, onBack, onJoined, showToast, setLoading, loading }) 
 // DETAIL VIEW — Redesigned with Vault + animated action bar
 // ═══════════════════════════════════════════════════════════════════════
 
-function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoading, loading, onSwitchToMarketplace, cameFromMarketplace }) {
+function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoading, loading, onSwitchToMarketplace, onSwitchToMarketplaceOrders, cameFromMarketplace }) {
   const role = e.yourRole || null;
   const status = e.status;
   const [showBurst, setShowBurst] = useState(false);
@@ -1398,7 +1398,12 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
             setPendingNotes(null);
             showToast("E-cash received! " + amountSats.toLocaleString() + " sats in your wallet!");
-            onRefresh();
+            // Navigate to marketplace orders for rating
+            if (cameFromMarketplace && onSwitchToMarketplaceOrders) {
+              setTimeout(() => onSwitchToMarketplaceOrders(), 1500);
+            } else {
+              onRefresh();
+            }
           } catch (redeemErr) {
             showToast("E-cash redeem failed. Tap the redeem button to try again.", "error");
           }
