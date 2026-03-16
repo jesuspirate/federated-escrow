@@ -770,6 +770,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
           onSwitchToEscrow={onSwitchToEscrow}
           onProfile={openProfile}
           locale={locale} onSwitchLocale={switchLocale}
+          onChapSmart={() => setView("chapsmart")}
         />
       )}
       {view === "edit" && editingListing && (
