@@ -2184,9 +2184,55 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
   const [polling, setPolling] = useState(false);
   const pollRef = useRef(null);
 
-  // Create ChapSmart account if needed
+  // Authenticate with ChapSmart via Nostr (auto signup/login)
   const ensureAccount = async () => {
     if (account) return account;
+    // Try Nostr auth first
+    if (window.nostr) {
+      try {
+        const pubkey = await window.nostr.getPublicKey();
+        // Build NIP-98 event for login
+        const event = {
+          kind: 27235,
+          created_at: Math.floor(Date.now() / 1000),
+          tags: [["u", location.origin + "/api/chapsmart/nostr/login"], ["method", "POST"]],
+          content: "",
+        };
+        const signedEvent = await window.nostr.signEvent(event);
+        // Try login first
+        const loginRes = await fetch("/api/chapsmart/nostr/login", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ signedEvent }),
+        });
+        const loginData = await loginRes.json();
+        if (loginData.success && loginData.accountNumber) {
+          setAccount(loginData.accountNumber);
+          try { localStorage.setItem("sm_chap_account", loginData.accountNumber); } catch {}
+          return loginData.accountNumber;
+        }
+        // If 404 (no account), signup
+        if (loginRes.status === 404) {
+          const signupEvent = {
+            kind: 27235,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [["u", location.origin + "/api/chapsmart/nostr/signup"], ["method", "POST"]],
+            content: "",
+          };
+          const signedSignup = await window.nostr.signEvent(signupEvent);
+          const signupRes = await fetch("/api/chapsmart/nostr/signup", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ signedEvent: signedSignup }),
+          });
+          const signupData = await signupRes.json();
+          if (signupData.success && signupData.accountNumber) {
+            setAccount(signupData.accountNumber);
+            try { localStorage.setItem("sm_chap_account", signupData.accountNumber); } catch {}
+            return signupData.accountNumber;
+          }
+        }
+      } catch (err) { console.warn("[chapsmart] Nostr auth failed, falling back:", err); }
+    }
+    // Fallback: anonymous account
     try {
       const res = await fetch("/api/chapsmart/create-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
       const data = await res.json();
