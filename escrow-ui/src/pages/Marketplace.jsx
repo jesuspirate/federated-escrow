@@ -1284,7 +1284,11 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         )}
 
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-          <button style={{ ...M.primaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={onCreate}><Icons.Plus /> {subdomain === "p2p" ? "Sell Sats" : subdomain === "lending" ? "Offer Loan" : t("mkSell")}</button>
+          <button style={{ ...M.primaryBtn, flex: 1, minWidth: 0, justifyContent: "center",
+            ...(subdomain === "p2p" ? { background: "linear-gradient(135deg, #f59e0b, #d97706)" } :
+                subdomain === "lending" ? { background: "linear-gradient(135deg, #10b981, #059669)" } :
+                subdomain === "market" ? { background: "linear-gradient(135deg, #a78bfa, #7c3aed)" } : {})
+          }} onClick={onCreate}><Icons.Plus /> {subdomain === "p2p" ? "Sell Sats" : subdomain === "lending" ? "Offer Loan" : subdomain === "market" ? "List Item" : t("mkSell")}</button>
           <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center", position: "relative", ...(activeOrderCount > 0 ? { borderColor: "rgba(245,158,11,0.4)", boxShadow: "0 0 12px rgba(245,158,11,0.15)", animation: "pulse 2s infinite" } : {}) }} onClick={onOrders}>
             <Icons.Package /> {t("mkOrders")}
             {activeOrderCount > 0 && (
@@ -1307,9 +1311,9 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
             style={{
               padding: "6px 12px", borderRadius: 20, fontSize: 11, fontWeight: 600,
               whiteSpace: "nowrap", cursor: "pointer", transition: "all 0.2s",
-              border: activeCategory === c.key ? "1px solid rgba(245,158,11,0.4)" : "1px solid #1e293b",
-              background: activeCategory === c.key ? "rgba(245,158,11,0.12)" : "#111827",
-              color: activeCategory === c.key ? "#fbbf24" : "#94a3b8",
+              border: activeCategory === c.key ? "1px solid " + (subdomain === "market" ? "rgba(139,92,246,0.4)" : subdomain === "lending" ? "rgba(16,185,129,0.4)" : "rgba(245,158,11,0.4)") : "1px solid #1e293b",
+              background: activeCategory === c.key ? (subdomain === "market" ? "rgba(139,92,246,0.12)" : subdomain === "lending" ? "rgba(16,185,129,0.12)" : "rgba(245,158,11,0.12)") : "#111827",
+              color: activeCategory === c.key ? (subdomain === "market" ? "#a78bfa" : subdomain === "lending" ? "#10b981" : "#fbbf24") : "#94a3b8",
             }}
           >
             {c.icon} {c.label}

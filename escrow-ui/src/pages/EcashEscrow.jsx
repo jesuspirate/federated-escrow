@@ -1199,6 +1199,8 @@ function TradeChat({ escrowId, pubkey, participants }) {
 
   const chatFetch = async (path, opts = {}) => {
     const headers = { "Content-Type": "application/json" };
+    // Ensure session token exists
+    if (!window.__smToken) await getSessionToken_escrow();
     if (window.__smToken) headers["Authorization"] = "Bearer " + window.__smToken;
     const res = await fetch("/api/chat" + path, { ...opts, headers });
     return res.json();
