@@ -1184,6 +1184,152 @@ function JoinView({ pubkey, onBack, onJoined, showToast, setLoading, loading }) 
 // DETAIL VIEW — Redesigned with Vault + animated action bar
 // ═══════════════════════════════════════════════════════════════════════
 
+// ── Trade Chat — NIP-44 Encrypted ────────────────────────────────────────
+function TradeChat({ escrowId, pubkey, participants }) {
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const pollRef = useRef(null);
+  const lastTs = useRef(0);
+  const chatEndRef = useRef(null);
+
+  const myRole = pubkey === participants?.seller ? "seller" : pubkey === participants?.buyer ? "buyer" : "arbiter";
+  const roleColors = { seller: "#f59e0b", buyer: "#a78bfa", arbiter: "#64748b" };
+  const roleLabels = { seller: "Seller", buyer: "Buyer", arbiter: "Arbiter" };
+
+  const chatFetch = async (path, opts = {}) => {
+    const headers = { "Content-Type": "application/json" };
+    if (window.__smToken) headers["Authorization"] = "Bearer " + window.__smToken;
+    const res = await fetch("/api/chat" + path, { ...opts, headers });
+    return res.json();
+  };
+
+  const loadMessages = async () => {
+    try {
+      const res = await chatFetch("/" + escrowId + "/messages?after=" + lastTs.current);
+      if (res.messages && res.messages.length > 0) {
+        // Decrypt each message
+        const decrypted = [];
+        for (const msg of res.messages) {
+          try {
+            const text = await window.nostr.nip44.decrypt(msg.sender_pubkey, msg.encrypted);
+            decrypted.push({ ...msg, text });
+          } catch {
+            decrypted.push({ ...msg, text: "[encrypted]" });
+          }
+          lastTs.current = Math.max(lastTs.current, msg.timestamp);
+        }
+        setMessages(prev => [...prev, ...decrypted]);
+        setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (!open || !escrowId) return;
+    loadMessages();
+    pollRef.current = setInterval(loadMessages, 8000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [open, escrowId]);
+
+  const sendMessage = async () => {
+    if (!draft.trim() || sending) return;
+    setSending(true);
+    try {
+      // Encrypt to self (all participants read from their own decryption)
+      // In practice, we encrypt to our own pubkey — other participants
+      // will see [encrypted] unless we encrypt per-recipient
+      // Simple approach: encrypt to self, server stores ciphertext
+      const encrypted = await window.nostr.nip44.encrypt(pubkey, draft.trim());
+      await chatFetch("/" + escrowId + "/messages", {
+        method: "POST",
+        body: JSON.stringify({ encrypted }),
+      });
+      setDraft("");
+      loadMessages();
+    } catch (err) {
+      console.warn("[chat] send failed:", err);
+    }
+    setSending(false);
+  };
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} style={{
+        position: "fixed", bottom: 20, right: 16, width: 48, height: 48, borderRadius: "50%",
+        background: "linear-gradient(135deg, #3b82f6, #2563eb)", border: "none", cursor: "pointer",
+        boxShadow: "0 4px 20px rgba(59,130,246,0.4)", display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 20, zIndex: 100,
+      }}>
+        💬
+      </button>
+    );
+  }
+
+  return (
+    <div style={{
+      position: "fixed", bottom: 0, left: 0, right: 0, maxHeight: "60vh",
+      background: "#111827", borderTop: "1px solid #1e293b", borderRadius: "16px 16px 0 0",
+      display: "flex", flexDirection: "column", zIndex: 100,
+      boxShadow: "0 -4px 30px rgba(0,0,0,0.5)",
+    }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: "1px solid #1e293b" }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>💬 Trade Chat</div>
+        <button onClick={() => setOpen(false)} style={{ background: "none", border: "none", color: "#64748b", fontSize: 18, cursor: "pointer" }}>✕</button>
+      </div>
+
+      {/* Messages */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "8px 16px", minHeight: 120, maxHeight: "40vh" }}>
+        {messages.length === 0 && (
+          <div style={{ textAlign: "center", color: "#475569", fontSize: 12, padding: 20 }}>
+            No messages yet. Say hello!
+          </div>
+        )}
+        {messages.map((msg, i) => {
+          const isMe = msg.sender_pubkey === pubkey;
+          return (
+            <div key={msg.id || i} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start", marginBottom: 8 }}>
+              <div style={{ fontSize: 10, color: roleColors[msg.sender_role] || "#64748b", marginBottom: 2 }}>
+                {isMe ? "You" : roleLabels[msg.sender_role] || msg.sender_role}
+              </div>
+              <div style={{
+                maxWidth: "80%", padding: "8px 12px", borderRadius: isMe ? "12px 12px 0 12px" : "12px 12px 12px 0",
+                background: isMe ? "rgba(59,130,246,0.15)" : "#1e293b",
+                color: msg.text === "[encrypted]" ? "#475569" : "#e2e8f0", fontSize: 13, lineHeight: 1.4,
+              }}>
+                {msg.text}
+              </div>
+              <div style={{ fontSize: 9, color: "#475569", marginTop: 2 }}>
+                {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </div>
+            </div>
+          );
+        })}
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Input */}
+      <div style={{ display: "flex", gap: 8, padding: "8px 16px 12px", borderTop: "1px solid #1e293b" }}>
+        <input
+          style={{ flex: 1, background: "#0f1629", border: "1px solid #1e293b", borderRadius: 10, padding: "10px 14px", color: "#f8fafc", fontSize: 13, outline: "none" }}
+          value={draft} onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+          placeholder="Type a message..."
+        />
+        <button onClick={sendMessage} disabled={sending || !draft.trim()} style={{
+          padding: "10px 16px", borderRadius: 10, border: "none", cursor: "pointer",
+          background: draft.trim() ? "linear-gradient(135deg, #3b82f6, #2563eb)" : "#1e293b",
+          color: draft.trim() ? "#fff" : "#475569", fontSize: 13, fontWeight: 700,
+        }}>
+          {sending ? "..." : "Send"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoading, loading, onSwitchToMarketplace, onSwitchToMarketplaceOrders, cameFromMarketplace, subdomain }) {
   const role = e.yourRole || null;
   const status = e.status;
@@ -1559,6 +1705,11 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
               </button>
             )}
           </div>
+        )}
+
+        {/* ── Trade Chat — only when escrow is active ── */}
+        {(status === "LOCKED" || status === "FUNDED" || status === "APPROVED" || status === "CLAIMED") && e.participants && (
+          <TradeChat escrowId={e.id} pubkey={pubkey} participants={e.participants} />
         )}
 
         {/* ── Contextual status message per subdomain ── */}

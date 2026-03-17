@@ -5,6 +5,7 @@ import path from "path";
 import ecashEscrowRoutes from "./routes/ecash-escrow";
 import marketplaceRoutes from "./routes/marketplace";
 import chapsmartRoutes from "./routes/chapsmart";
+import tradeChatRoutes from "./routes/trade-chat";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,6 +24,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/ecash-escrows", ecashEscrowRoutes);
 app.use("/api/marketplace/listings", marketplaceRoutes);
 app.use("/api/chapsmart", chapsmartRoutes);
+app.use("/api/chat", tradeChatRoutes);
 
 // Serve UI static files from escrow-ui/dist — no cache on HTML, fingerprinted assets cached
 const distPath = path.join(__dirname, "..", "escrow-ui", "dist");

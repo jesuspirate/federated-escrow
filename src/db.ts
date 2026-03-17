@@ -175,6 +175,22 @@ export interface VoteRow {
     console.log("[db] Migration 3: lock_role column added");
   }
 
+  if (currentVersion < 4) {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS chat_messages (
+        id TEXT PRIMARY KEY,
+        escrow_id TEXT NOT NULL,
+        sender_pubkey TEXT NOT NULL,
+        sender_role TEXT NOT NULL,
+        encrypted TEXT NOT NULL,
+        timestamp INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_chat_escrow ON chat_messages(escrow_id, timestamp);
+    `);
+    db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(4);
+    console.log("[db] Migration 4: chat_messages table created");
+  }
+
 // ── Prepared Statements ───────────────────────────────────────────────────
 
 const stmts = {
@@ -369,6 +385,16 @@ export function clearShamirShares(id: string): void {
   db.prepare("UPDATE escrows SET shamir_seller = NULL, shamir_buyer = NULL, shamir_arbiter = NULL, shamir_share_seller = NULL, shamir_share_buyer = NULL, locked_notes = NULL, updated_at = @updated_at WHERE id = @id").run({
     id, updated_at: Date.now(),
   });
+}
+
+export function addChatMessage(escrowId: string, msgId: string, senderPubkey: string, senderRole: string, encrypted: string): void {
+  db.prepare("INSERT INTO chat_messages (id, escrow_id, sender_pubkey, sender_role, encrypted, timestamp) VALUES (?, ?, ?, ?, ?, ?)").run(
+    msgId, escrowId, senderPubkey, senderRole, encrypted, Date.now()
+  );
+}
+
+export function getChatMessages(escrowId: string, after: number = 0): any[] {
+  return db.prepare("SELECT * FROM chat_messages WHERE escrow_id = ? AND timestamp > ? ORDER BY timestamp ASC").all(escrowId, after) as any[];
 }
 
 export function addVote(escrowId: string, role: string, outcome: string, pubkey: string): void {
