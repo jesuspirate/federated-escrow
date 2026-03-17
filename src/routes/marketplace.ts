@@ -1109,6 +1109,10 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     const escrowSellerPubkey = isP2PTrade ? listing.seller_pubkey : buyerPubkey;
     const escrowBuyerPubkey  = isP2PTrade ? buyerPubkey : listing.seller_pubkey;
 
+    // P2P/Lending: seller locks (seller has sats)
+    // Marketplace: buyer locks (buyer pays with sats)
+    const lockRole = isP2PTrade || isLenderTrade(listing.category) ? "seller" : "buyer";
+
     DB.createEscrow({
       id: escrowId,
       amountMsats: tradeAmountMsats,
@@ -1123,6 +1127,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
       communityLink: listing.community_link,
       federationId,
       sellerPubkey: escrowSellerPubkey,
+      lockRole,
     });
 
     // Join escrow buyer (status stays CREATED — arbiter not yet joined)

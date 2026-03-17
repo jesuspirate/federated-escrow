@@ -488,7 +488,8 @@ router.get("/:id/invoice", async (req: AuthenticatedRequest, res: Response) => {
     if (row.status !== "FUNDED") return res.status(400).json({ error: `Cannot generate invoice in ${row.status} state` });
 
     const pk = req.pubkey!;
-    if (getRoleByPubkey(row, pk) !== "seller") return res.status(403).json({ error: "Only the seller can request the lock invoice" });
+    const lockRole2 = row.lock_role || "seller";
+    if (getRoleByPubkey(row, pk) !== lockRole2) return res.status(403).json({ error: "Only the " + lockRole2 + " can request the lock invoice" });
 
     const fmAvailable = await FM.isClientdAvailable();
     if (!fmAvailable) {
@@ -559,7 +560,8 @@ router.post("/:id/lock-ecash", async (req: AuthenticatedRequest, res: Response) 
     if (isExpired(row)) return res.status(400).json({ error: "This escrow has expired" });
 
     const pk = req.pubkey!;
-    if (getRoleByPubkey(row, pk) !== "seller") return res.status(403).json({ error: "Only the seller can lock notes" });
+    const lockRole = row.lock_role || "seller";
+    if (getRoleByPubkey(row, pk) !== lockRole) return res.status(403).json({ error: "Only the " + lockRole + " can lock sats in this escrow" });
 
     if (row.status !== "FUNDED") {
       if (row.status === "CREATED")
@@ -619,7 +621,8 @@ router.post("/:id/lock", async (req: AuthenticatedRequest, res: Response) => {
     if (isExpired(row)) return res.status(400).json({ error: "This escrow has expired" });
 
     const pk = req.pubkey!;
-    if (getRoleByPubkey(row, pk) !== "seller") return res.status(403).json({ error: "Only the seller can lock notes" });
+    const lockRoleM = row.lock_role || "seller";
+    if (getRoleByPubkey(row, pk) !== lockRoleM) return res.status(403).json({ error: "Only the " + lockRoleM + " can lock sats" });
 
     if (row.status !== "FUNDED") {
       if (row.status === "CREATED")
@@ -811,7 +814,7 @@ router.post("/:id/claim", (req: AuthenticatedRequest, res: Response) => {
     if (row.status === "EXPIRED" && row.locked_notes) {
       const pk = req.pubkey!;
       if (getRoleByPubkey(row, pk) !== "seller")
-        return res.status(403).json({ error: "Only the seller can reclaim from an expired escrow" });
+        return res.status(403).json({ error: "Only the locking party can reclaim from an expired escrow" });
 
       const notes = DB.claimEscrow(row.id, "seller");
       if (!notes) return res.status(500).json({ error: "No notes found" });

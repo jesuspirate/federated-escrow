@@ -140,6 +140,7 @@ export interface EscrowRow {
   seller_pubkey: string; buyer_pubkey: string | null; arbiter_pubkey: string | null;
   locked_notes: string | null; locked_at: number | null;
   shamir_seller: string | null; shamir_buyer: string | null; shamir_arbiter: string | null;
+  lock_role: string | null; // "seller" | "buyer" — who is responsible for locking sats
   shamir_share_seller: string | null; shamir_share_buyer: string | null;
   lock_mode: string | null; lock_preimage: string | null;
   resolved_outcome: string | null; resolved_at: number | null;
@@ -166,6 +167,12 @@ export interface VoteRow {
     `);
     db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(2);
     console.log("[db] Migration 2: Shamir share columns added");
+  }
+
+  if (currentVersion < 3) {
+    db.exec("ALTER TABLE escrows ADD COLUMN lock_role TEXT DEFAULT 'seller'");
+    db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(3);
+    console.log("[db] Migration 3: lock_role column added");
   }
 
 // ── Prepared Statements ───────────────────────────────────────────────────
@@ -279,7 +286,7 @@ export function getNextId(): string {
 
 export function createEscrow(p: {
   id: string; amountMsats: number; description: string; terms: string;
-  communityLink: string; federationId: string; sellerPubkey: string;
+  communityLink: string; federationId: string; sellerPubkey: string; lockRole?: string;
 }): EscrowRow {
   const now = Date.now();
   stmts.insertEscrow.run({
@@ -288,6 +295,10 @@ export function createEscrow(p: {
     community_link: p.communityLink, federation_id: p.federationId,
     seller_pubkey: p.sellerPubkey, expires_at: now + EXPIRY_UNFUNDED_MS,
   });
+  // Set lock_role if specified (default is "seller")
+  if (p.lockRole && p.lockRole !== "seller") {
+    db.prepare("UPDATE escrows SET lock_role = ? WHERE id = ?").run(p.lockRole, p.id);
+  }
   return stmts.getEscrow.get(p.id) as EscrowRow;
 }
 
