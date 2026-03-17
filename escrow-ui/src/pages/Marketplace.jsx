@@ -2346,10 +2346,15 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
     const acct = await ensureAccount();
     if (!acct) { setLoading(false); return; }
     try {
+      // Normalize phone: strip +, ensure 0xxx format for Chapsmart
+      let cleanPhone = phone.replace(/[^0-9]/g, "");
+      if (cleanPhone.startsWith("255")) cleanPhone = "0" + cleanPhone.substring(3);
+      if (!cleanPhone.startsWith("0")) cleanPhone = "0" + cleanPhone;
+
       const endpoint = tab === "airtime" ? "/api/chapsmart/airtime/quote" : "/api/chapsmart/quote";
       const body = tab === "airtime"
-        ? { amountTZS, phoneNumber: phone.startsWith("255") ? phone : "255" + phone.replace(/^0/, ""), accountNumber: acct }
-        : { amountTZS, phoneNumber: phone, recipientName: recipientName || "Recipient", accountNumber: acct };
+        ? { amountTZS, phoneNumber: cleanPhone, accountNumber: acct }
+        : { amountTZS, phoneNumber: cleanPhone, recipientName: recipientName || "Recipient", accountNumber: acct };
       const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Quote failed");
@@ -2380,12 +2385,12 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
       try {
         const res = await fetch("/api/chapsmart/status/" + invoiceId);
         const data = await res.json();
-        if (data.status === "completed") {
+        if (data.status === "completed" || data.status === "settled") {
           clearInterval(pollRef.current);
           setPolling(false);
-          setResult({ amountTZS, phone, status: "completed" });
+          setResult({ amountTZS, phone, status: data.status });
           setStep(3);
-          showToast("M-Pesa delivered!", "ok");
+          showToast(tab === "airtime" ? "Airtime delivered!" : "M-Pesa delivered!", "ok");
         } else if (data.status === "failed" || data.status === "expired") {
           clearInterval(pollRef.current);
           setPolling(false);
@@ -2402,7 +2407,9 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
     try {
       await window.webln.enable();
       await window.webln.sendPayment(invoice.bolt11);
-      showToast("Payment sent! Waiting for M-Pesa delivery...");
+      showToast("Payment sent! Waiting for delivery...");
+      // Ensure polling is running after wallet payment
+      if (!polling && invoice.invoiceId) startPolling(invoice.invoiceId);
     } catch (err) { showToast("Payment failed: " + (err.message || ""), "error"); }
   };
 
@@ -2457,7 +2464,7 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
 
           <div style={{ marginBottom: 12 }}>
             <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>{tab === "send" ? "Vodacom M-Pesa Number" : "Phone Number"}</div>
-            <input style={M.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="0741000000" />
+            <input style={M.input} value={phone} onChange={e => setPhone(e.target.value)} placeholder="07XXXXXXXX" />
           </div>
 
           {tab === "send" && (
@@ -2576,7 +2583,7 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
           <div style={{ textAlign: "center" }}>
             <div style={{ fontSize: 48, marginBottom: 8 }}>✅</div>
             <div style={{ fontSize: 18, fontWeight: 800, color: "#10b981" }}>
-              {tab === "airtime" ? "Airtime Delivered!" : "M-Pesa Delivered!"}
+              {tab === "airtime" ? "Airtime Delivered!" : "M-Pesa Sent!"}
             </div>
             <div style={{ fontSize: 14, color: "#94a3b8", marginTop: 8 }}>
               {Number(amountTZS).toLocaleString()} TZS sent to {phone}
