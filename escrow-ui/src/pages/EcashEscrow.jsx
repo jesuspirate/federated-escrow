@@ -1343,7 +1343,19 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   };
 
   // ── 2-step confirmation for critical votes ──────────────────────
-  const [confirmVote, setConfirmVote] = useState(null); // null | "release" | "refund"
+  const [confirmVote, setConfirmVote] = useState(null);
+  const [myShare, setMyShare] = useState(null);
+
+  // Fetch Shamir share when escrow is LOCKED
+  useEffect(() => {
+    if (!e || !e.id || e.status !== "LOCKED") return;
+    (async () => {
+      try {
+        const data = await api("/" + e.id + "/my-share");
+        if (data.share) setMyShare(data.share);
+      } catch {}
+    })();
+  }, [e?.id, e?.status]); // null | "release" | "refund"
 
   const handleVote = async (outcome) => {
     // Arbiter + Seller get a 2-step gate. Buyer votes directly.
@@ -1356,7 +1368,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     setConfirmVote(null);
     setLoading(true);
     try {
-      const res = await api(`/${e.id}/approve`, { method: "POST", body: JSON.stringify({ outcome }) });
+      const res = await api(`/${e.id}/approve`, { method: "POST", body: JSON.stringify({ outcome, share: myShare || undefined }) });
       if (res.error) throw new Error(res.error);
       showToast(outcome === "release" ? t("votedRelease") : t("votedRefund"));
       // Silently refresh — if auth fails for refresh, that's ok, vote was recorded

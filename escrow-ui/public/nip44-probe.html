@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NIP-44 Probe</title>
+<style>body{background:#0c0f17;color:#f8fafc;font-family:system-ui;padding:20px;font-size:13px}
+#log{white-space:pre-wrap;line-height:1.6}
+button{padding:10px 16px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;margin:4px;background:#f59e0b;color:#0c0f17}</style>
+</head><body>
+<h2>NIP-44 Probe</h2>
+<button onclick="probe()">Probe NIP-44</button>
+<button onclick="testEncryptDecrypt()">Test Encrypt/Decrypt</button>
+<div id="log">Waiting...</div>
+<script>
+var log = document.getElementById('log');
+function out(msg) { log.textContent += msg + '\n'; }
+
+async function probe() {
+  log.textContent = '';
+  if (!window.nostr) { out('window.nostr not available'); return; }
+  out('window.nostr: ' + typeof window.nostr);
+  out('window.nostr.nip44: ' + typeof window.nostr.nip44);
+  if (window.nostr.nip44) {
+    out('nip44 keys: ' + Object.keys(window.nostr.nip44).join(', '));
+    var proto = Object.getOwnPropertyNames(Object.getPrototypeOf(window.nostr.nip44) || {});
+    out('nip44 proto: ' + proto.join(', '));
+    out('nip44.encrypt: ' + typeof window.nostr.nip44.encrypt);
+    out('nip44.decrypt: ' + typeof window.nostr.nip44.decrypt);
+    if (window.nostr.nip44.encrypt) out('encrypt.length: ' + window.nostr.nip44.encrypt.length);
+    if (window.nostr.nip44.decrypt) out('decrypt.length: ' + window.nostr.nip44.decrypt.length);
+  }
+  out('');
+  out('window.nostr.nip04: ' + typeof window.nostr.nip04);
+  if (window.nostr.nip04) {
+    out('nip04 keys: ' + Object.keys(window.nostr.nip04).join(', '));
+    out('nip04.encrypt: ' + typeof window.nostr.nip04.encrypt);
+    out('nip04.decrypt: ' + typeof window.nostr.nip04.decrypt);
+  }
+  out('');
+  try {
+    var pk = await window.nostr.getPublicKey();
+    out('My pubkey: ' + pk);
+  } catch(e) { out('getPublicKey error: ' + e.message); }
+}
+
+async function testEncryptDecrypt() {
+  log.textContent = '';
+  if (!window.nostr || !window.nostr.nip44) { out('NIP-44 not available'); return; }
+  try {
+    var pk = await window.nostr.getPublicKey();
+    out('My pubkey: ' + pk);
+    out('');
+    
+    // Encrypt to self
+    var plaintext = 'shamir-share-test-' + Date.now();
+    out('Plaintext: ' + plaintext);
+    out('Encrypting to self...');
+    var encrypted = await window.nostr.nip44.encrypt(pk, plaintext);
+    out('Encrypted: ' + (encrypted ? encrypted.substring(0, 40) + '...' : 'NULL'));
+    out('Encrypted length: ' + (encrypted || '').length);
+    out('');
+    
+    // Decrypt from self
+    out('Decrypting...');
+    var decrypted = await window.nostr.nip44.decrypt(pk, encrypted);
+    out('Decrypted: ' + decrypted);
+    out('');
+    out(decrypted === plaintext ? '✅ ROUND-TRIP SUCCESS!' : '❌ MISMATCH!');
+  } catch(e) {
+    out('ERROR: ' + e.message);
+    out('JSON: ' + JSON.stringify(e));
+  }
+}
+</script></body></html>

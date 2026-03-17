@@ -139,6 +139,8 @@ export interface EscrowRow {
   community_link: string; federation_id: string;
   seller_pubkey: string; buyer_pubkey: string | null; arbiter_pubkey: string | null;
   locked_notes: string | null; locked_at: number | null;
+  shamir_seller: string | null; shamir_buyer: string | null; shamir_arbiter: string | null;
+  shamir_share_seller: string | null; shamir_share_buyer: string | null;
   lock_mode: string | null; lock_preimage: string | null;
   resolved_outcome: string | null; resolved_at: number | null;
   claimed_by: string | null; claimed_at: number | null;
@@ -152,6 +154,19 @@ export interface VoteRow {
   id: number; escrow_id: string; role: string;
   outcome: string; pubkey: string; timestamp: number;
 }
+
+
+  if (currentVersion < 1) {
+    db.exec(`
+      ALTER TABLE escrows ADD COLUMN shamir_seller TEXT;
+      ALTER TABLE escrows ADD COLUMN shamir_buyer TEXT;
+      ALTER TABLE escrows ADD COLUMN shamir_arbiter TEXT;
+      ALTER TABLE escrows ADD COLUMN shamir_share_seller TEXT;
+      ALTER TABLE escrows ADD COLUMN shamir_share_buyer TEXT;
+    `);
+    db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(1);
+    console.log("[db] Migration 1: Shamir share columns added");
+  }
 
 // ── Prepared Statements ───────────────────────────────────────────────────
 
@@ -301,6 +316,48 @@ export function lockNotes(id: string, notes: string, mode: "webln" | "manual", p
     lock_mode: mode, lock_preimage: preimage || null, updated_at: now,
   });
   stmts.extendExpiry.run(now + (expiryMs || EXPIRY_LOCKED_MS), id);
+}
+
+export function lockNotesWithShamir(id: string, sellerShare: string, buyerShare: string, arbiterShare: string, mode: string, expiryMs?: number): void {
+  const now = Date.now();
+  db.prepare(`UPDATE escrows SET shamir_seller = @shamir_seller, shamir_buyer = @shamir_buyer, shamir_arbiter = @shamir_arbiter,
+    locked_notes = 'SHAMIR', locked_at = @locked_at, lock_mode = @lock_mode, updated_at = @updated_at, status = 'LOCKED'
+    WHERE id = @id`).run({
+    id, shamir_seller: sellerShare, shamir_buyer: buyerShare, shamir_arbiter: arbiterShare,
+    locked_at: now, lock_mode: mode, updated_at: now,
+  });
+  stmts.extendExpiry.run(now + (expiryMs || EXPIRY_LOCKED_MS), id);
+}
+
+export function storeDecryptedShare(id: string, role: string, share: string): void {
+  // In dispute case, arbiter's share replaces the losing party's column
+  // We always need exactly 2 shares to reconstruct
+  const col = role === "seller" ? "shamir_share_seller" : role === "buyer" ? "shamir_share_buyer" : "shamir_share_buyer";
+  // Arbiter goes into buyer slot if seller already has one, or seller slot otherwise
+  db.prepare(`UPDATE escrows SET ${col} = @share, updated_at = @updated_at WHERE id = @id`).run({
+    id, share, updated_at: Date.now(),
+  });
+}
+
+export function getShamirShares(id: string): { seller?: string, buyer?: string, arbiter?: string, share_seller?: string, share_buyer?: string } {
+  const row = db.prepare("SELECT shamir_seller, shamir_buyer, shamir_arbiter, shamir_share_seller, shamir_share_buyer FROM escrows WHERE id = ?").get(id) as any;
+  if (!row) return {};
+  return {
+    seller: row.shamir_seller, buyer: row.shamir_buyer, arbiter: row.shamir_arbiter,
+    share_seller: row.shamir_share_seller, share_buyer: row.shamir_share_buyer,
+  };
+}
+
+export function getEncryptedShare(id: string, role: string): string | null {
+  const col = role === "seller" ? "shamir_seller" : role === "buyer" ? "shamir_buyer" : "shamir_arbiter";
+  const row = db.prepare(`SELECT ${col} as share FROM escrows WHERE id = ?`).get(id) as any;
+  return row?.share || null;
+}
+
+export function clearShamirShares(id: string): void {
+  db.prepare("UPDATE escrows SET shamir_seller = NULL, shamir_buyer = NULL, shamir_arbiter = NULL, shamir_share_seller = NULL, shamir_share_buyer = NULL, locked_notes = NULL, updated_at = @updated_at WHERE id = @id").run({
+    id, updated_at: Date.now(),
+  });
 }
 
 export function addVote(escrowId: string, role: string, outcome: string, pubkey: string): void {

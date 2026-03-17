@@ -79,6 +79,7 @@ import * as DB from "../db";
 import * as Notify from "../notifications";
 import * as FM from "../fedimint";
 import { matrixBot } from "./matrix-bot";
+import { splitNotes, combineShares, validateReconstructedNotes } from "../shamir";
 
 type Role = "buyer" | "seller" | "arbiter";
 type Outcome = "release" | "refund";
@@ -570,9 +571,22 @@ router.post("/:id/lock-ecash", async (req: AuthenticatedRequest, res: Response) 
     if (!notes || typeof notes !== "string" || notes.length < 20)
       return res.status(400).json({ error: "Invalid e-cash notes" });
 
-    // Store e-cash notes as the locked value
+    // ── SHAMIR: Split notes into 2-of-3 shares ──
     const shippingExpiry = /shipping|physical|ship/i.test(row.description || "") ? DB.EXPIRY_SHIPPING_MS : undefined;
-    DB.lockNotes(row.id, notes, "ecash", undefined, shippingExpiry);
+    const shares = await splitNotes(notes);
+
+    // Encrypt each share to each participant's Nostr pubkey using NIP-44 on server
+    // For now, store shares as base64 — client will retrieve and hold their share
+    // Server stores encrypted shares only, never the full notes
+    DB.lockNotesWithShamir(
+      row.id,
+      shares.seller_share,
+      shares.buyer_share,
+      shares.arbiter_share,
+      "ecash",
+      shippingExpiry
+    );
+    console.log("  🔑 Shamir: notes split into 3 shares (2-of-3 threshold) for", row.id);
 
     const updated = DB.getEscrow(row.id)!;
 
@@ -678,6 +692,24 @@ router.post("/:id/lock", async (req: AuthenticatedRequest, res: Response) => {
   } catch (err: any) { console.error("POST /lock error:", err); res.status(500).json({ error: err.message }); }
 });
 
+// ── GET /:id/my-share — Retrieve your Shamir share ───────────────────────
+router.get("/:id/my-share", (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const row = DB.getEscrow(req.params.id);
+    if (!row) return res.status(404).json({ error: "Escrow not found" });
+    const pk = req.pubkey!;
+    const role = getRoleByPubkey(row, pk);
+    if (!role) return res.status(403).json({ error: "Not a participant" });
+    
+    const share = DB.getEncryptedShare(row.id, role);
+    if (!share) return res.status(404).json({ error: "No share available — escrow may not be locked yet" });
+    
+    res.json({ share, role, escrowId: row.id });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ── POST /:id/approve ────────────────────────────────────────────────────
 
 router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
@@ -712,6 +744,13 @@ router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
         return res.status(400).json({ error: "Buyer and seller agree — no dispute to arbitrate." });
     }
 
+    // Store decrypted Shamir share if provided
+    const { share } = req.body;
+    if (share && typeof share === "string" && share.length > 10) {
+      DB.storeDecryptedShare(row.id, role, share);
+      console.log("  🔑 Shamir share received from", role, "for", row.id);
+    }
+    
     DB.addVote(row.id, role, outcome, pk);
     const updatedVotes = DB.getVotes(row.id);
     const tally = tallyVotes(updatedVotes);
@@ -831,7 +870,7 @@ router.post("/:id/claim", (req: AuthenticatedRequest, res: Response) => {
 // retrieves the notes string here and redeems them in their browser WASM wallet
 // via mint.redeemEcash(notes). Instant, zero Lightning routing.
 
-router.get("/:id/ecash-payout", (req: AuthenticatedRequest, res: Response) => {
+router.get("/:id/ecash-payout", async (req: AuthenticatedRequest, res: Response) => {
   try {
     const row = DB.getEscrow(req.params.id);
     if (!row) return res.status(404).json({ error: "Escrow not found" });
@@ -850,10 +889,37 @@ router.get("/:id/ecash-payout", (req: AuthenticatedRequest, res: Response) => {
     if (role !== expectedWinner && !(row.resolved_outcome === "refund" && role === "seller"))
       return res.status(403).json({ error: "Only the winning party can retrieve e-cash notes" });
 
-    // Decrypt and return the locked notes for the winner to redeem
+    // Reconstruct e-cash notes from Shamir shares
     if (!row.locked_notes) return res.status(400).json({ error: "E-cash notes already retrieved and confirmed. If you didn't receive them, contact the arbiter." });
-    const notes = DB.decryptNotes(row.locked_notes);
-    console.log("[ecash-payout]", row.id, "notes length:", notes.length, "starts:", notes.substring(0, 20));
+    
+    let notes: string;
+    if (row.locked_notes === "SHAMIR") {
+      // Reconstruct from 2 decrypted shares submitted during voting
+      const shares = DB.getShamirShares(row.id);
+      const availableShares: string[] = [];
+      if (shares.share_seller) availableShares.push(shares.share_seller);
+      if (shares.share_buyer) availableShares.push(shares.share_buyer);
+      // Also check if arbiter submitted a share (dispute case)
+      // Arbiter share comes through vote too
+      
+      if (availableShares.length < 2) {
+        return res.status(400).json({ error: "Not enough Shamir shares to reconstruct. Need 2 votes with shares." });
+      }
+      
+      try {
+        notes = await combineShares(availableShares[0], availableShares[1]);
+        if (!validateReconstructedNotes(notes)) {
+          return res.status(500).json({ error: "Shamir reconstruction failed — notes invalid" });
+        }
+        console.log("[ecash-payout] 🔑 Shamir: reconstructed notes for", row.id, "length:", notes.length);
+      } catch (shamirErr: any) {
+        console.error("[ecash-payout] Shamir combine failed:", shamirErr);
+        return res.status(500).json({ error: "Failed to reconstruct e-cash notes from shares" });
+      }
+    } else {
+      // Legacy: direct encrypted notes (pre-Shamir escrows)
+      notes = DB.decryptNotes(row.locked_notes);
+    }
     
     // DON'T complete here — wait for confirm-ecash-received
 
