@@ -493,7 +493,7 @@ function Toast({ msg, type, visible }) {
 // Per-view loading states prevent cross-contamination between views.
 // ═══════════════════════════════════════════════════════════════════════
 
-export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initialEscrowId, onOpened }) {
+export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscrow, initialEscrowId, onOpened }) {
   const [sessionReady, setSessionReady] = useState(isDevMode());
   useEffect(() => {
     if (sessionReady) return;
@@ -775,6 +775,7 @@ export default function Marketplace({ pubkey, devRole, onSwitchToEscrow, initial
           onProfile={openProfile}
           locale={locale} onSwitchLocale={switchLocale}
           onChapSmart={() => setView("chapsmart")}
+          subdomain={subdomain}
         />
       )}
       {view === "edit" && editingListing && (
@@ -1189,16 +1190,24 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
 // BROWSE VIEW — Community homepage with hero + categories
 // ═══════════════════════════════════════════════════════════════════════
 
-function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale, onChapSmart }) {
+function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale, onChapSmart, subdomain }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
   const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
   const mineCount = useMemo(() => listings.filter(l => l.sellerPubkey === pubkey).length, [listings, pubkey]);
+  // Subdomain-based listing filter
+  const subdomainFilter = (l) => {
+    if (subdomain === "p2p") return isSatsForFiat(l.category);
+    if (subdomain === "lending") return isLending(l.category);
+    if (subdomain === "market") return !isSatsForFiat(l.category) && !isLending(l.category);
+    return true; // legacy satoshimarket.app shows all
+  };
+
   const filteredListings = (activeCategory === "all"
-    ? listings.filter(l => l.sellerPubkey !== pubkey)
+    ? listings.filter(l => l.sellerPubkey !== pubkey).filter(subdomainFilter)
     : activeCategory === "mine"
-    ? listings.filter(l => l.sellerPubkey === pubkey)
+    ? listings.filter(l => l.sellerPubkey === pubkey).filter(subdomainFilter)
     : listings.filter(l => {
         if (l.sellerPubkey === pubkey) return false;
         if (activeCategory === "sats-for-fiat") return isSatsForFiat(l.category);
@@ -1232,7 +1241,14 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       <div style={{ flexShrink: 0 }}>
         <div style={M.header}>
           <div>
-            <img src="/satoshimarket-logo.png" alt="SatoshiMarket" style={{ height: 112, objectFit: "contain" }} />
+            <img src="/satoshimarket-logo.png" alt="SatoshiMarket" style={{ height: subdomain === "marketplace" ? 112 : 80, objectFit: "contain" }} />
+            {subdomain !== "marketplace" && (
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginTop: 4,
+                color: subdomain === "p2p" ? "#f59e0b" : subdomain === "lending" ? "#10b981" : subdomain === "market" ? "#a78bfa" : "#64748b"
+              }}>
+                {subdomain === "p2p" ? "₿ P2P Exchange" : subdomain === "lending" ? "🤝 Community Lending" : subdomain === "market" ? "🛒 Marketplace" : ""}
+              </div>
+            )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <GlobeLangPicker locale={locale} onSwitchLocale={onSwitchLocale} />
@@ -1261,7 +1277,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         )}
 
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-          <button style={{ ...M.primaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={onCreate}><Icons.Plus /> {t("mkSell")}</button>
+          <button style={{ ...M.primaryBtn, flex: 1, minWidth: 0, justifyContent: "center" }} onClick={onCreate}><Icons.Plus /> {subdomain === "p2p" ? "Sell Sats" : subdomain === "lending" ? "Offer Loan" : t("mkSell")}</button>
           <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center", position: "relative", ...(activeOrderCount > 0 ? { borderColor: "rgba(245,158,11,0.4)", boxShadow: "0 0 12px rgba(245,158,11,0.15)", animation: "pulse 2s infinite" } : {}) }} onClick={onOrders}>
             <Icons.Package /> {t("mkOrders")}
             {activeOrderCount > 0 && (
@@ -1272,7 +1288,12 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
 
         {/* ── Category quick-filters ── */}
         <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 10, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
-        {CATEGORIES.map(c => (
+        {CATEGORIES.filter(c => {
+          if (subdomain === "p2p") return c.key === "all" || c.key === "mine" || c.key === "sats-for-fiat";
+          if (subdomain === "lending") return c.key === "all" || c.key === "mine" || c.key === "lending";
+          if (subdomain === "market") return c.key !== "sats-for-fiat" && c.key !== "lending";
+          return true;
+        }).map(c => (
           <button
             key={c.key}
             onClick={() => setActiveCategory(c.key)}
@@ -1293,8 +1314,8 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       {/* ══ SCROLLABLE LISTINGS AREA ══ */}
       <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch" }}>
 
-      {/* ── ChapSmart banner ── */}
-      <button onClick={() => onChapSmart && onChapSmart()} style={{
+      {/* ── ChapSmart banner — market subdomain only ── */}
+      {(subdomain === "market" || subdomain === "marketplace" || !subdomain) && <button onClick={() => onChapSmart && onChapSmart()} style={{
         width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(59,130,246,0.2)",
         background: "linear-gradient(135deg, rgba(59,130,246,0.08), rgba(245,158,11,0.05))",
         display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 10,
@@ -1305,7 +1326,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
           <div style={{ fontSize: 10, color: "#64748b" }}>Send TZS, buy airtime, or buy sats</div>
         </div>
         <span style={{ marginLeft: "auto", fontSize: 16, color: "#64748b" }}>→</span>
-      </button>
+      </button>}
 
       {/* ── New to Bitcoin / Fedi? ── */}
       <NewToFediBanner />
@@ -1416,7 +1437,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
           <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: 1.2 }}>EST. BLOCK 934,669</span>
           <span style={{ fontSize: 10 }}>🥜</span>
           <span style={{ color: "#1e293b" }}>·</span>
-          {!isDevMode() && <button onClick={() => onSwitchToEscrow()} style={{ fontSize: 9, color: "#334155", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "none" }}>⚖️ Advanced</button>}
+          {!isDevMode() && subdomain === "marketplace" && <button onClick={() => onSwitchToEscrow()} style={{ fontSize: 9, color: "#334155", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "none" }}>⚖️ Advanced</button>}
           <span style={{ color: "#1e293b" }}>·</span>
           <a href="https://github.com/jesuspirate/federated-escrow" target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#6d28d9", textDecoration: "none", fontWeight: 600 }}>GitHub ↗</a>
         </div>
