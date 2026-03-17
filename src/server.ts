@@ -28,6 +28,21 @@ app.use("/api/chat", tradeChatRoutes);
 
 // Serve UI static files from escrow-ui/dist — no cache on HTML, fingerprinted assets cached
 const distPath = path.join(__dirname, "..", "escrow-ui", "dist");
+
+// Landing page for root domain — must come BEFORE static middleware
+app.get("/", (req, res, next) => {
+  const host = req.hostname || "";
+  if (!host.startsWith("escrow.") && !host.startsWith("p2p.") && !host.startsWith("market.") && !host.startsWith("lending.") && !host.startsWith("sandbox.")) {
+    const fs = require("fs");
+    const landingPath = path.join(distPath, "landing.html");
+    if (fs.existsSync(landingPath)) {
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      return res.sendFile(landingPath);
+    }
+  }
+  next();
+});
+
 app.use(express.static(distPath, {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith(".html")) {
