@@ -46,7 +46,16 @@ function _isSandboxCheck() {
 // ═══════════════════════════════════════════════════════════════════════
 
 export default function App() {
-  const [activeApp, setActiveApp] = useState("marketplace");
+  // ── Subdomain routing ──────────────────────────────────────────
+  const subdomain = (() => {
+    const host = window.location.hostname;
+    if (host.startsWith("escrow.")) return "escrow";
+    if (host.startsWith("p2p.")) return "p2p";
+    if (host.startsWith("lending.")) return "lending";
+    if (host.startsWith("market.")) return "market";
+    return "marketplace"; // satoshimarket.app (legacy)
+  })();
+  const [activeApp, setActiveApp] = useState(subdomain === "escrow" ? "escrow" : "marketplace");
   const [initialEscrowId, setInitialEscrowId] = useState(null);
   const [initialMarketplaceEscrowId, setInitialMarketplaceEscrowId] = useState(null);
 
@@ -156,6 +165,7 @@ export default function App() {
         <EcashEscrow
           pubkey={pubkey}
           devRole={devRole}
+          subdomain={subdomain}
           onSwitchToMarketplace={switchToMarketplace}
           onSwitchToMarketplaceOrders={switchToMarketplaceOrders}
           initialEscrowId={initialEscrowId}
@@ -166,6 +176,7 @@ export default function App() {
         <Marketplace
           pubkey={pubkey}
           devRole={devRole}
+          subdomain={subdomain}
           onSwitchToEscrow={switchToEscrow}
           initialEscrowId={initialMarketplaceEscrowId}
           onOpened={() => setInitialMarketplaceEscrowId(null)}
