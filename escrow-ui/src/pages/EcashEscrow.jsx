@@ -678,7 +678,7 @@ function OnboardingSplash({ onComplete, locale }) {
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════════════
 
-export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, onSwitchToMarketplace, onSwitchToMarketplaceOrders, initialEscrowId, onEscrowOpened, sharedPubkey, onPubkeyResolved }) {
+export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, subdomain, onSwitchToMarketplace, onSwitchToMarketplaceOrders, initialEscrowId, onEscrowOpened, sharedPubkey, onPubkeyResolved }) {
   const [onboarded, setOnboarded] = useState(() => {
     try { return localStorage.getItem(ONBOARDING_KEY) === "1"; } catch { return false; }
   });
@@ -868,7 +868,7 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
         } else {
           setSelected(null); setView("list"); loadEscrows();
         }
-      }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} onSwitchToMarketplace={onSwitchToMarketplace} onSwitchToMarketplaceOrders={onSwitchToMarketplaceOrders} cameFromMarketplace={cameFromMarketplace} />}
+      }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} onSwitchToMarketplace={onSwitchToMarketplace} onSwitchToMarketplaceOrders={onSwitchToMarketplaceOrders} cameFromMarketplace={cameFromMarketplace} subdomain={subdomain} />}
       {view === "detail" && !selected && (
         <div style={S.container}>
           <div style={S.viewHeader}>
@@ -1184,7 +1184,7 @@ function JoinView({ pubkey, onBack, onJoined, showToast, setLoading, loading }) 
 // DETAIL VIEW — Redesigned with Vault + animated action bar
 // ═══════════════════════════════════════════════════════════════════════
 
-function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoading, loading, onSwitchToMarketplace, onSwitchToMarketplaceOrders, cameFromMarketplace }) {
+function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoading, loading, onSwitchToMarketplace, onSwitchToMarketplaceOrders, cameFromMarketplace, subdomain }) {
   const role = e.yourRole || null;
   const status = e.status;
   const [showBurst, setShowBurst] = useState(false);
@@ -1345,6 +1345,50 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   // ── 2-step confirmation for critical votes ──────────────────────
   const [confirmVote, setConfirmVote] = useState(null);
   const [myShare, setMyShare] = useState(null);
+
+  // ── Subdomain-aware labels ──
+  const labels = (() => {
+    const sd = subdomain || "marketplace";
+    const lockRole = e.lock_role || "seller";
+    const isLocker = role === lockRole;
+    if (sd === "p2p") return {
+      lockBtn: "🔐 Lock ₿ " + fmtSats(e.amountMsats) + " for sale",
+      lockedStatus: isLocker ? "Sats locked — waiting for fiat payment" : "Sats locked — send fiat to the seller",
+      releaseBtn: role === "buyer" ? "✓ I sent the fiat" : role === "seller" ? "✓ Fiat received" : t("release"),
+      refundBtn: "⚠ Dispute",
+      claimBtn: "⚡ Receive " + fmtSats(e.amountMsats) + " sats",
+      voteConfirmRelease: role === "buyer" ? "Confirm you sent the fiat payment?" : "Confirm you received the fiat?",
+      voteConfirmRefund: "Open a dispute? The arbiter will review.",
+    };
+    if (sd === "market") return {
+      lockBtn: "🔐 Pay ₿ " + fmtSats(e.amountMsats),
+      lockedStatus: isLocker ? "Payment locked — waiting for delivery" : "Payment secured — ship the item",
+      releaseBtn: role === "buyer" ? "✓ I received it" : role === "seller" ? "✓ Item delivered" : t("release"),
+      refundBtn: "⚠ Dispute",
+      claimBtn: "⚡ Receive ₿ " + fmtSats(e.amountMsats) + " payment",
+      voteConfirmRelease: role === "buyer" ? "Confirm you received the item?" : "Confirm the item was delivered?",
+      voteConfirmRefund: "Open a dispute? The arbiter will review.",
+    };
+    if (sd === "lending") return {
+      lockBtn: "🤝 Lend ₿ " + fmtSats(e.amountMsats),
+      lockedStatus: isLocker ? "Loan locked — awaiting borrower" : "Loan available — confirm receipt",
+      releaseBtn: role === "buyer" ? "✓ Loan received" : role === "seller" ? "✓ Confirm disbursement" : t("release"),
+      refundBtn: "⚠ Dispute",
+      claimBtn: "⚡ Receive ₿ " + fmtSats(e.amountMsats) + " loan",
+      voteConfirmRelease: role === "buyer" ? "Confirm you received the loan?" : "Confirm the loan was sent?",
+      voteConfirmRefund: "Open a dispute on this loan?",
+    };
+    // escrow + marketplace (legacy)
+    return {
+      lockBtn: "🔐 Lock ₿ " + fmtSats(e.amountMsats),
+      lockedStatus: "Secured in vault",
+      releaseBtn: t("release") || "Release",
+      refundBtn: t("refund") || "Refund",
+      claimBtn: "⚡ Receive " + fmtSats(e.amountMsats) + " sats",
+      voteConfirmRelease: "Release funds to the buyer?",
+      voteConfirmRefund: "Refund funds to the seller?",
+    };
+  })();
 
   // Fetch Shamir share when escrow is LOCKED
   useEffect(() => {
@@ -1517,6 +1561,13 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           </div>
         )}
 
+        {/* ── Contextual status message per subdomain ── */}
+        {status === "LOCKED" && subdomain && subdomain !== "escrow" && subdomain !== "marketplace" && (
+          <div style={{ textAlign: "center", padding: "6px 14px", marginBottom: 8, fontSize: 12, fontWeight: 600, color: subdomain === "p2p" ? "#f59e0b" : subdomain === "market" ? "#a78bfa" : "#10b981" }}>
+            {labels.lockedStatus}
+          </div>
+        )}
+
         {/* ── Participants (animated SVG nodes) ──────────────────── */}
         <div style={{ display: "flex", justifyContent: "center", alignItems: "flex-start", gap: 0, padding: "0 8px 16px" }}>
           <ParticipantNode label="Seller" IconComp={SvgSeller} pkDisplay={getPkDisplay(e.participants?.seller)} joined={isParticipantJoined(e.participants?.seller)} voted={!!e.votes?.voters?.find(v => v.role === "seller")} voteOutcome={sellerOutcome} resolvedOutcome={e.resolvedOutcome} isDispute={buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome} isYou={role === "seller"} delay={0} />
@@ -1574,8 +1625,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
                     </div>
                   ) : (
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>{t("confirm")}</button>
-                      <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote("refund")} disabled={loading}>{t("dispute")}</button>
+                      <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>{labels.releaseBtn}</button>
+                      <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote("refund")} disabled={loading}>{labels.refundBtn}</button>
                     </div>
                   )}
                 </div>
@@ -1596,8 +1647,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
                     </div>
                   ) : (
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>{t("release")}</button>
-                      <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote("refund")} disabled={loading}>{t("refund")}</button>
+                      <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>{labels.releaseBtn}</button>
+                      <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote("refund")} disabled={loading}>{labels.refundBtn}</button>
                     </div>
                   )}
                 </div>
@@ -1655,7 +1706,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {/* ── E-cash lock (primary) ── */}
         {canLock && (
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", fontSize: 16, padding: "16px 20px", marginBottom: 8 }} onClick={handleLockEcash} disabled={locking}>
-            {locking ? "Locking e-cash…" : "🔐 Lock ₿ " + fmtSats(e.amountMsats)}
+            {locking ? "Locking e-cash…" : labels.lockBtn}
           </button>
         )}
         {/* ── Lightning lock (commented out — kept for future reference) ──
