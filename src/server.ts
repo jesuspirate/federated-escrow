@@ -37,8 +37,16 @@ app.use(express.static(distPath, {
     }
   }
 }));
-app.get("/{0,}", (_req, res) => {
+app.get("/{0,}", (req, res) => {
   res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  // Serve landing page for root domain (satoshimarket.app)
+  const host = req.hostname || "";
+  if (!host.startsWith("escrow.") && !host.startsWith("p2p.") && !host.startsWith("market.") && !host.startsWith("lending.") && !host.startsWith("sandbox.")) {
+    const landingPath = path.join(distPath, "landing.html");
+    if (require("fs").existsSync(landingPath)) {
+      return res.sendFile(landingPath);
+    }
+  }
   res.sendFile(path.join(distPath, "index.html"));
 });
 

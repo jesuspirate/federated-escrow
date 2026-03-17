@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SatoshiMarket — The Bitcoin-Native Marketplace Protocol</title>
+<meta name="description" content="Trade, lend, and transact with Bitcoin — secured by Shamir 2-of-3 escrow on Fedimint e-cash. Non-custodial. No KYC. Unstoppable.">
+<link rel="icon" href="/favicon.png">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&display=swap');
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #06080f;
+  --surface: #0d1117;
+  --border: #1b2332;
+  --text: #e6edf3;
+  --dim: #8b949e;
+  --muted: #484f58;
+  --orange: #f59e0b;
+  --purple: #a78bfa;
+  --green: #10b981;
+  --blue: #3b82f6;
+  --red: #ef4444;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  line-height: 1.5;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* Animations */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes glow { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.35; } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes dash { to { stroke-dashoffset: 0; } }
+
+.fade-up { animation: fadeUp 0.7s ease-out both; }
+.d1 { animation-delay: 0.1s; }
+.d2 { animation-delay: 0.2s; }
+.d3 { animation-delay: 0.3s; }
+.d4 { animation-delay: 0.4s; }
+.d5 { animation-delay: 0.5s; }
+
+/* Hero */
+.hero {
+  position: relative;
+  text-align: center;
+  padding: 80px 24px 48px;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  top: -200px; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 60%);
+  animation: glow 5s ease infinite;
+  pointer-events: none;
+}
+.hero-logo { height: 100px; margin-bottom: 20px; position: relative; animation: float 4s ease infinite; }
+.hero h1 { font-size: clamp(26px, 5vw, 42px); font-weight: 800; letter-spacing: -1px; line-height: 1.15; margin-bottom: 14px; position: relative; }
+.hero h1 span { background: linear-gradient(135deg, var(--orange), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.hero p { font-size: 15px; color: var(--dim); max-width: 420px; margin: 0 auto 28px; position: relative; }
+
+.stats { display: flex; justify-content: center; gap: 32px; position: relative; }
+.stat-value { font-size: 26px; font-weight: 800; }
+.stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+/* Products */
+.section { padding: 0 20px 48px; max-width: 600px; margin: 0 auto; }
+.section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); text-align: center; margin-bottom: 20px; }
+
+.products { display: flex; flex-direction: column; gap: 12px; }
+.product {
+  display: flex; align-items: center; gap: 14px;
+  padding: 18px 16px; border-radius: 14px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+.product:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+.product:hover .product-arrow { transform: translateX(4px); }
+.product-icon { font-size: 28px; flex-shrink: 0; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
+.product-info { flex: 1; }
+.product-name { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+.product-desc { font-size: 12px; color: var(--dim); line-height: 1.4; }
+.product-arrow { font-size: 18px; color: var(--muted); transition: transform 0.2s; flex-shrink: 0; }
+
+.product.escrow .product-icon { background: rgba(100,116,139,0.12); }
+.product.escrow .product-name { color: #94a3b8; }
+.product.p2p .product-icon { background: rgba(245,158,11,0.12); }
+.product.p2p .product-name { color: var(--orange); }
+.product.market .product-icon { background: rgba(139,92,246,0.12); }
+.product.market .product-name { color: var(--purple); }
+.product.lending .product-icon { background: rgba(16,185,129,0.12); }
+.product.lending .product-name { color: var(--green); }
+
+/* Tech grid */
+.tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tech-card {
+  padding: 16px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+}
+.tech-card .icon { font-size: 22px; margin-bottom: 8px; }
+.tech-card .name { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
+.tech-card .desc { font-size: 10px; color: var(--dim); line-height: 1.5; }
+
+/* Learn */
+.learn-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface);
+  margin-bottom: 10px;
+  transition: all 0.2s;
+}
+.learn-card:hover { border-color: var(--muted); }
+.learn-card .icon { font-size: 22px; flex-shrink: 0; }
+.learn-card .title { font-size: 13px; font-weight: 700; }
+.learn-card .sub { font-size: 11px; color: var(--dim); }
+.learn-card .arrow { margin-left: auto; color: var(--muted); }
+
+/* Community + CTA */
+.community-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+.community-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 18px; border-radius: 10px;
+  font-size: 13px; font-weight: 600;
+  border: 1px solid var(--border); transition: all 0.2s;
+}
+.community-btn:hover { transform: translateY(-1px); }
+.community-btn.en { color: var(--orange); border-color: rgba(245,158,11,0.25); background: rgba(245,158,11,0.06); }
+.community-btn.fr { color: var(--blue); border-color: rgba(59,130,246,0.25); background: rgba(59,130,246,0.06); }
+
+.cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 32px; border-radius: 12px;
+  background: linear-gradient(135deg, var(--green), #059669);
+  color: #fff; font-size: 15px; font-weight: 700;
+  box-shadow: 0 4px 24px rgba(16,185,129,0.25);
+  transition: all 0.2s;
+}
+.cta:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(16,185,129,0.35); }
+
+/* Footer */
+.footer { text-align: center; padding: 28px 20px 48px; border-top: 1px solid var(--border); }
+.footer-line { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+.footer a { color: var(--orange); font-weight: 600; margin: 0 8px; }
+.footer .sub { font-size: 10px; color: #2d333b; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<!-- Hero -->
+<div class="hero">
+  <img src="/satoshimarket-logo.png" alt="SatoshiMarket" class="hero-logo fade-up">
+  <h1 class="fade-up d1">Non-Custodial Bitcoin<br><span>Marketplace Protocol</span></h1>
+  <p class="fade-up d2">Trade, lend, and transact — secured by Shamir 2-of-3 escrow on Fedimint e-cash. No KYC. No custody. Unstoppable.</p>
+  <div class="stats fade-up d3">
+    <div><div class="stat-value" style="color:var(--orange)">2-of-3</div><div class="stat-label">Escrow</div></div>
+    <div><div class="stat-value" style="color:var(--green)">0%</div><div class="stat-label">Custody</div></div>
+    <div><div class="stat-value" style="color:var(--purple)">~1s</div><div class="stat-label">Settlement</div></div>
+  </div>
+</div>
+
+<!-- Products -->
+<div class="section">
+  <div class="section-title">Products</div>
+  <div class="products">
+    <a href="https://escrow.satoshimarket.app" class="product escrow fade-up d1">
+      <div class="product-icon">⚖️</div>
+      <div class="product-info">
+        <div class="product-name">Escrow</div>
+        <div class="product-desc">Raw 2-of-3 multisig. Lock sats, vote, claim. Any arbiter, any trade. Pure cypherpunk primitive.</div>
+      </div>
+      <div class="product-arrow">→</div>
+    </a>
+    <a href="https://p2p.satoshimarket.app" class="product p2p fade-up d2">
+      <div class="product-icon">₿</div>
+      <div class="product-info">
+        <div class="product-name">P2P Exchange</div>
+        <div class="product-desc">Buy & sell Bitcoin peer-to-peer. Seller locks sats, buyer sends fiat. Both confirm. No middleman.</div>
+      </div>
+      <div class="product-arrow">→</div>
+    </a>
+    <a href="https://market.satoshimarket.app" class="product market fade-up d3">
+      <div class="product-icon">🛒</div>
+      <div class="product-info">
+        <div class="product-name">Marketplace</div>
+        <div class="product-desc">Buy anything with Bitcoin. Escrow protects both parties. ChapSmart M-Pesa integration for East Africa.</div>
+      </div>
+      <div class="product-arrow">→</div>
+    </a>
+    <a href="https://lending.satoshimarket.app" class="product lending fade-up d4">
+      <div class="product-icon">🤝</div>
+      <div class="product-info">
+        <div class="product-name">Community Lending</div>
+        <div class="product-desc">Lend & borrow Bitcoin within your community. Repayment tracked. Trust built through escrow.</div>
+      </div>
+      <div class="product-arrow">→</div>
+    </a>
+  </div>
+</div>
+
+<!-- Tech -->
+<div class="section">
+  <div class="section-title">Built Different</div>
+  <div class="tech-grid">
+    <div class="tech-card fade-up d1"><div class="icon">🔐</div><div class="name">Shamir SSS</div><div class="desc">Notes split 2-of-3. Server can't access funds. Mathematically non-custodial.</div></div>
+    <div class="tech-card fade-up d2"><div class="icon">⚡</div><div class="name">Fedimint</div><div class="desc">Instant e-cash. No Lightning routing. Private by default.</div></div>
+    <div class="tech-card fade-up d3"><div class="icon">🔑</div><div class="name">Nostr Auth</div><div class="desc">One key. No passwords. No accounts. NIP-98 signed sessions.</div></div>
+    <div class="tech-card fade-up d4"><div class="icon">🌍</div><div class="name">M-Pesa</div><div class="desc">Bitcoin to mobile money via ChapSmart. Real-world off-ramp.</div></div>
+  </div>
+</div>
+
+<!-- Learn -->
+<div class="section">
+  <div class="section-title">Learn</div>
+  <a href="https://bitcoin.org/en/getting-started" target="_blank" class="learn-card fade-up d1">
+    <div class="icon">₿</div>
+    <div><div class="title" style="color:var(--orange)">What is Bitcoin?</div><div class="sub">Sound money for the digital age</div></div>
+    <div class="arrow">↗</div>
+  </a>
+  <a href="https://www.fedi.xyz" target="_blank" class="learn-card fade-up d2">
+    <div class="icon">🛡️</div>
+    <div><div class="title" style="color:var(--purple)">What is Fedi?</div><div class="sub">The private Bitcoin wallet for communities</div></div>
+    <div class="arrow">↗</div>
+  </a>
+  <a href="https://fedimint.org" target="_blank" class="learn-card fade-up d3">
+    <div class="icon">🏛️</div>
+    <div><div class="title" style="color:var(--green)">Federated Custody</div><div class="sub">Multi-guardian Bitcoin security</div></div>
+    <div class="arrow">↗</div>
+  </a>
+</div>
+
+<!-- Community -->
+<div class="section" style="text-align:center">
+  <div class="section-title">Community</div>
+  <div class="community-btns">
+    <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" class="community-btn en">🇬🇧 English</a>
+    <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" class="community-btn fr">🇫🇷 Français</a>
+  </div>
+  <a href="https://fedi.xyz/product" target="_blank" class="cta">📲 Download Fedi</a>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <div class="footer-line">⚡ EST. BLOCK 934,669 🥜</div>
+  <div><a href="https://github.com/jesuspirate/federated-escrow" target="_blank">GitHub ↗</a><a href="https://sandbox.satoshimarket.app">🧪 Sandbox</a></div>
+  <div class="sub">Non-custodial · Shamir 2-of-3 · Fedimint · Nostr · Built for Fedi</div>
+</div>
+
+</body>
+</html>
