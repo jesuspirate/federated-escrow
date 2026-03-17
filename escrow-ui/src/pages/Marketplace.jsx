@@ -730,7 +730,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
   };
 
   // ── Onboarding gate ─────────────────────────────────────────────
-  if (!onboarded) return <MarketplaceOnboarding onComplete={() => setOnboarded(true)} />;
+  if (!onboarded) return <MarketplaceOnboarding subdomain={subdomain} onComplete={() => setOnboarded(true)} />;
 
   return (
     <div style={M.root}>
@@ -871,16 +871,23 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
 
 const MK_ONBOARDING_KEY = "fedi-marketplace-onboarded";
 
-function MarketplaceOnboarding({ onComplete }) {
+function MarketplaceOnboarding({ onComplete, subdomain }) {
   const [step, setStep] = useState(0);
   const isBrowser = isDevMode();
 
   const steps = [
     {
       icon: "🏪",
-      title: "Welcome to the Market",
+      title: subdomain === "p2p" ? "Welcome to P2P Exchange"
+        : subdomain === "market" ? "Welcome to the Marketplace"
+        : subdomain === "lending" ? "Welcome to Community Lending"
+        : "Welcome to SatoshiMarket",
       desc: isBrowser
-        ? "A Bitcoin-native marketplace powered by federated e-cash. Browse, buy, and sell — all secured by escrow."
+        ? subdomain === "p2p" ? "Buy and sell Bitcoin peer-to-peer. Secured by 2-of-3 escrow."
+        : subdomain === "lending" ? "Community lending powered by Bitcoin. Loan and borrow with escrow protection."
+        : "A Bitcoin-native marketplace powered by federated e-cash. Browse, buy, and sell — all secured by escrow."
+        : subdomain === "p2p" ? "Trade Bitcoin for fiat with your community. Every trade protected by 2-of-3 escrow."
+        : subdomain === "lending" ? "Lend and borrow Bitcoin within your community. Escrow protects both parties."
         : "Buy and sell anything with your community. Every trade is protected by 2-of-3 escrow — no trust needed.",
     },
     {
@@ -935,10 +942,10 @@ function MarketplaceOnboarding({ onComplete }) {
           <h1 style={{ fontSize: 19, fontWeight: 700, color: "#f8fafc", margin: "0 0 8px", letterSpacing: -0.5 }}>{s.title}</h1>
           <p style={{ fontSize: 13, color: "#94a3b8", lineHeight: 1.6, margin: 0 }}>{s.desc}</p>
           {isLast && (
-            <div style={{ marginTop: 16, textAlign: "left", width: "100%" }}>
+            <div style={{ marginTop: 16, textAlign: "center", width: "100%" }}>
               {isBrowser ? (
                 <>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12, justifyContent: "center" }}>
                     <span style={{ fontSize: 18, lineHeight: 1 }}>1️⃣</span>
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#10b981", marginBottom: 4 }}>Download the Fedi App to trade real sats</div>
@@ -949,7 +956,7 @@ function MarketplaceOnboarding({ onComplete }) {
                       }}>📲 Download Fedi</a>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12, justifyContent: "center" }}>
                     <span style={{ fontSize: 18, lineHeight: 1 }}>2️⃣</span>
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#f59e0b", marginBottom: 4 }}>Join our community inside Fedi</div>
@@ -959,7 +966,7 @@ function MarketplaceOnboarding({ onComplete }) {
                       </div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, justifyContent: "center" }}>
                     <span style={{ fontSize: 18, lineHeight: 1 }}>3️⃣</span>
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", marginBottom: 4 }}>Need help? Chat with us</div>
@@ -973,7 +980,7 @@ function MarketplaceOnboarding({ onComplete }) {
               ) : (
                 <>
                   <div style={{ fontSize: 13, color: "#10b981", fontWeight: 700, textAlign: "center", marginBottom: 12 }}>🎉 You made it to SatoshiMarket!</div>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12, justifyContent: "center" }}>
                     <span style={{ fontSize: 18, lineHeight: 1 }}>1️⃣</span>
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#f59e0b", marginBottom: 4 }}>Join our community</div>
@@ -983,7 +990,7 @@ function MarketplaceOnboarding({ onComplete }) {
                       </div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, justifyContent: "center" }}>
                     <span style={{ fontSize: 18, lineHeight: 1 }}>2️⃣</span>
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", marginBottom: 4 }}>Need help? Chat with us</div>
@@ -1002,7 +1009,7 @@ function MarketplaceOnboarding({ onComplete }) {
         {/* ── Buttons right under content ── */}
         <div style={{ width: "100%", marginTop: 28 }}>
           <button onClick={handleNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: isLast ? "#f59e0b" : "transparent", border: isLast ? "none" : "1.5px solid #334155", color: isLast ? "#0c0f17" : "#f8fafc", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            {isLast ? (isBrowser ? "🧪 Explore Demo" : "🏪 Enter Market") : "Next →"}
+            {isLast ? (isBrowser ? "🧪 Explore Demo" : subdomain === "p2p" ? "₿ Start Trading" : subdomain === "lending" ? "🤝 Start Lending" : subdomain === "market" ? "🛒 Enter Market" : "🏪 Enter Market") : "Next →"}
           </button>
           {!isLast && (
             <button onClick={() => { try { localStorage.setItem(MK_ONBOARDING_KEY, "1"); } catch {} onComplete(); }}

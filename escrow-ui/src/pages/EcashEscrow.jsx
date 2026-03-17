@@ -183,13 +183,12 @@ function getSessionToken_escrow() {
         window.__smTokenExpiry = Date.now() + (data.expiresIn || 1800) * 1000;
       }
       return window.__smToken || null;
-    } catch (err) {
-      console.warn("[session] Failed:", err);
-      window.__smTokenFetching = null;
+    } catch {
       return null;
     }
   })();
-  return window.__smTokenFetching;
+  window.__smTokenPromise = fetchPromise;
+  return fetchPromise.finally(() => { window.__smTokenPromise = null; });
 }
 
 async function api(path, opts = {}, _retries = 2) {
@@ -857,7 +856,7 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
         ::-webkit-scrollbar { width: 0; }
       `}</style>
       <Toast {...toast} />
-      {view === "list" && <ListView escrows={escrows} pubkey={pubkey} loading={loading} onOpen={openDetail} onCreate={() => setView("create")} onJoin={() => setView("join")} onRefresh={loadEscrows} locale={locale} onSwitchLocale={switchLocale} onSwitchToMarketplace={onSwitchToMarketplace} />}
+      {view === "list" && <ListView escrows={escrows} pubkey={pubkey} loading={loading} onOpen={openDetail} onCreate={() => setView("create")} onJoin={() => setView("join")} onRefresh={loadEscrows} locale={locale} onSwitchLocale={switchLocale} onSwitchToMarketplace={onSwitchToMarketplace} subdomain={subdomain} />}
       {view === "create" && <CreateView pubkey={pubkey} locale={locale} onBack={() => setView("list")} onCreated={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "join" && <JoinView pubkey={pubkey} onBack={() => setView("list")} onJoined={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "detail" && selected && <DetailView escrow={selected} pubkey={pubkey} onBack={() => {
@@ -948,7 +947,7 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
 // LIST VIEW
 // ═══════════════════════════════════════════════════════════════════════
 
-function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefresh, locale, onSwitchLocale, onSwitchToMarketplace }) {
+function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefresh, locale, onSwitchLocale, onSwitchToMarketplace, subdomain }) {
   const [escrowSearch, setEscrowSearch] = useState("");
   const filteredEscrows = escrows.filter(e => {
     if (!escrowSearch.trim()) return true;
@@ -973,7 +972,7 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
       </div>
 
       <div style={{ display: "flex", gap: 10, margin: "0 0 12px" }}>
-        <button style={{ ...S.primaryBtn, flex: 1, justifyContent: "center" }} onClick={() => onSwitchToMarketplace()}>🏪 {t("mkTitle") || "Marketplace"}</button>
+        {subdomain !== "escrow" && <button style={{ ...S.primaryBtn, flex: 1, justifyContent: "center" }} onClick={() => onSwitchToMarketplace()}>🏪 {t("mkTitle") || "Marketplace"}</button>}
       </div>
       <div style={{ display: "flex", gap: 8, margin: "0 0 12px" }}>
         <button style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "10px 14px", borderRadius: 10, background: "#111827", border: "1px solid #1e293b", color: "#94a3b8", fontSize: 13, fontWeight: 600, cursor: "pointer" }} onClick={onCreate}>+ {t("createEscrow")}</button>
@@ -1209,18 +1208,14 @@ function TradeChat({ escrowId, pubkey, participants }) {
     try {
       const res = await chatFetch("/" + escrowId + "/messages?after=" + lastTs.current);
       if (res.messages && res.messages.length > 0) {
-        // Decrypt each message
-        const decrypted = [];
-        for (const msg of res.messages) {
-          try {
-            const text = await window.nostr.nip44.decrypt(msg.sender_pubkey, msg.encrypted);
-            decrypted.push({ ...msg, text });
-          } catch {
-            decrypted.push({ ...msg, text: "[encrypted]" });
-          }
+        const newMsgs = res.messages.map(msg => ({
+          ...msg,
+          text: msg.encrypted || "[empty]",
+        }));
+        for (const msg of newMsgs) {
           lastTs.current = Math.max(lastTs.current, msg.timestamp);
         }
-        setMessages(prev => [...prev, ...decrypted]);
+        setMessages(prev => [...prev, ...newMsgs]);
         setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
       }
     } catch {}
@@ -1237,14 +1232,10 @@ function TradeChat({ escrowId, pubkey, participants }) {
     if (!draft.trim() || sending) return;
     setSending(true);
     try {
-      // Encrypt to self (all participants read from their own decryption)
-      // In practice, we encrypt to our own pubkey — other participants
-      // will see [encrypted] unless we encrypt per-recipient
-      // Simple approach: encrypt to self, server stores ciphertext
-      const encrypted = await window.nostr.nip44.encrypt(pubkey, draft.trim());
+      // Send message — server stores it, only authenticated participants can read
       await chatFetch("/" + escrowId + "/messages", {
         method: "POST",
-        body: JSON.stringify({ encrypted }),
+        body: JSON.stringify({ encrypted: draft.trim() }),
       });
       setDraft("");
       loadMessages();
