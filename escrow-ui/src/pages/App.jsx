@@ -45,6 +45,233 @@ function _isSandboxCheck() {
 
 // ═══════════════════════════════════════════════════════════════════════
 
+// ── SatoshiMarket Landing Page ────────────────────────────────────────────
+// The main satoshimarket.app domain showcases all 4 products
+
+function LandingPage() {
+  const products = [
+    {
+      name: "Escrow",
+      emoji: "⚖️",
+      tagline: "Raw 2-of-3 multisig escrow",
+      desc: "Lock sats, vote, claim. Pure cypherpunk primitive. Any arbiter, any trade, any amount.",
+      url: "https://escrow.satoshimarket.app",
+      color: "#64748b",
+      bg: "rgba(100,116,139,0.08)",
+      border: "rgba(100,116,139,0.2)",
+    },
+    {
+      name: "P2P Exchange",
+      emoji: "₿",
+      tagline: "Buy & sell Bitcoin peer-to-peer",
+      desc: "Seller locks sats, buyer sends fiat. Both confirm. No middleman, no KYC, pure freedom.",
+      url: "https://p2p.satoshimarket.app",
+      color: "#f59e0b",
+      bg: "rgba(245,158,11,0.08)",
+      border: "rgba(245,158,11,0.2)",
+    },
+    {
+      name: "Marketplace",
+      emoji: "🛒",
+      tagline: "Buy anything with Bitcoin",
+      desc: "Buyer pays with sats, seller ships. Escrow protects both. ChapSmart M-Pesa integration for East Africa.",
+      url: "https://market.satoshimarket.app",
+      color: "#a78bfa",
+      bg: "rgba(139,92,246,0.08)",
+      border: "rgba(139,92,246,0.2)",
+    },
+    {
+      name: "Community Lending",
+      emoji: "🤝",
+      tagline: "Lend & borrow within your community",
+      desc: "Lender locks sats, borrower confirms. Repayment tracked. Trust built through escrow.",
+      url: "https://lending.satoshimarket.app",
+      color: "#10b981",
+      bg: "rgba(16,185,129,0.08)",
+      border: "rgba(16,185,129,0.2)",
+    },
+  ];
+
+  const features = [
+    { icon: "🔐", title: "Shamir Secret Sharing", desc: "E-cash notes split into 2-of-3 shares. Server never holds full funds. Mathematically non-custodial." },
+    { icon: "⚡", title: "Fedimint E-Cash", desc: "Instant, private transactions powered by federated e-cash. No Lightning routing fees, no waiting." },
+    { icon: "🔑", title: "Nostr Authentication", desc: "One key, one identity. NIP-98 signed sessions. No passwords, no emails, no accounts to manage." },
+    { icon: "🌍", title: "M-Pesa Integration", desc: "Bitcoin to mobile money via ChapSmart. Send TZS, buy airtime, or purchase sats from East Africa." },
+  ];
+
+  return (
+    <div style={{ background: "#0a0e17", minHeight: "100vh", color: "#f8fafc", fontFamily: "'SF Pro Text', -apple-system, system-ui, sans-serif" }}>
+      <style>{`
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes glow { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.6; } }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+      `}</style>
+
+      {/* ── Hero ── */}
+      <div style={{ textAlign: "center", padding: "60px 24px 40px", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(245,158,11,0.08) 0%, transparent 70%)", animation: "glow 4s ease infinite", pointerEvents: "none" }} />
+        
+        <img src="/satoshimarket-logo.png" alt="SatoshiMarket" style={{ height: 120, objectFit: "contain", animation: "fadeUp 0.8s ease-out", position: "relative" }} />
+        
+        <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: -1, margin: "16px 0 8px", animation: "fadeUp 0.8s ease-out 0.1s both", position: "relative" }}>
+          The Bitcoin-Native<br/><span style={{ color: "#f59e0b" }}>Marketplace Protocol</span>
+        </h1>
+        
+        <p style={{ fontSize: 14, color: "#94a3b8", maxWidth: 360, margin: "0 auto 24px", lineHeight: 1.6, animation: "fadeUp 0.8s ease-out 0.2s both", position: "relative" }}>
+          Trade, lend, and transact with Bitcoin — secured by Shamir 2-of-3 escrow on Fedimint e-cash. Non-custodial. No KYC. Unstoppable.
+        </p>
+
+        <div style={{ display: "flex", justifyContent: "center", gap: 24, flexWrap: "wrap", animation: "fadeUp 0.8s ease-out 0.3s both", position: "relative" }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "#f59e0b" }}>2-of-3</div>
+            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Escrow</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "#10b981" }}>0%</div>
+            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Custody</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "#a78bfa" }}>~1s</div>
+            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Settlement</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Products ── */}
+      <div style={{ padding: "0 16px 32px" }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, textAlign: "center", marginBottom: 20, color: "#e2e8f0" }}>Four Products, One Protocol</h2>
+        
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {products.map((p, i) => (
+            <a key={p.name} href={p.url} style={{
+              display: "block", padding: "18px 16px", borderRadius: 14,
+              background: p.bg, border: "1px solid " + p.border,
+              textDecoration: "none", color: "#f8fafc",
+              animation: "fadeUp 0.6s ease-out " + (0.1 + i * 0.1) + "s both",
+              transition: "transform 0.2s, box-shadow 0.2s",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+                <span style={{ fontSize: 24 }}>{p.emoji}</span>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: p.color }}>{p.name}</div>
+                  <div style={{ fontSize: 11, color: "#94a3b8" }}>{p.tagline}</div>
+                </div>
+                <span style={{ marginLeft: "auto", fontSize: 18, color: "#475569" }}>→</span>
+              </div>
+              <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.5, paddingLeft: 36 }}>{p.desc}</div>
+            </a>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Technology ── */}
+      <div style={{ padding: "0 16px 32px" }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, textAlign: "center", marginBottom: 20, color: "#e2e8f0" }}>Built Different</h2>
+        
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {features.map((f, i) => (
+            <div key={f.title} style={{
+              padding: 14, borderRadius: 12,
+              background: "#111827", border: "1px solid #1e293b",
+              animation: "fadeUp 0.6s ease-out " + (0.2 + i * 0.1) + "s both",
+            }}>
+              <div style={{ fontSize: 24, marginBottom: 6 }}>{f.icon}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>{f.title}</div>
+              <div style={{ fontSize: 10, color: "#94a3b8", lineHeight: 1.5 }}>{f.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── What is Fedi / Bitcoin ── */}
+      <div style={{ padding: "0 16px 32px" }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, textAlign: "center", marginBottom: 20, color: "#e2e8f0" }}>New to Bitcoin?</h2>
+        
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <a href="https://bitcoin.org/en/getting-started" target="_blank" rel="noopener noreferrer" style={{
+            display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderRadius: 12,
+            background: "rgba(247,147,26,0.06)", border: "1px solid rgba(247,147,26,0.15)",
+            textDecoration: "none", color: "#f8fafc",
+          }}>
+            <span style={{ fontSize: 24 }}>₿</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#f7931a" }}>What is Bitcoin?</div>
+              <div style={{ fontSize: 11, color: "#94a3b8" }}>Sound money for the digital age. Peer-to-peer, censorship-resistant, finite supply.</div>
+            </div>
+          </a>
+          
+          <a href="https://www.fedi.xyz" target="_blank" rel="noopener noreferrer" style={{
+            display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderRadius: 12,
+            background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)",
+            textDecoration: "none", color: "#f8fafc",
+          }}>
+            <span style={{ fontSize: 24 }}>🛡️</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#a78bfa" }}>What is Fedi?</div>
+              <div style={{ fontSize: 11, color: "#94a3b8" }}>Federated custody for Bitcoin communities. Your keys, your community, your money.</div>
+            </div>
+          </a>
+          
+          <a href="https://fedimint.org" target="_blank" rel="noopener noreferrer" style={{
+            display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderRadius: 12,
+            background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)",
+            textDecoration: "none", color: "#f8fafc",
+          }}>
+            <span style={{ fontSize: 24 }}>🏛️</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#10b981" }}>What is Federated Custody?</div>
+              <div style={{ fontSize: 11, color: "#94a3b8" }}>Multi-guardian Bitcoin custody. No single point of failure. Community-managed security.</div>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      {/* ── Community ── */}
+      <div style={{ padding: "0 16px 32px" }}>
+        <h2 style={{ fontSize: 18, fontWeight: 800, textAlign: "center", marginBottom: 20, color: "#e2e8f0" }}>Join the Community</h2>
+        
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+          <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" style={{
+            display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 16px", borderRadius: 10,
+            background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)",
+            color: "#f59e0b", fontSize: 13, fontWeight: 600, textDecoration: "none",
+          }}>🇬🇧 English Community</a>
+          
+          <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" style={{
+            display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 16px", borderRadius: 10,
+            background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)",
+            color: "#3b82f6", fontSize: 13, fontWeight: 600, textDecoration: "none",
+          }}>🇫🇷 Communauté Française</a>
+        </div>
+      </div>
+
+      {/* ── Download ── */}
+      <div style={{ padding: "0 16px 32px", textAlign: "center" }}>
+        <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{
+          display: "inline-flex", alignItems: "center", gap: 8, padding: "14px 28px", borderRadius: 12,
+          background: "linear-gradient(135deg, #10b981, #059669)",
+          color: "#fff", fontSize: 15, fontWeight: 700, textDecoration: "none",
+          boxShadow: "0 4px 20px rgba(16,185,129,0.3)",
+        }}>📲 Download Fedi to Start Trading</a>
+      </div>
+
+      {/* ── Footer ── */}
+      <div style={{ textAlign: "center", padding: "24px 16px 40px", borderTop: "1px solid #1e293b" }}>
+        <div style={{ fontSize: 11, color: "#475569", marginBottom: 8 }}>
+          ⚡ EST. BLOCK 934,669 🥜 · Open source
+        </div>
+        <a href="https://github.com/jesuspirate/federated-escrow" target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b", fontSize: 12, textDecoration: "none", fontWeight: 600 }}>
+          GitHub ↗
+        </a>
+        <div style={{ fontSize: 10, color: "#334155", marginTop: 12 }}>
+          Non-custodial · Shamir 2-of-3 · Fedimint · Nostr · Built for Fedi
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 export default function App() {
   // ── Subdomain routing ──────────────────────────────────────────
   const subdomain = (() => {
@@ -113,6 +340,11 @@ export default function App() {
     setInitialMarketplaceEscrowId("__ORDERS__");
     setActiveApp("marketplace");
   }, []);
+
+  // ── Landing page for root domain ──────────────────────────────
+  if (subdomain === "marketplace" && !_isSandboxCheck()) {
+    return <LandingPage />;
+  }
 
   // ── Loading state ───────────────────────────────────────────────
   if (!pubkey) {
