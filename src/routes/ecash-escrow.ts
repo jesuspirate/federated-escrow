@@ -839,6 +839,19 @@ router.post("/:id/claim", (req: AuthenticatedRequest, res: Response) => {
     const winner = row.resolved_outcome === "release" ? "buyer" : "seller";
     if (role !== winner) return res.status(403).json({ error: `Only the ${winner} can claim. Escrow resolved as "${row.resolved_outcome}".` });
 
+    // For Shamir escrows, claim just marks status — notes reconstructed at ecash-payout
+    if (row.locked_notes === "SHAMIR") {
+      DB.claimEscrowShamir(row.id, role);
+      return res.json({
+        id: row.id, status: "CLAIMED", claimedBy: role,
+        payoutReady: false, // Notes come from /ecash-payout via Shamir reconstruction
+        lockMode: "ecash",
+        amountMsats: row.arbiter_fee_msats ? row.amount_msats - row.arbiter_fee_msats : row.amount_msats,
+        amountSats: Math.floor((row.arbiter_fee_msats ? row.amount_msats - row.arbiter_fee_msats : row.amount_msats) / 1000),
+        message: "Claimed! Tap Receive to get your e-cash.",
+      });
+    }
+
     const notes = DB.claimEscrow(row.id, role);
     if (!notes) return res.status(500).json({ error: "No notes found in escrow" });
 

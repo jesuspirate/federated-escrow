@@ -156,7 +156,7 @@ export interface VoteRow {
 }
 
 
-  if (currentVersion < 1) {
+  if (currentVersion < 2) {
     db.exec(`
       ALTER TABLE escrows ADD COLUMN shamir_seller TEXT;
       ALTER TABLE escrows ADD COLUMN shamir_buyer TEXT;
@@ -164,8 +164,8 @@ export interface VoteRow {
       ALTER TABLE escrows ADD COLUMN shamir_share_seller TEXT;
       ALTER TABLE escrows ADD COLUMN shamir_share_buyer TEXT;
     `);
-    db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(1);
-    console.log("[db] Migration 1: Shamir share columns added");
+    db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(2);
+    console.log("[db] Migration 2: Shamir share columns added");
   }
 
 // ── Prepared Statements ───────────────────────────────────────────────────
@@ -379,6 +379,11 @@ export function claimEscrow(id: string, claimedBy: string): string | null {
   const notes = decryptNotes(escrow.locked_notes);
   stmts.claim.run({ id, claimed_by: claimedBy, claimed_at: Date.now(), updated_at: Date.now() });
   return notes;
+}
+
+export function claimEscrowShamir(id: string, claimedBy: string): void {
+  const now = Date.now();
+  stmts.claim.run({ id, claimed_by: claimedBy, claimed_at: now, updated_at: now });
 }
 
 export function completeEscrow(id: string): void {
