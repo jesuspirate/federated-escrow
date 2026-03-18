@@ -1516,6 +1516,27 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         return;
       }
 
+      // POST-GENERATE federation check: verify notes prefix matches expected federation
+      const KNOWN_FED_PREFIXES = { "AwEEiItw7A": "m1.8fa.in" };
+      const escrowFed = e.federationId || e.federation_id;
+      if (escrowFed && notes.length > 10) {
+        const notePrefix = notes.substring(0, 10);
+        const noteFed = KNOWN_FED_PREFIXES[notePrefix] || localStorage.getItem("fed_prefix_" + notePrefix);
+        if (noteFed && noteFed !== escrowFed) {
+          showToast("Wrong federation! Sats from " + noteFed + " but trade requires " + escrowFed + ". Returning sats...", "error");
+          try { await window.fediInternal.receiveEcash(notes); showToast("Sats returned to your wallet."); } catch { showToast("Auto-return failed. Save these notes: " + notes.substring(0, 40) + "...", "error"); }
+          setLocking(false);
+          return;
+        }
+        // Store new prefix mapping
+        if (!noteFed) { try { localStorage.setItem("fed_prefix_" + notePrefix, escrowFed); } catch {} }
+      }
+
+      // Notes valid — proceed (remove duplicate return below)
+      if (false) {
+        return;
+      }
+
       showToast("Locking e-cash in escrow...");
       // Use direct fetch with Bearer token — never trigger NIP-98 during lock
       const lockHeaders = { "Content-Type": "application/json" };
