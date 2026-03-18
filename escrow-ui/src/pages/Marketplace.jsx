@@ -818,6 +818,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
       {view === "create" && (
         <CreateListingView
           pubkey={pubkey}
+          subdomain={subdomain}
           onBack={() => setView("browse")}
           onCreated={(id) => { openListing(id); }}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
@@ -1268,9 +1269,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         {/* ── Compact stats row ── */}
         {!searchOpen && listings.length > 0 && (
           <div style={{ display: "flex", gap: 12, padding: "0 0 10px", fontSize: 12, color: "#64748b" }}>
-            <span><span style={{ fontWeight: 800, color: "#a78bfa" }}>{listings.length - p2pCount - lendingCount}</span> listings</span>
-            {p2pCount > 0 && <span><span style={{ fontWeight: 800, color: "#f59e0b" }}>{p2pCount}</span> P2P</span>}
-            {lendingCount > 0 && <span><span style={{ fontWeight: 800, color: "#10b981" }}>{lendingCount}</span> loans</span>}
+            <span><span style={{ fontWeight: 800, color: subdomain === "p2p" ? "#f59e0b" : subdomain === "lending" ? "#10b981" : "#a78bfa" }}>{filteredListings.filter(l => l.sellerPubkey !== pubkey).length}</span> listings</span>
             {mineCount > 0 && <span><span style={{ fontWeight: 800, color: "#f472b6" }}>{mineCount}</span> mine</span>}
             <span style={{ marginLeft: "auto", color: "#475569" }}>2-of-3 escrow</span>
           </div>
@@ -1300,8 +1299,8 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         {/* ── Category quick-filters ── */}
         <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 10, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
         {CATEGORIES.filter(c => {
-          if (subdomain === "p2p") return c.key === "all" || c.key === "mine" || c.key === "sats-for-fiat";
-          if (subdomain === "lending") return c.key === "all" || c.key === "mine" || c.key === "lending";
+          if (subdomain === "p2p") return c.key === "all" || c.key === "mine";
+          if (subdomain === "lending") return c.key === "all" || c.key === "mine";
           if (subdomain === "market") return c.key !== "sats-for-fiat" && c.key !== "lending";
           return true;
         }).map(c => (
@@ -1769,14 +1768,14 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
 // CREATE LISTING VIEW
 // ═══════════════════════════════════════════════════════════════════════
 
-function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setLoading }) {
+function CreateListingView({ pubkey, subdomain, onBack, onCreated, showToast, loading, setLoading }) {
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [price, setPrice] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [terms, setTerms] = useState("");
-  const [category, setCategory] = useState("");
+  const [category, setCategory] = useState(subdomain === "p2p" ? "sats-for-fiat" : subdomain === "lending" ? "lending" : "");
   const [condition, setCondition] = useState("new");
   const [quantity, setQuantity] = useState("1");
   const [fiatCurrency, setFiatCurrency] = useState("");
@@ -1886,8 +1885,8 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
       <div style={M.formGroup}>
         <label style={M.label}>{t("mkCategory")}</label>
 
-        {/* Bitcoin categories */}
-        <div style={{ fontSize: 10, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>₿ Bitcoin</div>
+        {/* Bitcoin categories — hidden on market subdomain */}
+        {subdomain !== "market" && <><div style={{ fontSize: 10, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>₿ Bitcoin</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
           {[
             { value: SATS_FOR_FIAT, label: "₿ P2P Trade", color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
@@ -1908,8 +1907,9 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
           })}
         </div>
 
-        {/* Marketplace categories */}
-        <div style={{ fontSize: 10, color: "#a78bfa", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>🛒 Marketplace</div>
+        </>}
+        {/* Marketplace categories — hidden on p2p/lending subdomain */}
+        {subdomain !== "p2p" && subdomain !== "lending" && <><div style={{ fontSize: 10, color: "#a78bfa", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>🛒 Marketplace</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
           {[
             { value: "electronics", label: "📱 Electronics" },
@@ -1933,10 +1933,11 @@ function CreateListingView({ pubkey, onBack, onCreated, showToast, loading, setL
             );
           })}
         </div>
-        {!isP2P && !isLoan && (
+        </>}
+        {!isP2P && !isLoan && subdomain !== "p2p" && subdomain !== "lending" && (
           <input style={M.input} placeholder="Or type a custom category..." value={isSpecialCategory(category) ? "" : category} onChange={e => setCategory(e.target.value)} />
         )}
-      </div>
+      </div>}
 
       {/* ── P2P mode banner ── */}
       {isP2P && (
@@ -2357,10 +2358,18 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
     const acct = await ensureAccount();
     if (!acct) { setLoading(false); return; }
     try {
-      // Normalize phone: strip +, ensure 0xxx format for Chapsmart
+      // Normalize phone: strip everything, ensure 0xxx format for Chapsmart
       let cleanPhone = phone.replace(/[^0-9]/g, "");
+      // Strip country code variants
       if (cleanPhone.startsWith("255")) cleanPhone = "0" + cleanPhone.substring(3);
-      if (!cleanPhone.startsWith("0")) cleanPhone = "0" + cleanPhone;
+      if (cleanPhone.startsWith("0255")) cleanPhone = "0" + cleanPhone.substring(4);
+      // Ensure starts with 0
+      if (!cleanPhone.startsWith("0") && cleanPhone.length >= 9) cleanPhone = "0" + cleanPhone;
+      // Validate: must be 10 digits starting with 0
+      if (cleanPhone.length !== 10 || !cleanPhone.startsWith("0")) {
+        showToast("Phone must be 10 digits starting with 0 (e.g. 0741000000)", "error");
+        return;
+      }
 
       const endpoint = tab === "airtime" ? "/api/chapsmart/airtime/quote" : "/api/chapsmart/quote";
       const body = tab === "airtime"

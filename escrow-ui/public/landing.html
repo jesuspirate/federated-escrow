@@ -123,6 +123,7 @@ body::after {
     radial-gradient(ellipse at 50% 80%, rgba(16,185,129,0.02) 0%, transparent 40%);
   pointer-events: none;
 }
+
 .hero-badge {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 6px 16px; border-radius: 99px;
@@ -342,11 +343,12 @@ body::after {
   .nav { padding: 14px 20px; }
   .nav-links { display: none; }
   .hero { padding: 100px 20px 60px; }
-  .hero-stats { gap: 32px; }
+  .hero-stats { gap: 20px; flex-wrap: wrap; justify-content: center; }
   .manifesto { padding: 80px 20px; }
   .versus { padding: 60px 16px; }
-  .vs-table { font-size: 12px; }
-  .vs-table th, .vs-table td { padding: 10px 8px; }
+  .vs-table { font-size: 11px; display: block; overflow-x: auto; white-space: nowrap; }
+  .vs-table th, .vs-table td { padding: 8px 6px; min-width: 80px; }
+  .vs-table td.feature { min-width: 100px; white-space: normal; }
   .products { padding: 80px 20px; }
   .product-grid { grid-template-columns: 1fr; }
   .tech { padding: 80px 20px; }
@@ -377,7 +379,7 @@ body::after {
 
 <!-- HERO -->
 <section class="hero">
-  <img src="/satoshimarket-logo.png" alt="SatoshiMarket" class="reveal" style="height:80px;margin-bottom:24px;filter:drop-shadow(0 4px 20px rgba(245,158,11,0.2));">
+  <img src="/satoshimarket-logo.png" alt="SatoshiMarket" class="reveal" style="height:160px;margin-bottom:32px;filter:drop-shadow(0 8px 40px rgba(245,158,11,0.3));">
   <div class="hero-badge reveal">Non-Custodial · Shamir 2-of-3 · Live on Mainnet</div>
   <h1 class="reveal d1">The world doesn't need<br>another exchange.<br>It needs <em>trustless trades.</em></h1>
   <p class="hero-sub reveal d2">SatoshiMarket is a Bitcoin-native protocol for P2P exchange, marketplace commerce, and community lending — powered by Fedimint e-cash and Shamir Secret Sharing. No custody. No KYC. Instant settlement.</p>
@@ -386,31 +388,6 @@ body::after {
     <div class="hero-stat"><div class="hero-stat-value" style="color:var(--green)">0%</div><div class="hero-stat-label">Custody risk</div></div>
     <div class="hero-stat"><div class="hero-stat-value" style="color:var(--purple)">&lt;1s</div><div class="hero-stat-label">Settlement</div></div>
     <div class="hero-stat"><div class="hero-stat-value" style="color:var(--blue)">2M</div><div class="hero-stat-label">Max sats/trade</div></div>
-  </div>
-  <!-- Trade Federation Battleship -->
-  <div style="margin-top:48px;opacity:0.12;animation:float 6s ease infinite;" class="reveal d5">
-    <svg width="400" height="120" viewBox="0 0 400 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <!-- Main ring structure -->
-      <ellipse cx="200" cy="60" rx="180" ry="40" stroke="#f59e0b" stroke-width="1.5" fill="none" opacity="0.6"/>
-      <ellipse cx="200" cy="60" rx="160" ry="35" stroke="#f59e0b" stroke-width="0.8" fill="none" opacity="0.3"/>
-      <ellipse cx="200" cy="60" rx="140" ry="30" stroke="#f59e0b" stroke-width="0.5" fill="none" opacity="0.2"/>
-      <!-- Core sphere -->
-      <circle cx="200" cy="60" r="18" fill="url(#coreGrad)" opacity="0.8"/>
-      <circle cx="200" cy="60" r="22" stroke="#f59e0b" stroke-width="0.8" fill="none" opacity="0.4"/>
-      <!-- Engine pods -->
-      <ellipse cx="60" cy="60" rx="12" ry="8" fill="#1a2035" stroke="#f59e0b" stroke-width="0.8" opacity="0.6"/>
-      <ellipse cx="340" cy="60" rx="12" ry="8" fill="#1a2035" stroke="#f59e0b" stroke-width="0.8" opacity="0.6"/>
-      <!-- Connecting arms -->
-      <line x1="72" y1="60" x2="178" y2="60" stroke="#f59e0b" stroke-width="0.5" opacity="0.3"/>
-      <line x1="222" y1="60" x2="328" y2="60" stroke="#f59e0b" stroke-width="0.5" opacity="0.3"/>
-      <!-- Detail lines on ring -->
-      <line x1="40" y1="45" x2="40" y2="75" stroke="#f59e0b" stroke-width="0.3" opacity="0.2"/>
-      <line x1="100" y1="30" x2="100" y2="90" stroke="#f59e0b" stroke-width="0.3" opacity="0.2"/>
-      <line x1="300" y1="30" x2="300" y2="90" stroke="#f59e0b" stroke-width="0.3" opacity="0.2"/>
-      <line x1="360" y1="45" x2="360" y2="75" stroke="#f59e0b" stroke-width="0.3" opacity="0.2"/>
-      <!-- Glow -->
-      <defs><radialGradient id="coreGrad"><stop offset="0%" stop-color="#f59e0b" stop-opacity="0.6"/><stop offset="100%" stop-color="#f59e0b" stop-opacity="0.05"/></radialGradient></defs>
-    </svg>
   </div>
   <div class="hero-scroll">↓ Scroll to explore</div>
 </section>

@@ -1226,7 +1226,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
   useEffect(() => {
     if (!open || !escrowId) return;
     loadMessages();
-    pollRef.current = setInterval(loadMessages, 8000);
+    pollRef.current = setInterval(loadMessages, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [open, escrowId]);
 
