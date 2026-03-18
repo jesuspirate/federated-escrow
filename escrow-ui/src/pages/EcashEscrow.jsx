@@ -1663,7 +1663,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         // STEP 2: If we already have notes, redeem them (called from direct user tap)
         if (pendingNotes) {
           try {
-            // Federation check temporarily disabled
+            // No pre-check — let receiveEcash handle it, show helpful error after
             showToast("Redeeming " + amountSats.toLocaleString() + " sats...");
             const redeemResult = await window.fediInternal.receiveEcash(pendingNotes);
             // Confirm successful receipt
@@ -1693,7 +1693,12 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
                 showToast("E-cash from a different federation. Try again — Fedi may handle it.", "error");
               }
             } else {
-              showToast("Redeem error: " + errMsg.substring(0, 100), "error");
+              const escrowFed = e.federationId || e.federation_id || "";
+              if (escrowFed) {
+                showToast("Redeem failed. In the federation picker, select: " + escrowFed, "error");
+              } else {
+                showToast("Redeem failed. Make sure you pick the same federation the seller used.", "error");
+              }
             }
           }
           setLoading(false);
