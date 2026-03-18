@@ -523,6 +523,22 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
   // Cached active order count for glow badge on cold start (no auth needed)
   const [cachedOrderCount] = useState(() => { try { return parseInt(localStorage.getItem("sm_active_orders") || "0"); } catch { return 0; } });
 
+  // Detect user's active federation
+  const [myFederation, setMyFederation] = useState(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        if (window.fediInternal && window.fediInternal.getAuthenticatedMember) {
+          const member = await window.fediInternal.getAuthenticatedMember();
+          if (member && member.id) {
+            const parts = member.id.split(":");
+            if (parts.length >= 2) setMyFederation(parts[parts.length - 1]);
+          }
+        }
+      } catch {}
+    })();
+  }, []);
+
   // Deep-link: if arriving from escrow with an escrowId, find the linked order and open it
   useEffect(() => {
     if (!sessionReady || !initialEscrowId || !pubkey) return;
@@ -819,6 +835,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
         <CreateListingView
           pubkey={pubkey}
           subdomain={subdomain}
+          myFederation={myFederation}
           onBack={() => setView("browse")}
           onCreated={(id) => { openListing(id); }}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
@@ -1558,7 +1575,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
 // LISTING DETAIL
 // ═══════════════════════════════════════════════════════════════════════
 
-function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, showToast, loading, setLoading, onEdit, onPause, onUnpause, onDelete, fiatRates }) {
+function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, showToast, loading, setLoading, onEdit, onPause, onUnpause, onDelete, fiatRates, myFederation }) {
   const isSeller = l.sellerPubkey === pubkey;
   const canBuy = !isSeller && l.status === "active" && l.quantity > 0;
   const isP2P = isSatsForFiat(l.category);
@@ -1566,6 +1583,11 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
   const [buyAmount, setBuyAmount] = useState(hasRange ? "" : "");
 
   const handleBuy = async () => {
+    // Check federation match before buying
+    if (myFederation && l.sellerFedDomain && myFederation !== l.sellerFedDomain) {
+      showToast("This listing is from federation " + l.sellerFedDomain + " but you're on " + myFederation + ". Trades require same federation.", "error");
+      return;
+    }
     setLoading(true);
     try {
       const customMsats = hasRange && buyAmount ? parseInt(buyAmount) * 1000 : undefined;
@@ -1768,7 +1790,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
 // CREATE LISTING VIEW
 // ═══════════════════════════════════════════════════════════════════════
 
-function CreateListingView({ pubkey, subdomain, onBack, onCreated, showToast, loading, setLoading }) {
+function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated, showToast, loading, setLoading }) {
   const [title, setTitle] = useState("");
   const [desc, setDesc] = useState("");
   const [price, setPrice] = useState("");
@@ -1862,7 +1884,7 @@ function CreateListingView({ pubkey, subdomain, onBack, onCreated, showToast, lo
           category: category.trim() || undefined,
           condition: isSpecial ? "service" : condition,
           communityLink: community.trim() || undefined,
-
+          sellerFedDomain: myFederation || undefined,
           quantity: parseInt(quantity) || 1,
         }),
       });

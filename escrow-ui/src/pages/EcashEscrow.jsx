@@ -1695,9 +1695,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             } else {
               const escrowFed = e.federationId || e.federation_id || "";
               if (escrowFed) {
-                showToast("Redeem failed. In the federation picker, select: " + escrowFed, "error");
+                showToast("Cannot receive — sats locked from federation " + escrowFed + ". You must be on the same federation to claim.", "error");
               } else {
-                showToast("Redeem failed. Make sure you pick the same federation the seller used.", "error");
+                showToast("Cannot receive — you and the locker are on different federations.", "error");
               }
             }
           }
