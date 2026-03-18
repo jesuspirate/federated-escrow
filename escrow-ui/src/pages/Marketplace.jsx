@@ -2288,6 +2288,7 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
   const [invoice, setInvoice] = useState(null);
   const [result, setResult] = useState(null);
   const [polling, setPolling] = useState(false);
+  const [mpesaId, setMpesaId] = useState("");
   const pollRef = useRef(null);
 
   // Authenticate with ChapSmart via Nostr (auto signup/login)
@@ -2508,12 +2509,101 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
       {/* Step 0: Buy Sats form */}
       {step === 0 && tab === "buy" && (
         <div style={{ ...M.card, padding: 16 }}>
-          <div style={{ fontSize: 11, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>
-            Buy Sats with M-Pesa
+          <div style={{ textAlign: "center", marginBottom: 16 }}>
+            <div style={{ fontSize: 28, marginBottom: 4 }}>₿</div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: "#f59e0b" }}>Buy Sats with M-Pesa</div>
+            <div style={{ fontSize: 11, color: "#64748b" }}>Send TZS via M-Pesa, receive sats to your wallet</div>
           </div>
-          <div style={{ textAlign: "center", padding: 20, color: "#64748b", fontSize: 13 }}>
-            Coming soon — send M-Pesa, receive Lightning sats directly to your Fedi wallet.
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>Amount (TZS)</label>
+            <input style={M.input} type="number" value={amountTZS} onChange={e => setAmountTZS(e.target.value)} placeholder="5000" />
           </div>
+          <button onClick={async () => {
+            if (!amountTZS || parseInt(amountTZS) < 500) { showToast("Minimum 500 TZS", "error"); return; }
+            setLoading(true);
+            try {
+              const acct = account || await ensureAccount();
+              const res = await fetch("/api/chapsmart/buy-sats/quote", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ amountTZS: parseInt(amountTZS), accountNumber: acct }),
+              });
+              const data = await res.json();
+              if (data.success === false) { showToast(data.error || "Quote failed", "error"); setLoading(false); return; }
+              setInvoice({ ...data, type: "buy" });
+              setStep(1);
+            } catch (err) { showToast("Failed to get quote", "error"); }
+            setLoading(false);
+          }} style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontSize: 14, fontWeight: 700 }} disabled={loading}>
+            {loading ? "Getting quote..." : "Get Quote"}
+          </button>
+        </div>
+      )}
+
+      {/* Step 1: Buy Sats — show quote + M-Pesa payment */}
+      {step === 1 && tab === "buy" && invoice?.type === "buy" && (
+        <div style={{ ...M.card, padding: 16, textAlign: "center" }}>
+          <div style={{ fontSize: 28, marginBottom: 8 }}>₿</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>
+            You will receive: <span style={{ color: "#f59e0b" }}>{invoice.amountSats || invoice.satsAmount || "?"} sats</span>
+          </div>
+          <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
+            for {parseInt(amountTZS).toLocaleString()} TZS via M-Pesa
+          </div>
+
+          <div style={{ background: "#0f1629", borderRadius: 10, padding: 14, marginBottom: 14, textAlign: "left" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#f59e0b", marginBottom: 6 }}>How it works:</div>
+            <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>
+              1. Send <strong style={{ color: "#f8fafc" }}>{parseInt(amountTZS).toLocaleString()} TZS</strong> via M-Pesa<br/>
+              2. Enter your M-Pesa transaction ID below<br/>
+              3. Sats sent to your Fedi wallet instantly
+            </div>
+          </div>
+
+          {invoice.mpesaNumber && (
+            <div style={{ background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, padding: 12, marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: "#f59e0b", fontWeight: 600 }}>Send M-Pesa to:</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: "#f8fafc", marginTop: 4 }}>{invoice.mpesaNumber}</div>
+            </div>
+          )}
+
+          <div style={{ marginBottom: 10, textAlign: "left" }}>
+            <label style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>M-Pesa Transaction ID</label>
+            <input style={M.input} value={mpesaId || ""} onChange={e => setMpesaId(e.target.value)} placeholder="e.g. QK7B2XYZ99" />
+          </div>
+
+          <button onClick={async () => {
+            if (!mpesaId || mpesaId.trim().length < 5) { showToast("Enter your M-Pesa transaction ID", "error"); return; }
+            setLoading(true);
+            try {
+              let bolt11;
+              if (window.webln) {
+                await window.webln.enable();
+                const inv = await window.webln.makeInvoice({ amount: invoice.amountSats || invoice.satsAmount });
+                bolt11 = inv.paymentRequest;
+              } else {
+                bolt11 = prompt("Paste a Lightning invoice for " + (invoice.amountSats || invoice.satsAmount) + " sats:");
+              }
+              if (!bolt11) { setLoading(false); return; }
+              const res = await fetch("/api/chapsmart/buy-sats/send", {
+                method: "POST", headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ quoteId: invoice.quoteId || invoice.id, mpesaId: mpesaId.trim(), bolt11 }),
+              });
+              const data = await res.json();
+              if (data.success === false) { showToast(data.error || "Failed", "error"); }
+              else {
+                setResult({ amountTZS, status: "completed", sats: invoice.amountSats || invoice.satsAmount });
+                setStep(3);
+                showToast("Sats incoming! Check your wallet.", "ok");
+              }
+            } catch (err) { showToast("Failed: " + (err.message || ""), "error"); }
+            setLoading(false);
+          }} style={{ width: "100%", padding: "12px 0", borderRadius: 10, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontSize: 14, fontWeight: 700 }} disabled={loading}>
+            {loading ? "Processing..." : "⚡ Confirm & Receive Sats"}
+          </button>
+
+          <button onClick={() => { setStep(0); setInvoice(null); }} style={{ width: "100%", padding: 10, marginTop: 8, background: "transparent", border: "none", color: "#64748b", fontSize: 12, cursor: "pointer" }}>
+            ← Back
+          </button>
         </div>
       )}
 
