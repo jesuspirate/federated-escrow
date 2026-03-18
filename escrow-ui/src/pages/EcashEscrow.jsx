@@ -1481,7 +1481,22 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     }
     setLocking(true);
     try {
-      // Federation check temporarily disabled — investigating init error
+      // Federation check before generating e-cash
+      try {
+        if (window.fediInternal && window.fediInternal.getAuthenticatedMember) {
+          const member = await window.fediInternal.getAuthenticatedMember();
+          if (member && member.id) {
+            const fedParts = member.id.split(":");
+            const myFed = fedParts.length >= 2 ? fedParts[fedParts.length - 1] : null;
+            const escrowFed = e.federationId || e.federation_id;
+            if (myFed && escrowFed && myFed !== escrowFed) {
+              showToast("You're on " + myFed + " but this trade is on " + escrowFed + ". You must be on the same federation to lock sats.", "error");
+              setLocking(false);
+              return;
+            }
+          }
+        }
+      } catch {}
       // Pre-fetch session token BEFORE generateEcash to avoid auth prompt during lock
       await getSessionToken_escrow();
       const amountSats = Math.floor(e.amountMsats / 1000);
@@ -1663,7 +1678,22 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         // STEP 2: If we already have notes, redeem them (called from direct user tap)
         if (pendingNotes) {
           try {
-            // No pre-check — let receiveEcash handle it, show helpful error after
+            // Federation check before redeeming
+            try {
+              if (window.fediInternal && window.fediInternal.getAuthenticatedMember) {
+                const member2 = await window.fediInternal.getAuthenticatedMember();
+                if (member2 && member2.id) {
+                  const fedParts2 = member2.id.split(":");
+                  const claimFed = fedParts2.length >= 2 ? fedParts2[fedParts2.length - 1] : null;
+                  const escrowFed2 = e.federationId || e.federation_id;
+                  if (claimFed && escrowFed2 && claimFed !== escrowFed2) {
+                    showToast("Cannot claim — you're on " + claimFed + " but sats are from " + escrowFed2 + ". Switch federations in Fedi.", "error");
+                    setLoading(false);
+                    return;
+                  }
+                }
+              }
+            } catch {}
             showToast("Redeeming " + amountSats.toLocaleString() + " sats...");
             const redeemResult = await window.fediInternal.receiveEcash(pendingNotes);
             // Confirm successful receipt
