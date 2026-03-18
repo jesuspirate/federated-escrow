@@ -1106,8 +1106,10 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     const isP2PTrade = isP2PStyle(listing.category);
 
     // Who takes which escrow role?
-    const escrowSellerPubkey = isP2PTrade ? listing.seller_pubkey : buyerPubkey;
-    const escrowBuyerPubkey  = isP2PTrade ? buyerPubkey : listing.seller_pubkey;
+    // Seller is always the listing seller, buyer is always the listing buyer
+    // lock_role determines who locks sats (seller for P2P, buyer for marketplace)
+    const escrowSellerPubkey = listing.seller_pubkey;
+    const escrowBuyerPubkey  = buyerPubkey;
 
     // P2P/Lending: seller locks (seller has sats)
     // Marketplace: buyer locks (buyer pays with sats)
