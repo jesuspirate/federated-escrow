@@ -3,323 +3,507 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SatoshiMarket — The Bitcoin-Native Marketplace Protocol</title>
-<meta name="description" content="Trade, lend, and transact with Bitcoin — secured by Shamir 2-of-3 escrow on Fedimint e-cash. Non-custodial. No KYC. Unstoppable.">
+<title>SatoshiMarket — Non-Custodial Bitcoin Marketplace Protocol</title>
+<meta name="description" content="Trade Bitcoin without custody risk. Shamir 2-of-3 escrow on Fedimint e-cash. P2P exchange, marketplace, lending. No KYC. Instant settlement.">
 <link rel="icon" href="/favicon.png">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700;800&display=swap');
-
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg: #06080f;
-  --surface: #0d1117;
-  --border: #1b2332;
-  --text: #e6edf3;
-  --dim: #8b949e;
-  --muted: #484f58;
+  --black: #04060b;
+  --dark: #0a0e17;
+  --surface: #0f1420;
+  --border: #1a2035;
+  --text: #e8edf5;
+  --dim: #7a8599;
+  --muted: #3d4760;
   --orange: #f59e0b;
+  --orange-dim: rgba(245,158,11,0.08);
   --purple: #a78bfa;
   --green: #10b981;
   --blue: #3b82f6;
   --red: #ef4444;
+  --serif: 'Instrument Serif', Georgia, serif;
+  --mono: 'Geist Mono', 'SF Mono', monospace;
+  --sans: 'DM Sans', system-ui, sans-serif;
 }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  line-height: 1.5;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  position: relative;
-}
-
-/* Starfield background — canvas-based for density */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  pointer-events: none;
-  z-index: 0;
-  background: 
-    radial-gradient(2px 2px at 10% 10%, #fff 0%, transparent 100%),
-    radial-gradient(2px 2px at 20% 30%, #fff 0%, transparent 100%),
-    radial-gradient(3px 3px at 35% 5%, #f59e0b 0%, transparent 100%),
-    radial-gradient(2px 2px at 45% 45%, #fff 0%, transparent 100%),
-    radial-gradient(2px 2px at 55% 15%, #fff 0%, transparent 100%),
-    radial-gradient(3px 3px at 65% 60%, #a78bfa 0%, transparent 100%),
-    radial-gradient(2px 2px at 75% 25%, #fff 0%, transparent 100%),
-    radial-gradient(2px 2px at 85% 70%, #fff 0%, transparent 100%),
-    radial-gradient(3px 3px at 90% 40%, #10b981 0%, transparent 100%),
-    radial-gradient(2px 2px at 5% 55%, #fff 0%, transparent 100%),
-    radial-gradient(2px 2px at 15% 75%, #fff 0%, transparent 100%),
-    radial-gradient(2px 2px at 30% 90%, #fff 0%, transparent 100%),
-    radial-gradient(3px 3px at 50% 80%, #3b82f6 0%, transparent 100%),
-    radial-gradient(2px 2px at 70% 95%, #fff 0%, transparent 100%),
-    radial-gradient(2px 2px at 95% 85%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 3% 20%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 12% 40%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 25% 60%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 38% 35%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 48% 20%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 58% 50%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 68% 75%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 78% 55%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 88% 30%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 98% 65%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 7% 85%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 42% 12%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 62% 88%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 82% 8%, #fff 0%, transparent 100%),
-    radial-gradient(1px 1px at 33% 72%, #fff 0%, transparent 100%);
-  animation: twinkle 6s ease-in-out infinite alternate;
-  opacity: 0.8;
-}
-
-/* Nebula glow */
-body::after {
-  content: '';
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(ellipse at 20% 20%, rgba(139,92,246,0.06) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 30%, rgba(245,158,11,0.05) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 70%, rgba(16,185,129,0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 80%, rgba(59,130,246,0.04) 0%, transparent 40%);
-}
-
-@keyframes twinkle { 0% { opacity: 0.5; } 100% { opacity: 0.9; } } 100% { opacity: 1; } }
-
+body { background: var(--black); color: var(--text); font-family: var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
 a { color: inherit; text-decoration: none; }
+img { max-width: 100%; }
 
-/* Animations */
-@keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes glow { 0%, 100% { opacity: 0.15; } 50% { opacity: 0.35; } }
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes dash { to { stroke-dashoffset: 0; } }
+/* ═══ ANIMATIONS ═══ */
+@keyframes reveal { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideLeft { from { opacity: 0; transform: translateX(60px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes slideRight { from { opacity: 0; transform: translateX(-60px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes countUp { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+@keyframes glow { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.6; } }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+@keyframes grain { 0% { transform: translate(0,0); } 10% { transform: translate(-2%,-2%); } 30% { transform: translate(1%,2%); } 50% { transform: translate(-1%,1%); } 70% { transform: translate(2%,-1%); } 100% { transform: translate(0,0); } }
 
-.fade-up { animation: fadeUp 0.7s ease-out both; }
-.d1 { animation-delay: 0.1s; }
-.d2 { animation-delay: 0.2s; }
-.d3 { animation-delay: 0.3s; }
-.d4 { animation-delay: 0.4s; }
-.d5 { animation-delay: 0.5s; }
+.reveal { animation: reveal 0.8s ease-out both; }
+.d1 { animation-delay: 0.1s; } .d2 { animation-delay: 0.2s; } .d3 { animation-delay: 0.3s; }
+.d4 { animation-delay: 0.4s; } .d5 { animation-delay: 0.5s; } .d6 { animation-delay: 0.6s; }
 
-/* Hero */
-.hero, .section, .footer { position: relative; z-index: 1; }
+/* Grain texture */
+body::before {
+  content: ''; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none; z-index: 9999; opacity: 0.4;
+  animation: grain 8s steps(10) infinite;
+}
+
+/* ═══ NAVIGATION ═══ */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 48px;
+  background: rgba(4,6,11,0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(26,32,53,0.5);
+}
+.nav-logo { height: 36px; }
+.nav-links { display: flex; gap: 32px; }
+.nav-links a { font-size: 13px; font-weight: 600; color: var(--dim); transition: color 0.2s; letter-spacing: 0.3px; }
+.nav-links a:hover { color: var(--text); }
+.nav-cta { padding: 8px 20px; border-radius: 8px; background: var(--orange); color: var(--black); font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; transition: all 0.2s; }
+.nav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(245,158,11,0.3); }
+
+/* ═══ HERO ═══ */
 .hero {
-  position: relative;
-  text-align: center;
-  padding: 80px 24px 48px;
+  position: relative; min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 120px 24px 80px;
   overflow: hidden;
 }
 .hero::before {
-  content: '';
-  position: absolute;
-  top: -200px; left: 50%; transform: translateX(-50%);
-  width: 600px; height: 600px;
-  background: radial-gradient(circle, rgba(245,158,11,0.06) 0%, transparent 60%);
-  animation: glow 5s ease infinite;
+  content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse at 30% 40%, rgba(245,158,11,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 60%, rgba(139,92,246,0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(16,185,129,0.02) 0%, transparent 40%);
   pointer-events: none;
 }
-.hero-logo { height: 100px; margin-bottom: 20px; position: relative; animation: float 4s ease infinite; }
-.hero h1 { font-size: clamp(26px, 5vw, 42px); font-weight: 800; letter-spacing: -1px; line-height: 1.15; margin-bottom: 14px; position: relative; }
-.hero h1 span { background: linear-gradient(135deg, var(--orange), var(--green)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.hero p { font-size: 15px; color: var(--dim); max-width: 420px; margin: 0 auto 28px; position: relative; }
-
-.stats { display: flex; justify-content: center; gap: 32px; position: relative; }
-.stat-value { font-size: 26px; font-weight: 800; }
-.stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
-
-/* Products */
-.section { padding: 0 20px 48px; max-width: 600px; margin: 0 auto; }
-.section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--muted); text-align: center; margin-bottom: 20px; }
-
-.products { display: flex; flex-direction: column; gap: 12px; }
-.product {
-  display: flex; align-items: center; gap: 14px;
-  padding: 18px 16px; border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  transition: all 0.25s ease;
-  cursor: pointer;
-}
-.product:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
-.product:hover .product-arrow { transform: translateX(4px); }
-.product-icon { font-size: 28px; flex-shrink: 0; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 12px; }
-.product-info { flex: 1; }
-.product-name { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
-.product-desc { font-size: 12px; color: var(--dim); line-height: 1.4; }
-.product-arrow { font-size: 18px; color: var(--muted); transition: transform 0.2s; flex-shrink: 0; }
-
-.product.escrow .product-icon { background: rgba(100,116,139,0.12); }
-.product.escrow .product-name { color: #94a3b8; }
-.product.p2p .product-icon { background: rgba(245,158,11,0.12); }
-.product.p2p .product-name { color: var(--orange); }
-.product.market .product-icon { background: rgba(139,92,246,0.12); }
-.product.market .product-name { color: var(--purple); }
-.product.lending .product-icon { background: rgba(16,185,129,0.12); }
-.product.lending .product-name { color: var(--green); }
-
-/* Tech grid */
-.tech-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.tech-card {
-  padding: 16px; border-radius: 12px;
-  background: var(--surface); border: 1px solid var(--border);
-}
-.tech-card .icon { font-size: 22px; margin-bottom: 8px; }
-.tech-card .name { font-size: 12px; font-weight: 700; margin-bottom: 3px; }
-.tech-card .desc { font-size: 10px; color: var(--dim); line-height: 1.5; }
-
-/* Learn */
-.learn-card {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 16px; border-radius: 12px;
-  border: 1px solid var(--border); background: var(--surface);
-  margin-bottom: 10px;
-  transition: all 0.2s;
-}
-.learn-card:hover { border-color: var(--muted); }
-.learn-card .icon { font-size: 22px; flex-shrink: 0; }
-.learn-card .title { font-size: 13px; font-weight: 700; }
-.learn-card .sub { font-size: 11px; color: var(--dim); }
-.learn-card .arrow { margin-left: auto; color: var(--muted); }
-
-/* Community + CTA */
-.community-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
-.community-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 10px 18px; border-radius: 10px;
-  font-size: 13px; font-weight: 600;
-  border: 1px solid var(--border); transition: all 0.2s;
-}
-.community-btn:hover { transform: translateY(-1px); }
-.community-btn.en { color: var(--orange); border-color: rgba(245,158,11,0.25); background: rgba(245,158,11,0.06); }
-.community-btn.fr { color: var(--blue); border-color: rgba(59,130,246,0.25); background: rgba(59,130,246,0.06); }
-
-.cta {
+.hero-badge {
   display: inline-flex; align-items: center; gap: 8px;
-  padding: 14px 32px; border-radius: 12px;
-  background: linear-gradient(135deg, var(--green), #059669);
-  color: #fff; font-size: 15px; font-weight: 700;
-  box-shadow: 0 4px 24px rgba(16,185,129,0.25);
+  padding: 6px 16px; border-radius: 99px;
+  background: var(--orange-dim); border: 1px solid rgba(245,158,11,0.15);
+  font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--orange);
+  letter-spacing: 1px; text-transform: uppercase;
+  margin-bottom: 32px;
+}
+.hero-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--orange); animation: pulse 2s ease infinite; }
+.hero h1 {
+  font-family: var(--serif); font-size: clamp(42px, 7vw, 88px);
+  font-weight: 400; line-height: 1.05; letter-spacing: -2px;
+  margin-bottom: 24px; max-width: 900px; position: relative;
+}
+.hero h1 em { font-style: italic; color: var(--orange); }
+.hero-sub {
+  font-size: clamp(15px, 2vw, 19px); color: var(--dim);
+  max-width: 560px; line-height: 1.6; margin-bottom: 48px;
+}
+.hero-stats {
+  display: flex; gap: 64px; position: relative;
+}
+.hero-stat { text-align: center; }
+.hero-stat-value {
+  font-family: var(--mono); font-size: clamp(28px, 4vw, 48px);
+  font-weight: 700; letter-spacing: -1px;
+}
+.hero-stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+.hero-scroll { position: absolute; bottom: 32px; color: var(--muted); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; animation: reveal 1s ease 1.5s both; }
+
+/* ═══ MANIFESTO ═══ */
+.manifesto {
+  padding: 120px 48px; max-width: 800px; margin: 0 auto; text-align: center;
+  border-top: 1px solid var(--border);
+}
+.manifesto h2 {
+  font-family: var(--serif); font-size: clamp(28px, 4vw, 48px);
+  font-weight: 400; line-height: 1.2; margin-bottom: 24px;
+}
+.manifesto h2 em { color: var(--orange); font-style: italic; }
+.manifesto p { font-size: 17px; color: var(--dim); line-height: 1.8; max-width: 600px; margin: 0 auto; }
+
+/* ═══ VERSUS TABLE ═══ */
+.versus {
+  padding: 80px 24px 120px; max-width: 1000px; margin: 0 auto;
+}
+.versus h2 { font-family: var(--serif); font-size: clamp(28px, 4vw, 44px); text-align: center; margin-bottom: 16px; }
+.versus .subtitle { text-align: center; color: var(--dim); font-size: 15px; margin-bottom: 48px; }
+.vs-table {
+  width: 100%; border-collapse: collapse; font-size: 14px;
+}
+.vs-table th {
+  padding: 14px 20px; text-align: left; font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+.vs-table th.us { color: var(--orange); }
+.vs-table td {
+  padding: 16px 20px; border-bottom: 1px solid rgba(26,32,53,0.5);
+  color: var(--dim); vertical-align: top;
+}
+.vs-table td.feature { color: var(--text); font-weight: 600; }
+.vs-table td.us { color: var(--green); font-weight: 600; }
+.vs-table td.them { color: var(--red); opacity: 0.7; }
+.vs-table tr:hover td { background: rgba(245,158,11,0.02); }
+.vs-table .winner { background: rgba(16,185,129,0.05); }
+
+/* ═══ PRODUCTS ═══ */
+.products {
+  padding: 120px 48px; max-width: 1100px; margin: 0 auto;
+  border-top: 1px solid var(--border);
+}
+.products h2 { font-family: var(--serif); font-size: clamp(28px, 4vw, 44px); text-align: center; margin-bottom: 48px; }
+.product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.product-card {
+  padding: 32px 28px; border-radius: 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  transition: all 0.3s ease; cursor: pointer; position: relative; overflow: hidden;
+}
+.product-card:hover { transform: translateY(-4px); border-color: var(--muted); }
+.product-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  transition: opacity 0.3s;
+}
+.product-card.escrow::before { background: linear-gradient(90deg, #64748b, transparent); }
+.product-card.p2p::before { background: linear-gradient(90deg, var(--orange), transparent); }
+.product-card.market::before { background: linear-gradient(90deg, var(--purple), transparent); }
+.product-card.lending::before { background: linear-gradient(90deg, var(--green), transparent); }
+.product-card .emoji { font-size: 32px; margin-bottom: 16px; }
+.product-card .name { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+.product-card.escrow .name { color: #94a3b8; }
+.product-card.p2p .name { color: var(--orange); }
+.product-card.market .name { color: var(--purple); }
+.product-card.lending .name { color: var(--green); }
+.product-card .tagline { font-size: 13px; color: var(--dim); margin-bottom: 12px; }
+.product-card .desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+.product-card .arrow { position: absolute; top: 28px; right: 24px; font-size: 20px; color: var(--muted); transition: transform 0.2s; }
+.product-card:hover .arrow { transform: translateX(4px); color: var(--dim); }
+
+/* ═══ TECH SECTION ═══ */
+.tech {
+  padding: 120px 48px; max-width: 1100px; margin: 0 auto;
+  border-top: 1px solid var(--border);
+}
+.tech h2 { font-family: var(--serif); font-size: clamp(28px, 4vw, 44px); text-align: center; margin-bottom: 16px; }
+.tech .subtitle { text-align: center; color: var(--dim); font-size: 15px; margin-bottom: 48px; max-width: 500px; margin-left: auto; margin-right: auto; }
+.tech-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.tech-card {
+  padding: 28px 20px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  text-align: center;
+}
+.tech-card .icon { font-size: 28px; margin-bottom: 12px; }
+.tech-card .name { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.tech-card .desc { font-size: 11px; color: var(--dim); line-height: 1.5; }
+
+/* ═══ FEES ═══ */
+.fees {
+  padding: 120px 48px; max-width: 800px; margin: 0 auto;
+  border-top: 1px solid var(--border); text-align: center;
+}
+.fees h2 { font-family: var(--serif); font-size: clamp(28px, 4vw, 44px); margin-bottom: 16px; }
+.fees .subtitle { color: var(--dim); font-size: 15px; margin-bottom: 40px; }
+.fee-tiers { display: flex; gap: 16px; justify-content: center; }
+.fee-tier {
+  flex: 1; max-width: 220px; padding: 28px 20px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--border); text-align: center;
+}
+.fee-tier.active { border-color: var(--orange); background: var(--orange-dim); }
+.fee-tier .tier-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-bottom: 8px; }
+.fee-tier.active .tier-name { color: var(--orange); }
+.fee-tier .tier-rate { font-family: var(--mono); font-size: 36px; font-weight: 700; margin-bottom: 4px; }
+.fee-tier.active .tier-rate { color: var(--orange); }
+.fee-tier .tier-vol { font-size: 12px; color: var(--muted); }
+
+/* ═══ SCREENSHOTS ═══ */
+.screenshots {
+  padding: 120px 48px; max-width: 1100px; margin: 0 auto;
+  border-top: 1px solid var(--border);
+}
+.screenshots h2 { font-family: var(--serif); font-size: clamp(28px, 4vw, 44px); text-align: center; margin-bottom: 48px; }
+.screenshot-row { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+.screenshot-slot {
+  width: 260px; height: 500px; border-radius: 20px;
+  background: var(--surface); border: 2px dashed var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); font-size: 12px; text-align: center; padding: 20px;
+}
+
+/* ═══ LEARN ═══ */
+.learn {
+  padding: 80px 48px; max-width: 800px; margin: 0 auto;
+  border-top: 1px solid var(--border);
+}
+.learn h2 { font-family: var(--serif); font-size: clamp(24px, 3vw, 36px); text-align: center; margin-bottom: 32px; }
+.learn-grid { display: flex; flex-direction: column; gap: 10px; }
+.learn-card {
+  display: flex; align-items: center; gap: 16px;
+  padding: 18px 20px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--border);
   transition: all 0.2s;
 }
-.cta:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(16,185,129,0.35); }
+.learn-card:hover { border-color: var(--muted); transform: translateX(4px); }
+.learn-card .icon { font-size: 24px; flex-shrink: 0; }
+.learn-card .title { font-size: 14px; font-weight: 700; }
+.learn-card .sub { font-size: 12px; color: var(--dim); }
+.learn-card .arrow { margin-left: auto; color: var(--muted); font-size: 16px; }
 
-/* Footer */
-.footer { text-align: center; padding: 28px 20px 48px; border-top: 1px solid var(--border); }
-.footer-line { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
-.footer a { color: var(--orange); font-weight: 600; margin: 0 8px; }
-.footer .sub { font-size: 10px; color: #484f58; margin-top: 10px; }
+/* ═══ COMMUNITY + CTA ═══ */
+.community {
+  padding: 120px 48px; text-align: center;
+  border-top: 1px solid var(--border);
+  background: radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.03) 0%, transparent 60%);
+}
+.community h2 { font-family: var(--serif); font-size: clamp(28px, 4vw, 48px); margin-bottom: 16px; }
+.community .subtitle { color: var(--dim); font-size: 15px; margin-bottom: 40px; }
+.comm-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; }
+.comm-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 24px; border-radius: 10px;
+  font-size: 14px; font-weight: 600; border: 1px solid var(--border);
+  transition: all 0.2s;
+}
+.comm-btn:hover { transform: translateY(-2px); }
+.comm-btn.en { color: var(--orange); border-color: rgba(245,158,11,0.2); background: rgba(245,158,11,0.05); }
+.comm-btn.fr { color: var(--blue); border-color: rgba(59,130,246,0.2); background: rgba(59,130,246,0.05); }
+.big-cta {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 18px 40px; border-radius: 14px;
+  background: linear-gradient(135deg, var(--orange), #d97706);
+  color: var(--black); font-size: 17px; font-weight: 800;
+  letter-spacing: -0.3px;
+  box-shadow: 0 8px 40px rgba(245,158,11,0.25);
+  transition: all 0.2s;
+}
+.big-cta:hover { transform: translateY(-3px); box-shadow: 0 12px 48px rgba(245,158,11,0.35); }
+
+/* ═══ FOOTER ═══ */
+.footer {
+  text-align: center; padding: 40px 48px 60px;
+  border-top: 1px solid var(--border);
+}
+.footer-main { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-bottom: 12px; letter-spacing: 1px; }
+.footer-links a { color: var(--orange); font-size: 12px; font-weight: 600; margin: 0 12px; }
+.footer-sub { font-size: 10px; color: var(--muted); margin-top: 12px; letter-spacing: 0.5px; }
+
+/* ═══ MOBILE ═══ */
+@media (max-width: 768px) {
+  .nav { padding: 14px 20px; }
+  .nav-links { display: none; }
+  .hero { padding: 100px 20px 60px; }
+  .hero-stats { gap: 32px; }
+  .manifesto { padding: 80px 20px; }
+  .versus { padding: 60px 16px; }
+  .vs-table { font-size: 12px; }
+  .vs-table th, .vs-table td { padding: 10px 8px; }
+  .products { padding: 80px 20px; }
+  .product-grid { grid-template-columns: 1fr; }
+  .tech { padding: 80px 20px; }
+  .tech-grid { grid-template-columns: 1fr 1fr; }
+  .fees { padding: 80px 20px; }
+  .fee-tiers { flex-direction: column; align-items: center; }
+  .screenshots { padding: 80px 20px; }
+  .learn { padding: 60px 20px; }
+  .community { padding: 80px 20px; }
+  .footer { padding: 32px 20px 48px; }
+}
 </style>
 </head>
 <body>
 
-<!-- Hero -->
-<div class="hero">
-  <img src="/satoshimarket-logo.png" alt="SatoshiMarket" class="hero-logo fade-up">
-  <h1 class="fade-up d1">Non-Custodial Bitcoin<br><span>Marketplace Protocol</span></h1>
-  <p class="fade-up d2">Trade, lend, and transact — secured by Shamir 2-of-3 escrow on Fedimint e-cash. No KYC. No custody. Unstoppable.</p>
-  <div class="stats fade-up d3">
-    <div><div class="stat-value" style="color:var(--orange)">2-of-3</div><div class="stat-label">Escrow</div></div>
-    <div><div class="stat-value" style="color:var(--green)">0%</div><div class="stat-label">Custody</div></div>
-    <div><div class="stat-value" style="color:var(--purple)">~1s</div><div class="stat-label">Settlement</div></div>
+<!-- NAV -->
+<nav class="nav">
+  <img src="/satoshimarket-logo.png" alt="SatoshiMarket" class="nav-logo">
+  <div class="nav-links">
+    <a href="#products">Products</a>
+    <a href="#compare">Compare</a>
+    <a href="#technology">Technology</a>
+    <a href="#fees">Fees</a>
+    <a href="#learn">Learn</a>
   </div>
-</div>
+  <a href="https://fedi.xyz/product" target="_blank" class="nav-cta">Download Fedi</a>
+</nav>
 
-<!-- Products -->
-<div class="section">
-  <div class="section-title">Products</div>
-  <div class="products">
-    <a href="https://escrow.satoshimarket.app" class="product escrow fade-up d1">
-      <div class="product-icon">⚖️</div>
-      <div class="product-info">
-        <div class="product-name">Escrow</div>
-        <div class="product-desc">Raw 2-of-3 multisig. Lock sats, vote, claim. Any arbiter, any trade. Pure cypherpunk primitive.</div>
-      </div>
-      <div class="product-arrow">→</div>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge reveal">Non-Custodial · Shamir 2-of-3 · Live on Mainnet</div>
+  <h1 class="reveal d1">The world doesn't need<br>another exchange.<br>It needs <em>trustless trade.</em></h1>
+  <p class="hero-sub reveal d2">SatoshiMarket is a Bitcoin-native protocol for P2P exchange, marketplace commerce, and community lending — powered by Fedimint e-cash and Shamir Secret Sharing. No custody. No KYC. Instant settlement.</p>
+  <div class="hero-stats reveal d3">
+    <div class="hero-stat"><div class="hero-stat-value" style="color:var(--orange)">2-of-3</div><div class="hero-stat-label">Escrow threshold</div></div>
+    <div class="hero-stat"><div class="hero-stat-value" style="color:var(--green)">0%</div><div class="hero-stat-label">Custody risk</div></div>
+    <div class="hero-stat"><div class="hero-stat-value" style="color:var(--purple)">&lt;1s</div><div class="hero-stat-label">Settlement</div></div>
+    <div class="hero-stat"><div class="hero-stat-value" style="color:var(--blue)">2M</div><div class="hero-stat-label">Max sats/trade</div></div>
+  </div>
+  <div class="hero-scroll">↓ Scroll to explore</div>
+</section>
+
+<!-- MANIFESTO -->
+<section class="manifesto reveal">
+  <h2>Exchanges custody your funds.<br>We <em>mathematically can't.</em></h2>
+  <p>Every sat locked in SatoshiMarket is split into three Shamir shares. No single party — not even the server — can access the funds. Only when two of three participants agree does the trade resolve. This isn't a policy. It's cryptography.</p>
+</section>
+
+<!-- VERSUS -->
+<section class="versus" id="compare">
+  <h2 class="reveal">How we compare</h2>
+  <p class="subtitle reveal d1">SatoshiMarket vs. the competition. No bias — just facts.</p>
+  <table class="vs-table reveal d2">
+    <thead>
+      <tr>
+        <th>Feature</th>
+        <th class="us">SatoshiMarket</th>
+        <th>Bisq</th>
+        <th>HodlHodl</th>
+        <th>RoboSats</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="winner"><td class="feature">Custody model</td><td class="us">Shamir 2-of-3 (non-custodial)</td><td class="them">Multisig (non-custodial)</td><td class="them">Multisig (semi-custodial)</td><td class="them">Lightning escrow (custodial during trade)</td></tr>
+      <tr class="winner"><td class="feature">Settlement speed</td><td class="us">&lt; 1 second (e-cash)</td><td class="them">~1 hour (on-chain)</td><td class="them">~30 min (on-chain)</td><td class="them">~seconds (Lightning)</td></tr>
+      <tr class="winner"><td class="feature">KYC required</td><td class="us">Never</td><td class="them">Never</td><td class="them">Optional</td><td class="them">Never</td></tr>
+      <tr class="winner"><td class="feature">Mobile native</td><td class="us">Fedi Mini-App (iOS + Android)</td><td class="them">Desktop only</td><td class="them">Web only</td><td class="them">Tor browser only</td></tr>
+      <tr class="winner"><td class="feature">Fiat off-ramp</td><td class="us">ChapSmart M-Pesa (built-in)</td><td class="them">Manual bank transfer</td><td class="them">Manual bank transfer</td><td class="them">None</td></tr>
+      <tr class="winner"><td class="feature">Trade chat</td><td class="us">NIP-44 encrypted (built-in)</td><td class="them">Tor-based</td><td class="them">None</td><td class="them">None</td></tr>
+      <tr class="winner"><td class="feature">Privacy</td><td class="us">Fedimint e-cash (blinded tokens)</td><td class="them">On-chain (traceable)</td><td class="them">On-chain (traceable)</td><td class="them">Lightning (routing visible)</td></tr>
+      <tr><td class="feature">Arbiter</td><td class="us">Community-chosen (1% fee)</td><td class="them">DAO mediators</td><td class="them">HodlHodl staff</td><td class="them">None (automated)</td></tr>
+      <tr class="winner"><td class="feature">Marketplace</td><td class="us">Full marketplace + lending</td><td class="them">P2P only</td><td class="them">P2P only</td><td class="them">P2P only</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- PRODUCTS -->
+<section class="products" id="products">
+  <h2 class="reveal">Four products. One protocol.</h2>
+  <div class="product-grid">
+    <a href="https://escrow.satoshimarket.app" class="product-card escrow reveal d1">
+      <div class="emoji">⚖️</div>
+      <div class="name">Escrow</div>
+      <div class="tagline">The raw primitive</div>
+      <div class="desc">Lock sats, choose any arbiter, vote to release or refund. Pure 2-of-3 multisig escrow for any trade, any amount, any counterparty. The cypherpunk's tool.</div>
+      <div class="arrow">→</div>
     </a>
-    <a href="https://p2p.satoshimarket.app" class="product p2p fade-up d2">
-      <div class="product-icon">₿</div>
-      <div class="product-info">
-        <div class="product-name">P2P Exchange</div>
-        <div class="product-desc">Buy & sell Bitcoin peer-to-peer. Seller locks sats, buyer sends fiat. Both confirm. No middleman.</div>
-      </div>
-      <div class="product-arrow">→</div>
+    <a href="https://p2p.satoshimarket.app" class="product-card p2p reveal d2">
+      <div class="emoji">₿</div>
+      <div class="name">P2P Exchange</div>
+      <div class="tagline">Buy & sell Bitcoin, no middleman</div>
+      <div class="desc">Seller locks sats in escrow. Buyer sends fiat externally. Both confirm. Sats released. No order books, no custody, no counterparty risk. Just trade.</div>
+      <div class="arrow">→</div>
     </a>
-    <a href="https://market.satoshimarket.app" class="product market fade-up d3">
-      <div class="product-icon">🛒</div>
-      <div class="product-info">
-        <div class="product-name">Marketplace</div>
-        <div class="product-desc">Buy anything with Bitcoin. Escrow protects both parties. ChapSmart M-Pesa integration for East Africa.</div>
-      </div>
-      <div class="product-arrow">→</div>
+    <a href="https://market.satoshimarket.app" class="product-card market reveal d3">
+      <div class="emoji">🛒</div>
+      <div class="name">Marketplace</div>
+      <div class="tagline">Buy anything with Bitcoin</div>
+      <div class="desc">Buyer pays with sats, seller ships goods. Escrow protects both. ChapSmart M-Pesa integration for East African off-ramp. Real commerce on e-cash.</div>
+      <div class="arrow">→</div>
     </a>
-    <a href="https://lending.satoshimarket.app" class="product lending fade-up d4">
-      <div class="product-icon">🤝</div>
-      <div class="product-info">
-        <div class="product-name">Community Lending</div>
-        <div class="product-desc">Lend & borrow Bitcoin within your community. Repayment tracked. Trust built through escrow.</div>
-      </div>
-      <div class="product-arrow">→</div>
+    <a href="https://lending.satoshimarket.app" class="product-card lending reveal d4">
+      <div class="emoji">🤝</div>
+      <div class="name">Community Lending</div>
+      <div class="tagline">Trust built through escrow</div>
+      <div class="desc">Lender locks sats, borrower confirms receipt, repays on agreed terms. Community arbiters ensure accountability. Microfinance on Bitcoin.</div>
+      <div class="arrow">→</div>
     </a>
   </div>
-</div>
+</section>
 
-<!-- Tech -->
-<div class="section">
-  <div class="section-title">Built Different</div>
+<!-- TECHNOLOGY -->
+<section class="tech" id="technology">
+  <h2 class="reveal">Built different</h2>
+  <p class="subtitle reveal d1">Every design decision serves one goal: eliminate trust.</p>
   <div class="tech-grid">
-    <div class="tech-card fade-up d1"><div class="icon">🔐</div><div class="name">Shamir SSS</div><div class="desc">Notes split 2-of-3. Server can't access funds. Mathematically non-custodial.</div></div>
-    <div class="tech-card fade-up d2"><div class="icon">⚡</div><div class="name">Fedimint</div><div class="desc">Instant e-cash. No Lightning routing. Private by default.</div></div>
-    <div class="tech-card fade-up d3"><div class="icon">🔑</div><div class="name">Nostr Auth</div><div class="desc">One key. No passwords. No accounts. NIP-98 signed sessions.</div></div>
-    <div class="tech-card fade-up d4"><div class="icon">🌍</div><div class="name">M-Pesa</div><div class="desc">Bitcoin to mobile money via ChapSmart. Real-world off-ramp.</div></div>
+    <div class="tech-card reveal d1"><div class="icon">🔐</div><div class="name">Shamir Secret Sharing</div><div class="desc">E-cash notes split into 2-of-3 shares. Server can never access funds unilaterally. Cryptographically enforced.</div></div>
+    <div class="tech-card reveal d2"><div class="icon">⚡</div><div class="name">Fedimint E-Cash</div><div class="desc">Blinded tokens, instant settlement, zero routing fees. Privacy by default, not by policy.</div></div>
+    <div class="tech-card reveal d3"><div class="icon">🔑</div><div class="name">Nostr Authentication</div><div class="desc">NIP-98 signed sessions. One key, one identity. No passwords, no emails, no accounts to manage.</div></div>
+    <div class="tech-card reveal d4"><div class="icon">🌍</div><div class="name">M-Pesa via ChapSmart</div><div class="desc">Bitcoin to mobile money. Send TZS, buy airtime, or purchase sats. Real-world rails for East Africa.</div></div>
   </div>
-</div>
+</section>
 
-<!-- Learn -->
-<div class="section">
-  <div class="section-title">Learn</div>
-  <a href="https://bitcoin.org/en/getting-started" target="_blank" class="learn-card fade-up d1">
-    <div class="icon">₿</div>
-    <div><div class="title" style="color:var(--orange)">What is Bitcoin?</div><div class="sub">Sound money for the digital age</div></div>
-    <div class="arrow">↗</div>
-  </a>
-  <a href="https://www.fedi.xyz" target="_blank" class="learn-card fade-up d2">
-    <div class="icon">🛡️</div>
-    <div><div class="title" style="color:var(--purple)">What is Fedi?</div><div class="sub">The private Bitcoin wallet for communities</div></div>
-    <div class="arrow">↗</div>
-  </a>
-  <a href="https://fedimint.org" target="_blank" class="learn-card fade-up d3">
-    <div class="icon">🏛️</div>
-    <div><div class="title" style="color:var(--green)">Federated Custody</div><div class="sub">Multi-guardian Bitcoin security</div></div>
-    <div class="arrow">↗</div>
-  </a>
-</div>
-
-<!-- Community -->
-<div class="section" style="text-align:center">
-  <div class="section-title">Community</div>
-  <div class="community-btns">
-    <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" class="community-btn en">🇬🇧 English</a>
-    <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" class="community-btn fr">🇫🇷 Français</a>
+<!-- FEES -->
+<section class="fees" id="fees">
+  <h2 class="reveal">Transparent fees</h2>
+  <p class="subtitle reveal d1">Arbiter takes 1% only on disputed trades. No platform fee. No hidden costs.</p>
+  <div class="fee-tiers reveal d2">
+    <div class="fee-tier active">
+      <div class="tier-name">Escrow fee</div>
+      <div class="tier-rate">0%</div>
+      <div class="tier-vol">Platform takes nothing</div>
+    </div>
+    <div class="fee-tier">
+      <div class="tier-name">Arbiter fee</div>
+      <div class="tier-rate">1%</div>
+      <div class="tier-vol">Only on disputed trades</div>
+    </div>
+    <div class="fee-tier">
+      <div class="tier-name">ChapSmart</div>
+      <div class="tier-rate">2.2%</div>
+      <div class="tier-vol">M-Pesa off-ramp (Bronze tier)</div>
+    </div>
   </div>
-  <a href="https://fedi.xyz/product" target="_blank" class="cta">📲 Download Fedi</a>
-</div>
+</section>
 
-<!-- Footer -->
-<div class="footer">
-  <div class="footer-line">⚡ EST. BLOCK 934,669 🥜</div>
-  <div><a href="https://github.com/jesuspirate/federated-escrow" target="_blank">GitHub ↗</a><a href="https://sandbox.satoshimarket.app">🧪 Sandbox</a></div>
-  <div class="sub">Non-custodial · Shamir 2-of-3 · Fedimint · Nostr · Built for Fedi</div>
-</div>
+<!-- SCREENSHOTS (placeholder slots for real screenshots) -->
+<section class="screenshots">
+  <h2 class="reveal">See it in action</h2>
+  <div class="screenshot-row reveal d1">
+    <div class="screenshot-slot">📱<br><br>P2P Trade Flow<br><small>Drop screenshot here</small></div>
+    <div class="screenshot-slot">💬<br><br>Encrypted Trade Chat<br><small>Drop screenshot here</small></div>
+    <div class="screenshot-slot">🇹🇿<br><br>ChapSmart M-Pesa<br><small>Drop screenshot here</small></div>
+    <div class="screenshot-slot">⭐<br><br>Rating & Reviews<br><small>Drop screenshot here</small></div>
+  </div>
+</section>
+
+<!-- LEARN -->
+<section class="learn" id="learn">
+  <h2 class="reveal">Understand the stack</h2>
+  <div class="learn-grid">
+    <a href="https://bitcoin.org/en/getting-started" target="_blank" class="learn-card reveal d1">
+      <div class="icon">₿</div>
+      <div><div class="title" style="color:var(--orange)">What is Bitcoin?</div><div class="sub">Sound money for the digital age. Peer-to-peer, censorship-resistant, finite supply.</div></div>
+      <div class="arrow">↗</div>
+    </a>
+    <a href="https://www.fedi.xyz" target="_blank" class="learn-card reveal d2">
+      <div class="icon">🛡️</div>
+      <div><div class="title" style="color:var(--purple)">What is Fedi?</div><div class="sub">The private Bitcoin wallet for communities. Federated custody, zero counterparty risk.</div></div>
+      <div class="arrow">↗</div>
+    </a>
+    <a href="https://fedimint.org" target="_blank" class="learn-card reveal d3">
+      <div class="icon">🏛️</div>
+      <div><div class="title" style="color:var(--green)">Federated Custody</div><div class="sub">Multi-guardian Bitcoin security. No single point of failure. Community-managed trust.</div></div>
+      <div class="arrow">↗</div>
+    </a>
+    <a href="https://en.wikipedia.org/wiki/Shamir%27s_secret_sharing" target="_blank" class="learn-card reveal d4">
+      <div class="icon">🔐</div>
+      <div><div class="title" style="color:var(--blue)">Shamir Secret Sharing</div><div class="sub">Split a secret into shares. Any 2 of 3 can reconstruct. The math behind our escrow.</div></div>
+      <div class="arrow">↗</div>
+    </a>
+  </div>
+</section>
+
+<!-- COMMUNITY -->
+<section class="community">
+  <h2 class="reveal">Join the revolution</h2>
+  <p class="subtitle reveal d1">Trade with real sats. Meet real people. Build real communities.</p>
+  <div class="comm-btns reveal d2">
+    <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" class="comm-btn en">🇬🇧 English Community</a>
+    <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" class="comm-btn fr">🇫🇷 Communauté Française</a>
+  </div>
+  <a href="https://fedi.xyz/product" target="_blank" class="big-cta reveal d3">📲 Download Fedi to Start Trading</a>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-main">⚡ EST. BLOCK 934,669 🥜 · OPEN SOURCE · BUILT FOR FEDI</div>
+  <div class="footer-links">
+    <a href="https://github.com/jesuspirate/federated-escrow" target="_blank">GitHub ↗</a>
+    <a href="https://sandbox.satoshimarket.app">🧪 Sandbox</a>
+  </div>
+  <div class="footer-sub">Non-custodial · Shamir 2-of-3 · Fedimint · Nostr · NIP-44 Encrypted Chat · ChapSmart M-Pesa</div>
+</footer>
 
 </body>
 </html>
