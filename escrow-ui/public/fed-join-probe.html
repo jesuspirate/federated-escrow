@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Federation Join Probe</title>
+<style>body{background:#0c0f17;color:#f8fafc;font-family:system-ui;padding:20px;font-size:13px}
+#log{white-space:pre-wrap;line-height:1.6}
+button{padding:10px 16px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;margin:4px;background:#f59e0b;color:#0c0f17}</style>
+</head><body>
+<h2>Federation Join/Discovery Probe</h2>
+<button onclick="probeFediInternal()">Probe fediInternal</button>
+<button onclick="probeWebln()">Probe webln</button>
+<button onclick="probeNostr()">Probe nostr</button>
+<button onclick="probeFedimint()">Probe fedimint</button>
+<button onclick="testCrossFedClaim()">Test Cross-Fed Claim</button>
+<button onclick="probeDeepMethods()">Deep Method Scan</button>
+<div id="log">Waiting...</div>
+<script>
+var log = document.getElementById('log');
+function out(msg) { log.textContent += msg + '\n'; }
+function clear() { log.textContent = ''; }
+
+async function probeFediInternal() {
+  clear();
+  if (!window.fediInternal) { out('fediInternal not available'); return; }
+  out('=== fediInternal methods ===');
+  var methods = [];
+  for (var k in window.fediInternal) methods.push(k);
+  // Also check prototype
+  try {
+    var proto = Object.getOwnPropertyNames(Object.getPrototypeOf(window.fediInternal));
+    methods = methods.concat(proto);
+  } catch(e) {}
+  methods = [...new Set(methods)].sort();
+  for (var m of methods) {
+    var type = typeof window.fediInternal[m];
+    out('  ' + m + ': ' + type);
+  }
+  out('\nTotal: ' + methods.length + ' properties');
+  
+  // Look specifically for federation-related methods
+  out('\n=== Federation-related ===');
+  var fedKeywords = ['fed', 'join', 'invite', 'community', 'mint', 'guardian', 'module', 'discover', 'register', 'connect'];
+  for (var m of methods) {
+    for (var kw of fedKeywords) {
+      if (m.toLowerCase().includes(kw)) {
+        out('  MATCH: ' + m + ' (' + typeof window.fediInternal[m] + ')');
+        break;
+      }
+    }
+  }
+}
+
+async function probeWebln() {
+  clear();
+  if (!window.webln) { out('webln not available'); return; }
+  out('=== webln methods ===');
+  var methods = Object.getOwnPropertyNames(window.webln).concat(
+    Object.getOwnPropertyNames(Object.getPrototypeOf(window.webln) || {})
+  );
+  methods = [...new Set(methods)].sort();
+  for (var m of methods) {
+    out('  ' + m + ': ' + typeof window.webln[m]);
+  }
+}
+
+async function probeNostr() {
+  clear();
+  if (!window.nostr) { out('nostr not available'); return; }
+  out('=== nostr methods ===');
+  var methods = Object.getOwnPropertyNames(window.nostr).concat(
+    Object.getOwnPropertyNames(Object.getPrototypeOf(window.nostr) || {})
+  );
+  methods = [...new Set(methods)].sort();
+  for (var m of methods) {
+    out('  ' + m + ': ' + typeof window.nostr[m]);
+  }
+}
+
+async function probeFedimint() {
+  clear();
+  out('=== Checking for fedimint-related globals ===');
+  var globals = ['fedimint', 'FedimintClient', 'fedimintClient', 'fm', 'fedi', 'Fedi', 'FediInternal', 'fediMod'];
+  for (var g of globals) {
+    if (window[g]) {
+      out('  FOUND: window.' + g + ' = ' + typeof window[g]);
+      try {
+        var keys = Object.keys(window[g]);
+        out('    keys: ' + keys.join(', '));
+      } catch(e) { out('    (could not enumerate)'); }
+    }
+  }
+  
+  // Check if there's a joinFederation or similar hidden method
+  if (window.fediInternal) {
+    out('\n=== Testing federation methods ===');
+    var testMethods = [
+      'joinFederation', 'joinFed', 'addFederation', 'connectFederation',
+      'switchFederation', 'selectFederation', 'setFederation',
+      'getFederations', 'listFederations', 'getJoinedFederations',
+      'getFederationId', 'getCurrentFederation',
+      'inviteToFederation', 'acceptInvite', 'joinInvite',
+      'joinCommunity', 'addCommunity',
+      'getInstalledMods', 'getMods', 'getModules',
+      'receiveEcashToFederation', 'claimEcashFromFederation',
+    ];
+    for (var m of testMethods) {
+      if (window.fediInternal[m]) {
+        out('  EXISTS: fediInternal.' + m + ' = ' + typeof window.fediInternal[m]);
+      }
+    }
+    
+    // Also try to call some discovery methods
+    try {
+      var result = await window.fediInternal.getActiveFederation?.();
+      out('\n  getActiveFederation: ' + JSON.stringify(result));
+    } catch(e) { out('  getActiveFederation: ' + e.message); }
+    
+    try {
+      var result = await window.fediInternal.getFederationId?.();
+      out('  getFederationId: ' + JSON.stringify(result));
+    } catch(e) { out('  getFederationId: ' + e.message); }
+    
+    try {
+      var result = await window.fediInternal.listFederations?.();
+      out('  listFederations: ' + JSON.stringify(result));
+    } catch(e) { out('  listFederations: ' + e.message); }
+  }
+}
+
+async function testCrossFedClaim() {
+  clear();
+  out('=== Cross-Federation Claim Test ===');
+  out('This test will try to call receiveEcash with notes from a different federation.');
+  out('If Fedi prompts to join the other federation, we have our answer.\n');
+  
+  // We need actual cross-fed notes to test this
+  // For now, just document what receiveEcash does with invalid/cross-fed notes
+  if (!window.fediInternal || !window.fediInternal.receiveEcash) {
+    out('receiveEcash not available');
+    return;
+  }
+  
+  // Try with a dummy note that looks like it's from a different federation
+  out('Testing with a known federation prefix...');
+  out('(Paste real cross-federation e-cash notes in the input below to test)');
+}
+
+async function probeDeepMethods() {
+  clear();
+  out('=== Deep Scan: ALL window properties with "fed" or "join" ===\n');
+  
+  function scanObj(obj, path, depth) {
+    if (depth > 3) return;
+    try {
+      var keys = Object.getOwnPropertyNames(obj);
+      for (var k of keys) {
+        var fullPath = path + '.' + k;
+        var lower = k.toLowerCase();
+        if (lower.includes('fed') || lower.includes('join') || lower.includes('invite') || 
+            lower.includes('mint') || lower.includes('community') || lower.includes('guardian') ||
+            lower.includes('module') || lower.includes('discover')) {
+          try {
+            out('  ' + fullPath + ': ' + typeof obj[k]);
+            if (typeof obj[k] === 'function') {
+              out('    args: ' + obj[k].length);
+            }
+          } catch(e) {}
+        }
+        // Recurse into objects
+        if (typeof obj[k] === 'object' && obj[k] !== null && depth < 2) {
+          try { scanObj(obj[k], fullPath, depth + 1); } catch(e) {}
+        }
+      }
+    } catch(e) {}
+  }
+  
+  scanObj(window, 'window', 0);
+  
+  // Also check navigator
+  out('\n=== Navigator scan ===');
+  scanObj(navigator, 'navigator', 0);
+  
+  out('\nDone.');
+}
+</script>
+
+<div style="margin-top:20px">
+<label>Paste cross-federation e-cash notes:</label><br>
+<textarea id="notes" rows="4" style="width:100%;background:#111;color:#f8f;border:1px solid #333;padding:8px;font-size:11px;border-radius:6px" placeholder="Paste notes here..."></textarea>
+<button onclick="testWithNotes()">Test receiveEcash with these notes</button>
+</div>
+
+<script>
+async function testWithNotes() {
+  clear();
+  var notes = document.getElementById('notes').value.trim();
+  if (!notes) { out('Paste notes first'); return; }
+  out('Notes length: ' + notes.length);
+  out('Starts with: ' + notes.substring(0, 30));
+  out('Ends with: ' + notes.substring(notes.length - 30));
+  out('\nCalling receiveEcash...');
+  try {
+    var result = await window.fediInternal.receiveEcash(notes);
+    out('SUCCESS: ' + JSON.stringify(result));
+  } catch(e) {
+    out('ERROR: ' + e.message);
+    out('Full: ' + JSON.stringify(e));
+  }
+}
+</script>
+</body></html>
