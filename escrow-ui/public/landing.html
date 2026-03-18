@@ -48,10 +48,49 @@ img { max-width: 100%; }
 
 /* Grain texture */
 body::before {
-  content: ''; position: fixed; top: -50%; left: -50%; width: 200%; height: 200%;
-  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-  pointer-events: none; z-index: 9999; opacity: 0.4;
-  animation: grain 8s steps(10) infinite;
+  content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background:
+    radial-gradient(2px 2px at 5% 8%, #fff 0%, transparent 100%),
+    radial-gradient(2px 2px at 12% 22%, rgba(255,255,255,0.8) 0%, transparent 100%),
+    radial-gradient(3px 3px at 20% 5%, var(--orange) 0%, transparent 100%),
+    radial-gradient(2px 2px at 28% 40%, rgba(255,255,255,0.7) 0%, transparent 100%),
+    radial-gradient(2px 2px at 35% 15%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(3px 3px at 42% 55%, var(--purple) 0%, transparent 100%),
+    radial-gradient(2px 2px at 50% 10%, rgba(255,255,255,0.9) 0%, transparent 100%),
+    radial-gradient(2px 2px at 58% 35%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(3px 3px at 65% 65%, var(--green) 0%, transparent 100%),
+    radial-gradient(2px 2px at 72% 20%, rgba(255,255,255,0.8) 0%, transparent 100%),
+    radial-gradient(2px 2px at 80% 45%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(3px 3px at 88% 75%, var(--blue) 0%, transparent 100%),
+    radial-gradient(2px 2px at 95% 30%, rgba(255,255,255,0.7) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 8% 50%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 18% 70%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 30% 85%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 45% 30%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 55% 75%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 68% 45%, rgba(255,255,255,0.6) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 78% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 85% 15%, rgba(255,255,255,0.5) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 92% 55%, rgba(255,255,255,0.4) 0%, transparent 100%),
+    radial-gradient(1px 1px at 3% 35%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 15% 90%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 38% 65%, rgba(255,255,255,0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 52% 90%, rgba(255,255,255,0.3) 0%, transparent 100%),
+    radial-gradient(1px 1px at 75% 85%, rgba(255,255,255,0.2) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 92%, rgba(255,255,255,0.3) 0%, transparent 100%);
+  pointer-events: none; z-index: 0;
+  animation: twinkle 6s ease-in-out infinite alternate;
+}
+@keyframes twinkle { 0% { opacity: 0.5; } 100% { opacity: 0.85; } }
+/* Nebula clouds */
+body::after {
+  content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background:
+    radial-gradient(ellipse 600px 400px at 15% 25%, rgba(139,92,246,0.06) 0%, transparent 100%),
+    radial-gradient(ellipse 500px 350px at 75% 20%, rgba(245,158,11,0.05) 0%, transparent 100%),
+    radial-gradient(ellipse 700px 500px at 50% 70%, rgba(16,185,129,0.04) 0%, transparent 100%),
+    radial-gradient(ellipse 400px 300px at 85% 80%, rgba(59,130,246,0.04) 0%, transparent 100%);
+  pointer-events: none; z-index: 0;
 }
 
 /* ═══ NAVIGATION ═══ */
@@ -62,7 +101,7 @@ body::before {
   background: rgba(4,6,11,0.8); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid rgba(26,32,53,0.5);
 }
-.nav-logo { height: 36px; }
+.nav-logo { height: 52px; }
 .nav-links { display: flex; gap: 32px; }
 .nav-links a { font-size: 13px; font-weight: 600; color: var(--dim); transition: color 0.2s; letter-spacing: 0.3px; }
 .nav-links a:hover { color: var(--text); }
@@ -338,14 +377,40 @@ body::before {
 
 <!-- HERO -->
 <section class="hero">
+  <img src="/satoshimarket-logo.png" alt="SatoshiMarket" class="reveal" style="height:80px;margin-bottom:24px;filter:drop-shadow(0 4px 20px rgba(245,158,11,0.2));">
   <div class="hero-badge reveal">Non-Custodial · Shamir 2-of-3 · Live on Mainnet</div>
-  <h1 class="reveal d1">The world doesn't need<br>another exchange.<br>It needs <em>trustless trade.</em></h1>
+  <h1 class="reveal d1">The world doesn't need<br>another exchange.<br>It needs <em>trustless trades.</em></h1>
   <p class="hero-sub reveal d2">SatoshiMarket is a Bitcoin-native protocol for P2P exchange, marketplace commerce, and community lending — powered by Fedimint e-cash and Shamir Secret Sharing. No custody. No KYC. Instant settlement.</p>
   <div class="hero-stats reveal d3">
     <div class="hero-stat"><div class="hero-stat-value" style="color:var(--orange)">2-of-3</div><div class="hero-stat-label">Escrow threshold</div></div>
     <div class="hero-stat"><div class="hero-stat-value" style="color:var(--green)">0%</div><div class="hero-stat-label">Custody risk</div></div>
     <div class="hero-stat"><div class="hero-stat-value" style="color:var(--purple)">&lt;1s</div><div class="hero-stat-label">Settlement</div></div>
     <div class="hero-stat"><div class="hero-stat-value" style="color:var(--blue)">2M</div><div class="hero-stat-label">Max sats/trade</div></div>
+  </div>
+  <!-- Trade Federation Battleship -->
+  <div style="margin-top:48px;opacity:0.12;animation:float 6s ease infinite;" class="reveal d5">
+    <svg width="400" height="120" viewBox="0 0 400 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Main ring structure -->
+      <ellipse cx="200" cy="60" rx="180" ry="40" stroke="#f59e0b" stroke-width="1.5" fill="none" opacity="0.6"/>
+      <ellipse cx="200" cy="60" rx="160" ry="35" stroke="#f59e0b" stroke-width="0.8" fill="none" opacity="0.3"/>
+      <ellipse cx="200" cy="60" rx="140" ry="30" stroke="#f59e0b" stroke-width="0.5" fill="none" opacity="0.2"/>
+      <!-- Core sphere -->
+      <circle cx="200" cy="60" r="18" fill="url(#coreGrad)" opacity="0.8"/>
+      <circle cx="200" cy="60" r="22" stroke="#f59e0b" stroke-width="0.8" fill="none" opacity="0.4"/>
+      <!-- Engine pods -->
+      <ellipse cx="60" cy="60" rx="12" ry="8" fill="#1a2035" stroke="#f59e0b" stroke-width="0.8" opacity="0.6"/>
+      <ellipse cx="340" cy="60" rx="12" ry="8" fill="#1a2035" stroke="#f59e0b" stroke-width="0.8" opacity="0.6"/>
+      <!-- Connecting arms -->
+      <line x1="72" y1="60" x2="178" y2="60" stroke="#f59e0b" stroke-width="0.5" opacity="0.3"/>
+      <line x1="222" y1="60" x2="328" y2="60" stroke="#f59e0b" stroke-width="0.5" opacity="0.3"/>
+      <!-- Detail lines on ring -->
+      <line x1="40" y1="45" x2="40" y2="75" stroke="#f59e0b" stroke-width="0.3" opacity="0.2"/>
+      <line x1="100" y1="30" x2="100" y2="90" stroke="#f59e0b" stroke-width="0.3" opacity="0.2"/>
+      <line x1="300" y1="30" x2="300" y2="90" stroke="#f59e0b" stroke-width="0.3" opacity="0.2"/>
+      <line x1="360" y1="45" x2="360" y2="75" stroke="#f59e0b" stroke-width="0.3" opacity="0.2"/>
+      <!-- Glow -->
+      <defs><radialGradient id="coreGrad"><stop offset="0%" stop-color="#f59e0b" stop-opacity="0.6"/><stop offset="100%" stop-color="#f59e0b" stop-opacity="0.05"/></radialGradient></defs>
+    </svg>
   </div>
   <div class="hero-scroll">↓ Scroll to explore</div>
 </section>
@@ -371,14 +436,14 @@ body::before {
       </tr>
     </thead>
     <tbody>
-      <tr class="winner"><td class="feature">Custody model</td><td class="us">Shamir 2-of-3 (non-custodial)</td><td class="them">Multisig (non-custodial)</td><td class="them">Multisig (semi-custodial)</td><td class="them">Lightning escrow (custodial during trade)</td></tr>
-      <tr class="winner"><td class="feature">Settlement speed</td><td class="us">&lt; 1 second (e-cash)</td><td class="them">~1 hour (on-chain)</td><td class="them">~30 min (on-chain)</td><td class="them">~seconds (Lightning)</td></tr>
+      <tr class="winner"><td class="feature">Custody model</td><td class="us">Shamir 2-of-3 <br><small style="opacity:0.6;font-weight:400">non-custodial</small></td><td class="them">Multisig (non-custodial)</td><td class="them">Multisig (semi-custodial)</td><td class="them">Lightning escrow (custodial during trade)</td></tr>
+      <tr class="winner"><td class="feature">Settlement speed</td><td class="us">&lt; 1 second <br><small style="opacity:0.6;font-weight:400">e-cash</small></td><td class="them">~1 hour (on-chain)</td><td class="them">~30 min (on-chain)</td><td class="them">~seconds (Lightning)</td></tr>
       <tr class="winner"><td class="feature">KYC required</td><td class="us">Never</td><td class="them">Never</td><td class="them">Optional</td><td class="them">Never</td></tr>
-      <tr class="winner"><td class="feature">Mobile native</td><td class="us">Fedi Mini-App (iOS + Android)</td><td class="them">Desktop only</td><td class="them">Web only</td><td class="them">Tor browser only</td></tr>
-      <tr class="winner"><td class="feature">Fiat off-ramp</td><td class="us">ChapSmart M-Pesa (built-in)</td><td class="them">Manual bank transfer</td><td class="them">Manual bank transfer</td><td class="them">None</td></tr>
-      <tr class="winner"><td class="feature">Trade chat</td><td class="us">NIP-44 encrypted (built-in)</td><td class="them">Tor-based</td><td class="them">None</td><td class="them">None</td></tr>
-      <tr class="winner"><td class="feature">Privacy</td><td class="us">Fedimint e-cash (blinded tokens)</td><td class="them">On-chain (traceable)</td><td class="them">On-chain (traceable)</td><td class="them">Lightning (routing visible)</td></tr>
-      <tr><td class="feature">Arbiter</td><td class="us">Community-chosen (1% fee)</td><td class="them">DAO mediators</td><td class="them">HodlHodl staff</td><td class="them">None (automated)</td></tr>
+      <tr class="winner"><td class="feature">Mobile native</td><td class="us">Fedi Mini-App <br><small style="opacity:0.6;font-weight:400">iOS + Android</small></td><td class="them">Desktop only</td><td class="them">Web only</td><td class="them">Tor browser only</td></tr>
+      <tr class="winner"><td class="feature">Fiat off-ramp</td><td class="us">ChapSmart M-Pesa <br><small style="opacity:0.6;font-weight:400">built-in</small></td><td class="them">Manual bank transfer</td><td class="them">Manual bank transfer</td><td class="them">None</td></tr>
+      <tr class="winner"><td class="feature">Trade chat</td><td class="us">NIP-44 encrypted <br><small style="opacity:0.6;font-weight:400">built-in</small></td><td class="them">Tor-based</td><td class="them">None</td><td class="them">None</td></tr>
+      <tr class="winner"><td class="feature">Privacy</td><td class="us">Fedimint e-cash <br><small style="opacity:0.6;font-weight:400">blinded tokens</small></td><td class="them">On-chain (traceable)</td><td class="them">On-chain (traceable)</td><td class="them">Lightning (routing visible)</td></tr>
+      <tr><td class="feature">Arbiter</td><td class="us">Community-chosen <br><small style="opacity:0.6;font-weight:400">1% fee</small></td><td class="them">DAO mediators</td><td class="them">HodlHodl staff</td><td class="them">None (automated)</td></tr>
       <tr class="winner"><td class="feature">Marketplace</td><td class="us">Full marketplace + lending</td><td class="them">P2P only</td><td class="them">P2P only</td><td class="them">P2P only</td></tr>
     </tbody>
   </table>
@@ -470,10 +535,7 @@ body::before {
       <img src="/ss-trade-complete.png" alt="Trade Complete — sats delivered" loading="lazy">
       <div class="screenshot-label">Trade Complete</div>
     </div>
-    <div class="screenshot-frame">
-      <img src="/ss-marketplace.png" alt="Marketplace — create new listing" loading="lazy">
-      <div class="screenshot-label">Marketplace Listings</div>
-    </div>
+
   </div>
 </section>
 
