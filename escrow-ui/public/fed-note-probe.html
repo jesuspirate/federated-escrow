@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Federation Note Probe</title>
+<style>body{background:#0c0f17;color:#f8fafc;font-family:system-ui;padding:20px;font-size:13px}
+#log{white-space:pre-wrap;line-height:1.6;word-break:break-all}
+button{padding:10px 16px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;margin:4px;background:#f59e0b;color:#0c0f17}</style>
+</head><body>
+<h2>Federation Note Probe</h2>
+<button onclick="probeNotes()">Generate 1 sat & Inspect Notes</button>
+<button onclick="probeAuthMember()">Check getAuthenticatedMember</button>
+<button onclick="probeCurrencyCode()">Check getCurrencyCode</button>
+<div id="log">Waiting...</div>
+<script>
+var log = document.getElementById('log');
+function out(msg) { log.textContent += msg + '\n'; }
+function clear() { log.textContent = ''; }
+
+async function probeNotes() {
+  clear();
+  if (!window.fediInternal || !window.fediInternal.generateEcash) {
+    out('generateEcash not available');
+    return;
+  }
+  out('Generating 1 sat e-cash...');
+  try {
+    var notes = await window.fediInternal.generateEcash({ amount: 1 });
+    out('Notes type: ' + typeof notes);
+    out('Notes length: ' + notes.length);
+    out('Full notes:\n' + notes);
+    out('\n--- Analysis ---');
+    // Try base64 decode
+    try {
+      var decoded = atob(notes);
+      out('Decoded length: ' + decoded.length);
+      out('First 20 bytes (hex): ' + Array.from(decoded.slice(0,20)).map(c => c.charCodeAt(0).toString(16).padStart(2,'0')).join(' '));
+      out('First 50 bytes (hex): ' + Array.from(decoded.slice(0,50)).map(c => c.charCodeAt(0).toString(16).padStart(2,'0')).join(' '));
+      // The federation ID is typically in the first few bytes
+      out('\nFirst 4 chars: ' + notes.substring(0, 4));
+      out('Chars 4-20: ' + notes.substring(4, 20));
+      out('Chars 4-40: ' + notes.substring(4, 40));
+    } catch(e) { out('Base64 decode failed: ' + e.message); }
+    
+    // Now try to receive it back
+    out('\n--- Receiving back ---');
+    try {
+      var result = await window.fediInternal.receiveEcash(notes);
+      out('Receive result: ' + JSON.stringify(result));
+    } catch(e) { out('Receive error: ' + e.message); }
+  } catch(e) {
+    out('Generate error: ' + e.message);
+  }
+}
+
+async function probeAuthMember() {
+  clear();
+  if (!window.fediInternal || !window.fediInternal.getAuthenticatedMember) {
+    out('getAuthenticatedMember not available');
+    return;
+  }
+  try {
+    var member = await window.fediInternal.getAuthenticatedMember();
+    out('Authenticated Member:\n' + JSON.stringify(member, null, 2));
+  } catch(e) { out('Error: ' + e.message); }
+}
+
+async function probeCurrencyCode() {
+  clear();
+  if (!window.fediInternal) { out('fediInternal not available'); return; }
+  
+  // Try various methods that might reveal federation info
+  var methods = ['getCurrencyCode', 'getLanguageCode', 'getFederationId', 'getActiveFederation'];
+  for (var m of methods) {
+    if (window.fediInternal[m]) {
+      try {
+        var result = await window.fediInternal[m]();
+        out(m + ': ' + JSON.stringify(result));
+      } catch(e) { out(m + ' error: ' + e.message); }
+    } else {
+      out(m + ': NOT AVAILABLE');
+    }
+  }
+}
+</script>
+</body></html>

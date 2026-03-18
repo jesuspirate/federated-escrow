@@ -191,6 +191,21 @@ function getSessionToken_escrow() {
   return fetchPromise.finally(() => { window.__smTokenPromise = null; });
 }
 
+// ── Federation detection via getAuthenticatedMember ──
+async function detectMyFederation() {
+  try {
+    if (window.fediInternal && window.fediInternal.getAuthenticatedMember) {
+      const member = await window.fediInternal.getAuthenticatedMember();
+      // id format: "@npub...:federation.domain"
+      if (member && member.id) {
+        const parts = member.id.split(":");
+        if (parts.length >= 2) return parts[parts.length - 1];
+      }
+    }
+  } catch {}
+  return null;
+}
+
 async function api(path, opts = {}, _retries = 2) {
   const method = opts.method || "GET";
   const url = `${location.origin}${API}${path}`;
@@ -1466,6 +1481,13 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     }
     setLocking(true);
     try {
+      // Check federation match before locking
+      const myFed = await detectMyFederation();
+      if (myFed && e.federationId && myFed !== e.federationId) {
+        showToast("Federation mismatch! You're on " + myFed + " but this trade requires " + e.federationId + ". Switch federations in Fedi first.", "error");
+        setLocking(false);
+        return;
+      }
       // Pre-fetch session token BEFORE generateEcash to avoid auth prompt during lock
       await getSessionToken_escrow();
       const amountSats = Math.floor(e.amountMsats / 1000);
@@ -1641,6 +1663,13 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         // STEP 2: If we already have notes, redeem them (called from direct user tap)
         if (pendingNotes) {
           try {
+            // Check federation before redeeming
+            const claimFed = await detectMyFederation();
+            if (claimFed && e.federationId && claimFed !== e.federationId) {
+              showToast("You're on " + claimFed + " but these sats are from " + e.federationId + ". Switch federations in Fedi settings.", "error");
+              setLoading(false);
+              return;
+            }
             showToast("Redeeming " + amountSats.toLocaleString() + " sats...");
             const redeemResult = await window.fediInternal.receiveEcash(pendingNotes);
             // Confirm successful receipt
@@ -1655,6 +1684,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             }
           } catch (redeemErr) {
             const errMsg = String(redeemErr.message || redeemErr || "");
+            console.warn("[claim] receiveEcash error:", errMsg);
             if (errMsg.includes("already") || errMsg.includes("spent")) {
               showToast("These notes have already been redeemed.", "error");
               setPendingNotes(null);
@@ -1669,7 +1699,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
                 showToast("E-cash from a different federation. Try again — Fedi may handle it.", "error");
               }
             } else {
-              showToast("E-cash redeem failed. Tap the redeem button to try again.", "error");
+              showToast("Redeem error: " + errMsg.substring(0, 100), "error");
             }
           }
           setLoading(false);
