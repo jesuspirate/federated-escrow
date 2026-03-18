@@ -1460,6 +1460,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     }
     setLocking(true);
     try {
+      // Pre-fetch session token BEFORE generateEcash to avoid auth prompt during lock
+      await getSessionToken_escrow();
       const amountSats = Math.floor(e.amountMsats / 1000);
       // Call generateEcash — with iOS WebKit workaround for ghost overlay
       let notes;
