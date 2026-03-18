@@ -1482,12 +1482,15 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     setLocking(true);
     try {
       // Check federation match before locking
-      const myFed = await detectMyFederation();
-      if (myFed && e.federationId && myFed !== e.federationId) {
-        showToast("Federation mismatch! You're on " + myFed + " but this trade requires " + e.federationId + ". Switch federations in Fedi first.", "error");
-        setLocking(false);
-        return;
-      }
+      try {
+        const myFed = await detectMyFederation();
+        const escrowFed = e.federationId || e.federation_id;
+        if (myFed && escrowFed && myFed !== escrowFed) {
+          showToast("Federation mismatch! You're on " + myFed + " but this trade is on " + escrowFed + ". Switch in Fedi settings.", "error");
+          setLocking(false);
+          return;
+        }
+      } catch (fedErr) { /* proceed if check fails */ }
       // Pre-fetch session token BEFORE generateEcash to avoid auth prompt during lock
       await getSessionToken_escrow();
       const amountSats = Math.floor(e.amountMsats / 1000);
@@ -1664,12 +1667,15 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         if (pendingNotes) {
           try {
             // Check federation before redeeming
-            const claimFed = await detectMyFederation();
-            if (claimFed && e.federationId && claimFed !== e.federationId) {
-              showToast("You're on " + claimFed + " but these sats are from " + e.federationId + ". Switch federations in Fedi settings.", "error");
-              setLoading(false);
-              return;
-            }
+            try {
+              const claimFed = await detectMyFederation();
+              const escrowFed2 = e.federationId || e.federation_id;
+              if (claimFed && escrowFed2 && claimFed !== escrowFed2) {
+                showToast("You're on " + claimFed + " but these sats are from " + escrowFed2 + ". Switch in Fedi settings.", "error");
+                setLoading(false);
+                return;
+              }
+            } catch (fedErr2) { /* proceed if check fails */ }
             showToast("Redeeming " + amountSats.toLocaleString() + " sats...");
             const redeemResult = await window.fediInternal.receiveEcash(pendingNotes);
             // Confirm successful receipt
