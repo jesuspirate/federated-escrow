@@ -226,11 +226,19 @@ body::before {
 }
 .screenshots h2 { font-family: var(--serif); font-size: clamp(28px, 4vw, 44px); text-align: center; margin-bottom: 48px; }
 .screenshot-row { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
-.screenshot-slot {
-  width: 260px; height: 500px; border-radius: 20px;
-  background: var(--surface); border: 2px dashed var(--border);
-  display: flex; align-items: center; justify-content: center;
-  color: var(--muted); font-size: 12px; text-align: center; padding: 20px;
+.screenshot-frame {
+  width: 260px; border-radius: 20px; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--border);
+  transition: all 0.3s; position: relative;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+}
+.screenshot-frame:hover { transform: translateY(-8px) scale(1.02); box-shadow: 0 16px 60px rgba(0,0,0,0.5); }
+.screenshot-frame img { width: 100%; display: block; }
+.screenshot-label {
+  padding: 12px 16px; text-align: center;
+  font-size: 12px; font-weight: 700; color: var(--dim);
+  background: var(--surface); border-top: 1px solid var(--border);
+  letter-spacing: 0.3px;
 }
 
 /* ═══ LEARN ═══ */
@@ -450,10 +458,22 @@ body::before {
 <section class="screenshots">
   <h2 class="reveal">See it in action</h2>
   <div class="screenshot-row reveal d1">
-    <div class="screenshot-slot">📱<br><br>P2P Trade Flow<br><small>Drop screenshot here</small></div>
-    <div class="screenshot-slot">💬<br><br>Encrypted Trade Chat<br><small>Drop screenshot here</small></div>
-    <div class="screenshot-slot">🇹🇿<br><br>ChapSmart M-Pesa<br><small>Drop screenshot here</small></div>
-    <div class="screenshot-slot">⭐<br><br>Rating & Reviews<br><small>Drop screenshot here</small></div>
+    <div class="screenshot-frame">
+      <img src="/ss-trade-voting.png" alt="P2P Trade — Voting with Fiat Received and Dispute buttons" loading="lazy">
+      <div class="screenshot-label">2-of-3 Escrow Voting</div>
+    </div>
+    <div class="screenshot-frame">
+      <img src="/ss-trade-chat.png" alt="Encrypted Trade Chat between buyer and seller" loading="lazy">
+      <div class="screenshot-label">Encrypted Trade Chat</div>
+    </div>
+    <div class="screenshot-frame">
+      <img src="/ss-trade-complete.png" alt="Trade Complete — sats delivered" loading="lazy">
+      <div class="screenshot-label">Trade Complete</div>
+    </div>
+    <div class="screenshot-frame">
+      <img src="/ss-marketplace.png" alt="Marketplace — create new listing" loading="lazy">
+      <div class="screenshot-label">Marketplace Listings</div>
+    </div>
   </div>
 </section>
 
