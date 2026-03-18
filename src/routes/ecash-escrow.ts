@@ -465,7 +465,7 @@ router.get("/:id", (req: AuthenticatedRequest, res: Response) => {
     id: row.id, status: row.status, amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
     description: row.description, terms: row.terms, communityLink: row.community_link, federationId: row.federation_id,
     participants: { seller: participantInfo(row.seller_pubkey), buyer: participantInfo(row.buyer_pubkey), arbiter: participantInfo(row.arbiter_pubkey) },
-    lockedAt: row.locked_at, lockMode: row.lock_mode,
+    lockedAt: row.locked_at, lockMode: row.lock_mode, lock_role: row.lock_role || "seller",
     votes: { release: tally.releaseCount, refund: tally.refundCount, voters: votes.map(v => ({ role: v.role, outcome: v.outcome })) },
     resolvedOutcome: row.resolved_outcome, resolvedAt: row.resolved_at, claimedBy: row.claimed_by, claimedAt: row.claimed_at,
     createdAt: row.created_at, updatedAt: row.updated_at, expiresIn: formatExpiry(row.expires_at),
@@ -561,7 +561,9 @@ router.post("/:id/lock-ecash", async (req: AuthenticatedRequest, res: Response) 
 
     const pk = req.pubkey!;
     const lockRole = row.lock_role || "seller";
-    if (getRoleByPubkey(row, pk) !== lockRole) return res.status(403).json({ error: "Only the " + lockRole + " can lock sats in this escrow" });
+    const callerRole = getRoleByPubkey(row, pk);
+    console.log("[lock-ecash] escrow:", row.id, "caller:", pk.substring(0,8), "callerRole:", callerRole, "lockRole:", lockRole, "seller:", row.seller_pubkey?.substring(0,8), "buyer:", row.buyer_pubkey?.substring(0,8));
+    if (callerRole !== lockRole) return res.status(403).json({ error: "Only the " + lockRole + " can lock sats in this escrow" });
 
     if (row.status !== "FUNDED") {
       if (row.status === "CREATED")
