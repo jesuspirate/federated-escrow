@@ -470,7 +470,12 @@ router.get("/:id", (req: AuthenticatedRequest, res: Response) => {
     resolvedOutcome: row.resolved_outcome, resolvedAt: row.resolved_at, claimedBy: row.claimed_by, claimedAt: row.claimed_at,
     createdAt: row.created_at, updatedAt: row.updated_at, expiresIn: formatExpiry(row.expires_at),
     ...(role && { yourRole: role }),
-    ...(role && { canClaim: row.status === "APPROVED" && ((row.resolved_outcome === "release" && role === "buyer") || (row.resolved_outcome === "refund" && role === "seller")) }),
+    ...(role && { canClaim: row.status === "APPROVED" && (() => {
+      const lr = row.lock_role || "seller";
+      const releaseWinner = lr === "seller" ? "buyer" : "seller";
+      const refundWinner = lr;
+      return (row.resolved_outcome === "release" && role === releaseWinner) || (row.resolved_outcome === "refund" && role === refundWinner);
+    })() }),
     disputeStartedAt: row.dispute_started_at || null,
     arbiterFeeMsats: row.arbiter_fee_msats || 0,
     arbiterFeeSats: Math.floor((row.arbiter_fee_msats || 0) / 1000),
@@ -792,7 +797,8 @@ router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
       }
     }
 
-    const winner = tally.outcome === "release" ? "buyer" : tally.outcome === "refund" ? "seller" : null;
+    const lr = row.lock_role || "seller";
+    const winner = tally.outcome === "release" ? (lr === "seller" ? "buyer" : "seller") : tally.outcome === "refund" ? lr : null;
 
     res.json({
       id: row.id, status: tally.outcome ? "APPROVED" : "LOCKED", yourRole: role, yourVote: outcome,
@@ -841,7 +847,8 @@ router.post("/:id/claim", (req: AuthenticatedRequest, res: Response) => {
     const role = getRoleByPubkey(row, pk);
     if (!role) return res.status(403).json({ error: "You are not a participant in this escrow" });
 
-    const winner = row.resolved_outcome === "release" ? "buyer" : "seller";
+    const lr3 = row.lock_role || "seller";
+    const winner = row.resolved_outcome === "release" ? (lr3 === "seller" ? "buyer" : "seller") : lr3;
     if (role !== winner) return res.status(403).json({ error: `Only the ${winner} can claim. Escrow resolved as "${row.resolved_outcome}".` });
 
     // For Shamir escrows, claim just marks status — notes reconstructed at ecash-payout
@@ -902,9 +909,10 @@ router.get("/:id/ecash-payout", async (req: AuthenticatedRequest, res: Response)
 
     const pk = req.pubkey!;
     const role = getRoleByPubkey(row, pk);
-    const expectedWinner = row.resolved_outcome === "release" ? "buyer" : "seller";
+    const lr4 = row.lock_role || "seller";
+    const expectedWinner = row.resolved_outcome === "release" ? (lr4 === "seller" ? "buyer" : "seller") : lr4;
 
-    if (role !== expectedWinner && !(row.resolved_outcome === "refund" && role === "seller"))
+    if (role !== expectedWinner)
       return res.status(403).json({ error: "Only the winning party can retrieve e-cash notes" });
 
     // Reconstruct e-cash notes from Shamir shares
@@ -963,8 +971,9 @@ router.post("/:id/confirm-ecash-received", (req: AuthenticatedRequest, res: Resp
 
     const pk = req.pubkey!;
     const role = getRoleByPubkey(row, pk);
-    const expectedWinner = row.resolved_outcome === "release" ? "buyer" : "seller";
-    if (role !== expectedWinner && !(row.resolved_outcome === "refund" && role === "seller"))
+    const lr5 = row.lock_role || "seller";
+    const expectedWinner = row.resolved_outcome === "release" ? (lr5 === "seller" ? "buyer" : "seller") : lr5;
+    if (role !== expectedWinner)
       return res.status(403).json({ error: "Only the winning party can confirm receipt" });
 
     // Now safe to complete and wipe notes
@@ -1015,7 +1024,8 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
     const pk = req.pubkey!;
     const role = getRoleByPubkey(row, pk);
     const isArbiterFeeClaim = role === "arbiter" && req.body.type === "arbiter_fee";
-    const expectedWinner = row.resolved_outcome === "release" ? "buyer" : "seller";
+    const lrP = row.lock_role || "seller";
+    const expectedWinner = row.resolved_outcome === "release" ? (lrP === "seller" ? "buyer" : "seller") : lrP;
 
     if (isArbiterFeeClaim) {
       // Arbiter claiming their dispute fee
@@ -1105,7 +1115,8 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
 
     // Nostr DM: payout complete
     if (!isDevPubkey(row.seller_pubkey)) {
-      const winnerPk = row.resolved_outcome === "release" ? row.buyer_pubkey : row.seller_pubkey;
+      const lrN = row.lock_role || "seller";
+      const winnerPk = row.resolved_outcome === "release" ? (lrN === "seller" ? row.buyer_pubkey : row.seller_pubkey) : (lrN === "seller" ? row.seller_pubkey : row.buyer_pubkey);
       Notify.notifyEscrowCompleted(row.id, winnerPk, row.amount_msats);
     }
 

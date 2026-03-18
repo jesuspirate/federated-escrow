@@ -1038,13 +1038,13 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
                 {e.status === "LOCKED" && e.yourRole === "arbiter" && (
                   <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(139,92,246,0.1)", fontSize: 11, fontWeight: 600, color: "#a78bfa", textAlign: "center" }}>⚖️ Dispute — your vote needed</div>
                 )}
-                {e.status === "APPROVED" && e.resolvedOutcome === "release" && e.yourRole === "buyer" && (
+                {e.status === "APPROVED" && e.resolvedOutcome === "release" && e.yourRole === ((e.lock_role || "seller") === "seller" ? "buyer" : "seller") && (
                   <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.1)", fontSize: 11, fontWeight: 600, color: "#10b981", textAlign: "center" }}>⚡ Claim your sats!</div>
                 )}
-                {e.status === "APPROVED" && e.resolvedOutcome === "refund" && e.yourRole === "seller" && (
+                {e.status === "APPROVED" && e.resolvedOutcome === "refund" && e.yourRole === (e.lock_role || "seller") && (
                   <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.1)", fontSize: 11, fontWeight: 600, color: "#10b981", textAlign: "center" }}>⚡ Reclaim your sats!</div>
                 )}
-                {e.status === "APPROVED" && ((e.resolvedOutcome === "release" && e.yourRole !== "buyer") || (e.resolvedOutcome === "refund" && e.yourRole !== "seller")) && (
+                {e.status === "APPROVED" && ((e.resolvedOutcome === "release" && e.yourRole !== ((e.lock_role || "seller") === "seller" ? "buyer" : "seller")) || (e.resolvedOutcome === "refund" && e.yourRole !== (e.lock_role || "seller"))) && (
                   <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>Resolved — waiting for claim</div>
                 )}
                 {e.status === "CREATED" && (
@@ -1720,7 +1720,10 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const canBuyerVote = status === "LOCKED" && role === "buyer" && !hasVoted;
   const canSellerVote = status === "LOCKED" && role === "seller" && !hasVoted && buyerVoted;
   const canArbiterVote = status === "LOCKED" && role === "arbiter" && !hasVoted && buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome;
-  const canClaim = (status === "APPROVED" || status === "CLAIMED") && ((e.resolvedOutcome === "release" && role === "buyer") || (e.resolvedOutcome === "refund" && role === "seller"));
+  const lockR = e.lock_role || "seller";
+  const releaseWinner = lockR === "seller" ? "buyer" : "seller";
+  const refundWinner = lockR;
+  const canClaim = (status === "APPROVED" || status === "CLAIMED") && ((e.resolvedOutcome === "release" && role === releaseWinner) || (e.resolvedOutcome === "refund" && role === refundWinner));
   const canReclaimExpired = status === "EXPIRED" && role === (e.lock_role || "seller") && e.lockedAt;
 
   // Helper to get participant pubkey display
