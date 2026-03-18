@@ -1229,7 +1229,11 @@ function TradeChat({ escrowId, pubkey, participants }) {
         for (const msg of newMsgs) {
           lastTs.current = Math.max(lastTs.current, msg.timestamp);
         }
-        setMessages(prev => [...prev, ...newMsgs]);
+        setMessages(prev => {
+          const existing = new Set(prev.map(m => m.id));
+          const unique = newMsgs.filter(m => !existing.has(m.id));
+          return [...prev, ...unique];
+        });
         setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
       }
     } catch {}
@@ -1237,6 +1241,9 @@ function TradeChat({ escrowId, pubkey, participants }) {
 
   useEffect(() => {
     if (!open || !escrowId) return;
+    // Reset to load all messages when chat opens
+    lastTs.current = 0;
+    setMessages([]);
     loadMessages();
     pollRef.current = setInterval(loadMessages, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -1253,10 +1260,15 @@ function TradeChat({ escrowId, pubkey, participants }) {
       setDraft("");
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
       // Send to server
-      await chatFetch("/" + escrowId + "/messages", {
+      const sendResult = await chatFetch("/" + escrowId + "/messages", {
         method: "POST",
         body: JSON.stringify({ encrypted: msgText }),
       });
+      // Replace optimistic message with server-confirmed one
+      if (sendResult.messageId) {
+        setMessages(prev => prev.map(m => m.id && m.id.startsWith("local_") && m.text === msgText ? { ...m, id: sendResult.messageId, timestamp: sendResult.timestamp || m.timestamp } : m));
+        // Don't update lastTs here — let loadMessages handle it naturally
+      }
     } catch (err) {
       console.warn("[chat] send failed:", err);
     }

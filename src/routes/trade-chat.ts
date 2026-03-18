@@ -98,6 +98,7 @@ router.get("/:escrowId/messages", (req: AuthenticatedRequest, res: Response) => 
 
     const after = parseInt(req.query.after as string) || 0;
     const messages = DB.getChatMessages(req.params.escrowId, after);
+    console.log("[chat]", req.method, req.params.escrowId, "role:", role, "pubkey:", pk.substring(0,8), "after:", after, "msgs:", messages.length);
 
     res.json({
       escrowId: req.params.escrowId,
