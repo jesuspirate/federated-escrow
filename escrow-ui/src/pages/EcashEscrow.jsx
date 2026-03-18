@@ -1644,7 +1644,23 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
               onRefresh();
             }
           } catch (redeemErr) {
-            showToast("E-cash redeem failed. Tap the redeem button to try again.", "error");
+            const errMsg = String(redeemErr.message || redeemErr || "");
+            if (errMsg.includes("already") || errMsg.includes("spent")) {
+              showToast("These notes have already been redeemed.", "error");
+              setPendingNotes(null);
+            } else if (errMsg.includes("federation") || errMsg.includes("mint") || errMsg.includes("unknown")) {
+              if (window.fediInternal.joinCommunity && e.communityLink) {
+                showToast("Joining the trade federation...");
+                try {
+                  await window.fediInternal.joinCommunity(e.communityLink);
+                  showToast("Federation joined! Tap Receive again to claim your sats.");
+                } catch { showToast("Could not join federation automatically.", "error"); }
+              } else {
+                showToast("E-cash from a different federation. Try again — Fedi may handle it.", "error");
+              }
+            } else {
+              showToast("E-cash redeem failed. Tap the redeem button to try again.", "error");
+            }
           }
           setLoading(false);
           return;
