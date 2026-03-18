@@ -397,6 +397,10 @@ export function getChatMessages(escrowId: string, after: number = 0): any[] {
   return db.prepare("SELECT * FROM chat_messages WHERE escrow_id = ? AND timestamp > ? ORDER BY timestamp ASC").all(escrowId, after) as any[];
 }
 
+export function updateFederationId(id: string, federationId: string): void {
+  db.prepare("UPDATE escrows SET federation_id = ?, updated_at = ? WHERE id = ?").run(federationId, Date.now(), id);
+}
+
 export function addVote(escrowId: string, role: string, outcome: string, pubkey: string): void {
   stmts.insertVote.run({ escrow_id: escrowId, role, outcome, pubkey, timestamp: Date.now() });
 }

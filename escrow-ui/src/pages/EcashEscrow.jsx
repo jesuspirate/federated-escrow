@@ -1507,9 +1507,14 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       let lockToken = window.__smToken;
       if (!lockToken) { lockToken = await getSessionToken_escrow(); }
       if (lockToken) { lockHeaders["Authorization"] = "Bearer " + lockToken; }
+      // Detect our federation and send it with the lock
+      let myFedDomain = null;
+      try {
+        myFedDomain = await detectMyFederation();
+      } catch {}
       const lockRes = await fetch(location.origin + API + "/" + e.id + "/lock-ecash", {
         method: "POST", headers: lockHeaders,
-        body: JSON.stringify({ notes }),
+        body: JSON.stringify({ notes, lockerFederation: myFedDomain }),
       });
       const lock = await lockRes.json();
 

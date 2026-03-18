@@ -576,9 +576,15 @@ router.post("/:id/lock-ecash", async (req: AuthenticatedRequest, res: Response) 
       return res.status(400).json({ error: `Cannot lock in ${row.status} state` });
     }
 
-    const { notes } = req.body;
+    const { notes, lockerFederation } = req.body;
     if (!notes || typeof notes !== "string" || notes.length < 20)
       return res.status(400).json({ error: "Invalid e-cash notes" });
+    
+    // Store the locker's actual federation if provided
+    if (lockerFederation && typeof lockerFederation === "string") {
+      DB.updateFederationId(row.id, lockerFederation);
+      console.log("[lock-ecash] Updated federation_id to", lockerFederation, "for", row.id);
+    }
 
     // ── SHAMIR: Split notes into 2-of-3 shares ──
     const shippingExpiry = /shipping|physical|ship/i.test(row.description || "") ? DB.EXPIRY_SHIPPING_MS : undefined;
