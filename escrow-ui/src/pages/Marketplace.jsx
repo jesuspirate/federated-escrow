@@ -1881,7 +1881,14 @@ function CreateListingView({ pubkey, subdomain, onBack, onCreated, showToast, lo
         <div style={{ width: 36 }} />
       </div>
 
-      {/* ── Category selection — grouped ── */}
+      {/* ── Category: fixed badge on p2p/lending, full picker otherwise ── */}
+      {subdomain === "p2p" && (
+        <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", marginBottom: 14, fontSize: 13, fontWeight: 700, color: "#f59e0b", display: "flex", alignItems: "center", gap: 8 }}>₿ P2P Trade</div>
+      )}
+      {subdomain === "lending" && (
+        <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", marginBottom: 14, fontSize: 13, fontWeight: 700, color: "#10b981", display: "flex", alignItems: "center", gap: 8 }}>🤝 Community Lending</div>
+      )}
+      {subdomain !== "p2p" && subdomain !== "lending" && (
       <div style={M.formGroup}>
         <label style={M.label}>{t("mkCategory")}</label>
 
@@ -1934,10 +1941,11 @@ function CreateListingView({ pubkey, subdomain, onBack, onCreated, showToast, lo
           })}
         </div>
         </>}
-        {!isP2P && !isLoan && subdomain !== "p2p" && subdomain !== "lending" && (
+        {!isP2P && !isLoan && (
           <input style={M.input} placeholder="Or type a custom category..." value={isSpecialCategory(category) ? "" : category} onChange={e => setCategory(e.target.value)} />
         )}
-      </div>}
+      </div>
+      )}
 
       {/* ── P2P mode banner ── */}
       {isP2P && (

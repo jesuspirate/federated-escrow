@@ -728,7 +728,7 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
     try {
       const cached = sessionStorage.getItem("nostr_pubkey");
       if (cached) { _devPubkey = null; setPubkey(cached); return; }
-    } catch {}
+    } catch (err) { console.warn("[chat] load:", err); }
     (async () => {
       const pk = await getNostrPubkey();
       if (pk) {
@@ -1203,7 +1203,19 @@ function TradeChat({ escrowId, pubkey, participants }) {
     if (!window.__smToken) await getSessionToken_escrow();
     if (window.__smToken) headers["Authorization"] = "Bearer " + window.__smToken;
     const res = await fetch("/api/chat" + path, { ...opts, headers });
-    return res.json();
+    const data = await res.json();
+    // If auth failed, try getting a new token and retry once
+    if (data.error === "Authentication required" && !opts._retried) {
+      window.__smToken = null;
+      window.__smTokenExpiry = 0;
+      await getSessionToken_escrow();
+      if (window.__smToken) {
+        headers["Authorization"] = "Bearer " + window.__smToken;
+        const res2 = await fetch("/api/chat" + path, { ...opts, _retried: true, headers });
+        return res2.json();
+      }
+    }
+    return data;
   };
 
   const loadMessages = async () => {
@@ -1235,27 +1247,52 @@ function TradeChat({ escrowId, pubkey, participants }) {
     setSending(true);
     try {
       // Send message — server stores it, only authenticated participants can read
+      const msgText = draft.trim();
+      // Optimistic: show message immediately
+      setMessages(prev => [...prev, { id: "local_" + Date.now(), sender_pubkey: pubkey, sender_role: myRole, encrypted: msgText, text: msgText, timestamp: Date.now() }]);
+      setDraft("");
+      setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+      // Send to server
       await chatFetch("/" + escrowId + "/messages", {
         method: "POST",
-        body: JSON.stringify({ encrypted: draft.trim() }),
+        body: JSON.stringify({ encrypted: msgText }),
       });
-      setDraft("");
-      loadMessages();
     } catch (err) {
       console.warn("[chat] send failed:", err);
     }
     setSending(false);
   };
 
+  // Track unread count when chat is closed
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => {
+    if (open || !escrowId) return;
+    // Poll for new messages even when closed
+    const checkUnread = async () => {
+      try {
+        const res = await chatFetch("/" + escrowId + "/messages?after=" + lastTs.current);
+        if (res.messages && res.messages.length > 0) {
+          setUnreadCount(prev => prev + res.messages.length);
+          for (const msg of res.messages) lastTs.current = Math.max(lastTs.current, msg.timestamp);
+        }
+      } catch {}
+    };
+    const iv = setInterval(checkUnread, 5000);
+    return () => clearInterval(iv);
+  }, [open, escrowId]);
+
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} style={{
+      <button onClick={() => { setOpen(true); setUnreadCount(0); }} style={{
         position: "fixed", bottom: 20, right: 16, width: 48, height: 48, borderRadius: "50%",
         background: "linear-gradient(135deg, #3b82f6, #2563eb)", border: "none", cursor: "pointer",
         boxShadow: "0 4px 20px rgba(59,130,246,0.4)", display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: 20, zIndex: 100,
       }}>
         💬
+        {unreadCount > 0 && (
+          <span style={{ position: "absolute", top: -4, right: -4, width: 20, height: 20, borderRadius: "50%", background: "#ef4444", color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{unreadCount}</span>
+        )}
       </button>
     );
   }
