@@ -1463,14 +1463,10 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       // Pre-fetch session token BEFORE generateEcash to avoid auth prompt during lock
       await getSessionToken_escrow();
       const amountSats = Math.floor(e.amountMsats / 1000);
-      // Call generateEcash — with iOS WebKit workaround for ghost overlay
+      // Call generateEcash
       let notes;
       try {
         notes = await window.fediInternal.generateEcash({ amount: amountSats });
-        // iOS WebKit workaround: force-dismiss any ghost overlay from native picker
-        document.body.focus();
-        document.body.click();
-        await new Promise(r => setTimeout(r, 100));
       } catch (genErr) {
         showToast("E-cash cancelled or failed. Tap to try again.", "error");
         setLocking(false);
@@ -1484,10 +1480,16 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       }
 
       showToast("Locking e-cash in escrow...");
-      const lock = await api("/" + e.id + "/lock-ecash", {
-        method: "POST",
+      // Use direct fetch with Bearer token — never trigger NIP-98 during lock
+      const lockHeaders = { "Content-Type": "application/json" };
+      let lockToken = window.__smToken;
+      if (!lockToken) { lockToken = await getSessionToken_escrow(); }
+      if (lockToken) { lockHeaders["Authorization"] = "Bearer " + lockToken; }
+      const lockRes = await fetch(location.origin + API + "/" + e.id + "/lock-ecash", {
+        method: "POST", headers: lockHeaders,
         body: JSON.stringify({ notes }),
-      }, 0);
+      });
+      const lock = await lockRes.json();
 
       if (lock.error) throw new Error(lock.error);
 
