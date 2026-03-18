@@ -1458,6 +1458,12 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       showToast("E-cash not available — use Lightning lock instead", "error");
       return;
     }
+    // Double-check: only the lock_role can lock
+    const lockRole = e.lock_role || "seller";
+    if (role !== lockRole) {
+      showToast("Only the " + lockRole + " can lock sats in this trade.", "error");
+      return;
+    }
     setLocking(true);
     try {
       // Pre-fetch session token BEFORE generateEcash to avoid auth prompt during lock
@@ -1705,7 +1711,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   };
 
   // ── Available actions ─────────────────────────────────────────────
-  const canLock = status === "FUNDED" && role === "seller";
+  const canLock = status === "FUNDED" && role === (e.lock_role || "seller");
   const hasVoted = e.votes?.voters?.some(v => v.role === role);
   const buyerVoted = e.votes?.voters?.some(v => v.role === "buyer");
   const sellerVoted = e.votes?.voters?.some(v => v.role === "seller");
@@ -1715,7 +1721,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const canSellerVote = status === "LOCKED" && role === "seller" && !hasVoted && buyerVoted;
   const canArbiterVote = status === "LOCKED" && role === "arbiter" && !hasVoted && buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome;
   const canClaim = (status === "APPROVED" || status === "CLAIMED") && ((e.resolvedOutcome === "release" && role === "buyer") || (e.resolvedOutcome === "refund" && role === "seller"));
-  const canReclaimExpired = status === "EXPIRED" && role === "seller" && e.lockedAt;
+  const canReclaimExpired = status === "EXPIRED" && role === (e.lock_role || "seller") && e.lockedAt;
 
   // Helper to get participant pubkey display
   const getPkDisplay = (participant) => {
