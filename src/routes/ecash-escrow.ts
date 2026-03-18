@@ -567,9 +567,7 @@ router.post("/:id/lock-ecash", async (req: AuthenticatedRequest, res: Response) 
     const pk = req.pubkey!;
     const lockRole = row.lock_role || "seller";
     const callerRole = getRoleByPubkey(row, pk);
-    // Extract federation fingerprint from notes prefix (first 14 chars)
-    const notesFedPrefix = notes.substring(0, 14);
-    console.log("[lock-ecash] escrow:", row.id, "caller:", pk.substring(0,8), "callerRole:", callerRole, "lockRole:", lockRole, "fedPrefix:", notesFedPrefix);
+    console.log("[lock-ecash] escrow:", row.id, "caller:", pk.substring(0,8), "callerRole:", callerRole, "lockRole:", lockRole);
     if (callerRole !== lockRole) return res.status(403).json({ error: "Only the " + lockRole + " can lock sats in this escrow" });
 
     if (row.status !== "FUNDED") {

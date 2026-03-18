@@ -1481,16 +1481,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     }
     setLocking(true);
     try {
-      // Check federation match before locking
-      try {
-        const myFed = await detectMyFederation();
-        const escrowFed = e.federationId || e.federation_id;
-        if (myFed && escrowFed && myFed !== escrowFed) {
-          showToast("Federation mismatch! You're on " + myFed + " but this trade is on " + escrowFed + ". Switch in Fedi settings.", "error");
-          setLocking(false);
-          return;
-        }
-      } catch (fedErr) { /* proceed if check fails */ }
+      // Federation check temporarily disabled — investigating init error
       // Pre-fetch session token BEFORE generateEcash to avoid auth prompt during lock
       await getSessionToken_escrow();
       const amountSats = Math.floor(e.amountMsats / 1000);
@@ -1613,9 +1604,10 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     };
   })();
 
-  // Fetch Shamir share when escrow is LOCKED
+  // Fetch Shamir share when escrow is active (LOCKED, APPROVED, or CLAIMED)
   useEffect(() => {
-    if (!e || !e.id || e.status !== "LOCKED") return;
+    if (!e || !e.id) return;
+    if (!["LOCKED", "APPROVED", "CLAIMED"].includes(e.status)) return;
     (async () => {
       try {
         const data = await api("/" + e.id + "/my-share");
@@ -1666,16 +1658,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         // STEP 2: If we already have notes, redeem them (called from direct user tap)
         if (pendingNotes) {
           try {
-            // Check federation before redeeming
-            try {
-              const claimFed = await detectMyFederation();
-              const escrowFed2 = e.federationId || e.federation_id;
-              if (claimFed && escrowFed2 && claimFed !== escrowFed2) {
-                showToast("You're on " + claimFed + " but these sats are from " + escrowFed2 + ". Switch in Fedi settings.", "error");
-                setLoading(false);
-                return;
-              }
-            } catch (fedErr2) { /* proceed if check fails */ }
+            // Federation check temporarily disabled
             showToast("Redeeming " + amountSats.toLocaleString() + " sats...");
             const redeemResult = await window.fediInternal.receiveEcash(pendingNotes);
             // Confirm successful receipt
