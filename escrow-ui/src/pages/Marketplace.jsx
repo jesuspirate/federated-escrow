@@ -1599,8 +1599,28 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
   const [buyAmount, setBuyAmount] = useState(hasRange ? "" : "");
 
   const handleBuy = async () => {
-    // Check federation match before buying
-    if (myFederation && l.sellerFedDomain && myFederation !== l.sellerFedDomain) {
+    // Federation probe: verify buyer is on same federation as seller
+    const sellerPrefix = l.sellerFedPrefix;
+    if (sellerPrefix && window.fediInternal && window.fediInternal.generateEcash) {
+      setLoading(true);
+      try {
+        showToast("Verifying your federation...");
+        const probe = await window.fediInternal.generateEcash({ amount: 1 });
+        if (probe && probe.length > 10) {
+          const buyerPrefix = probe.substring(0, 10);
+          try { await window.fediInternal.receiveEcash(probe); } catch {}
+          if (buyerPrefix !== sellerPrefix) {
+            showToast("This trade requires the same federation as the seller. Please switch to the correct federation in Fedi and try again. Your 1 sat probe has been returned.", "error");
+            setLoading(false);
+            return;
+          }
+        }
+      } catch {
+        showToast("Federation check failed. Please try again.", "error");
+        setLoading(false);
+        return;
+      }
+    } else if (myFederation && l.sellerFedDomain && myFederation !== l.sellerFedDomain) {
       showToast("This listing is from federation " + l.sellerFedDomain + " but you're on " + myFederation + ". Trades require same federation.", "error");
       return;
     }
