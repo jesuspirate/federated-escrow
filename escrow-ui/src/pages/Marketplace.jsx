@@ -1708,6 +1708,18 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
           )}
         </div>
 
+        {l.images && l.images.length > 0 && (
+          <div style={{ display: "flex", gap: 8, overflowX: "auto", padding: "0 0 12px", WebkitOverflowScrolling: "touch" }}>
+            {l.images.map((url, i) => (
+              <a key={i} href={url} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
+                <img src={url} alt="" style={{ width: 120, height: 120, objectFit: "cover", borderRadius: 10, border: "1px solid #1e293b" }}
+                  onError={e => { e.target.style.display = "none"; }}
+                />
+              </a>
+            ))}
+          </div>
+        )}
+
         {/* Trade type indicator */}
         {isP2P && (
           <div style={{ ...M.infoBanner, borderColor: "rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.06)", marginBottom: 14 }}>
@@ -1788,7 +1800,16 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         {l.description && (
           <div style={M.section}>
             <div style={M.sectionLabel}>{t("description")}</div>
-            <div style={M.sectionValue}>{l.description}</div>
+            <div style={M.sectionValue}>{l.description?.split("\n").map((line, i) => {
+              const urlMatch = line.match(/(https?:\/\/[^\s]+)/);
+              if (urlMatch) {
+                const url = urlMatch[1];
+                const before = line.slice(0, urlMatch.index);
+                const after = line.slice(urlMatch.index + url.length);
+                return <div key={i}>{before}<a href={url} target="_blank" rel="noopener noreferrer" style={{ color: "#3b82f6", textDecoration: "underline" }}>{url}</a>{after}</div>;
+              }
+              return <div key={i}>{line}</div>;
+            })}</div>
           </div>
         )}
 
@@ -1862,6 +1883,44 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
   const [quantity, setQuantity] = useState("1");
   const [fiatCurrency, setFiatCurrency] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("");
+  const [listingImages, setListingImages] = useState([]);
+  const [imgUploading, setImgUploading] = useState(false);
+  const [websiteUrl, setWebsiteUrl] = useState("");
+  const listingFileRef = useRef(null);
+
+  const uploadListingImage = async (file) => {
+    if (!file || !file.type.startsWith("image/")) { showToast("Please select an image", "error"); return; }
+    if (file.size > 20 * 1024 * 1024) { showToast("Image too large (max 20MB)", "error"); return; }
+    if (listingImages.length >= 4) { showToast("Maximum 4 images", "error"); return; }
+    setImgUploading(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const hashBuf = await crypto.subtle.digest("SHA-256", buf);
+      const sha256 = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+      if (!window.nostr) throw new Error("Nostr not available");
+      const authEvent = {
+        kind: 24242,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [["t", "upload"], ["x", sha256], ["expiration", String(Math.floor(Date.now() / 1000) + 300)]],
+        content: "Upload listing image",
+      };
+      const signed = await window.nostr.signEvent(authEvent);
+      const res = await fetch("https://blossom.band/upload", {
+        method: "PUT",
+        headers: { "Authorization": "Nostr " + btoa(JSON.stringify(signed)), "Content-Type": file.type },
+        body: file,
+      });
+      if (!res.ok) throw new Error("Upload failed (" + res.status + ")");
+      const data = await res.json();
+      const url = data.url || ("https://blossom.band/" + sha256);
+      setListingImages(prev => [...prev, url]);
+      showToast("Image uploaded!");
+    } catch (err) {
+      showToast("Image upload failed: " + (err.message || ""), "error");
+    }
+    setImgUploading(false);
+  };
+
   const [ratePremium, setRatePremium] = useState("");
   const [interestRate, setInterestRate] = useState("");
   const [repaymentDays, setRepaymentDays] = useState("");
@@ -1958,7 +2017,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
         method: "POST",
         body: JSON.stringify({
           title: title.trim(),
-          description: desc.trim() || undefined,
+          description: (desc.trim() + (websiteUrl.trim() ? "\n\n\ud83c\udf10 " + websiteUrl.trim() : "")) || undefined,
           priceMsats: sats * 1000,
           minPriceMsats: minSats ? minSats * 1000 : undefined,
           maxPriceMsats: maxSats ? maxSats * 1000 : undefined,
@@ -1969,6 +2028,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
           sellerFedDomain: myFederation || undefined,
           sellerFedPrefix: sellerFedPrefix || undefined,
           quantity: parseInt(quantity) || 1,
+          images: listingImages.length > 0 ? listingImages : undefined,
         }),
       });
       if (res.error) throw new Error(res.error);
@@ -2253,6 +2313,38 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
 
       {/* ── Common fields: Description + Terms + Community ── */}
       <div style={M.formGroup}><label style={M.label}>{t("description")}</label><textarea style={{ ...M.input, minHeight: 72, resize: "vertical" }} placeholder={isP2P ? "Any additional details about your trade..." : t("mkFieldDescHint")} value={desc} onChange={e => setDesc(e.target.value)} /></div>
+
+      {!isP2P && !isLoan && (
+        <div style={M.formGroup}>
+          <label style={M.label}>PHOTOS (optional)</label>
+          <input type="file" accept="image/*" ref={listingFileRef} onChange={e => { if (e.target.files?.[0]) uploadListingImage(e.target.files[0]); e.target.value = ""; }} style={{ display: "none" }} />
+          {listingImages.length > 0 && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+              {listingImages.map((url, i) => (
+                <div key={i} style={{ position: "relative", width: 72, height: 72, borderRadius: 8, overflow: "hidden", border: "1px solid #1e293b" }}>
+                  <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  <button onClick={() => setListingImages(prev => prev.filter((_, j) => j !== i))} style={{
+                    position: "absolute", top: 2, right: 2, width: 18, height: 18, borderRadius: "50%",
+                    background: "rgba(0,0,0,0.7)", color: "#fff", fontSize: 10, border: "none", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <button onClick={() => listingFileRef.current?.click()} disabled={imgUploading || listingImages.length >= 4} style={{
+            padding: "10px 16px", borderRadius: 10, border: "1px dashed #334155", background: "transparent",
+            color: imgUploading ? "#475569" : "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%",
+          }}>
+            {imgUploading ? "Uploading..." : listingImages.length > 0 ? "📷 Add another photo (" + listingImages.length + "/4)" : "📷 Add photos of your item"}
+          </button>
+          <div style={{ marginTop: 8 }}>
+            <input style={M.input} placeholder="https://your-shop.com (optional)" value={websiteUrl} onChange={e => setWebsiteUrl(e.target.value)} />
+            <p style={{ fontSize: 10, color: "#475569", marginTop: 4 }}>Link to your shop, portfolio, or product page</p>
+          </div>
+        </div>
+      )}
+
       <div style={M.formGroup}><label style={M.label}>{t("tradeTerms")}</label><textarea style={{ ...M.input, minHeight: 60, resize: "vertical" }} placeholder={isP2P ? "Payment window, confirmation steps..." : t("mkFieldTermsHint")} value={terms} onChange={e => setTerms(e.target.value)} /></div>
 
 
