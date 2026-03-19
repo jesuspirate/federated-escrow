@@ -312,9 +312,9 @@ export default function App() {
     setActiveApp("marketplace");
   }, []);
 
-  const switchToMarketplaceOrders = useCallback(() => {
+  const switchToMarketplaceOrders = useCallback((escrowId = null) => {
     setInitialEscrowId(null);
-    setInitialMarketplaceEscrowId("__ORDERS__");
+    setInitialMarketplaceEscrowId(escrowId || "__ORDERS__");
     setActiveApp("marketplace");
   }, []);
 

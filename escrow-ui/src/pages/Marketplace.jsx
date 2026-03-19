@@ -1220,7 +1220,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   const [activeCategory, setActiveCategory] = useState("all");
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
   const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
-  const mineCount = useMemo(() => listings.filter(l => l.sellerPubkey === pubkey).length, [listings, pubkey]);
+  const mineCount = useMemo(() => listings.filter(l => l.sellerPubkey === pubkey).filter(subdomainFilter).length, [listings, pubkey, subdomain]);
   // Subdomain-based listing filter
   const subdomainFilter = (l) => {
     if (subdomain === "p2p") return isSatsForFiat(l.category);
@@ -1230,7 +1230,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   };
 
   const filteredListings = (activeCategory === "all"
-    ? listings.filter(l => l.sellerPubkey !== pubkey).filter(subdomainFilter)
+    ? listings.filter(subdomainFilter)
     : activeCategory === "mine"
     ? listings.filter(l => l.sellerPubkey === pubkey).filter(subdomainFilter)
     : listings.filter(l => {
@@ -2608,6 +2608,17 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
               1. Send <strong style={{ color: "#f8fafc" }}>{parseInt(amountTZS).toLocaleString()} TZS</strong> via M-Pesa<br/>
               2. Enter your M-Pesa transaction ID below<br/>
               3. Sats sent to your Fedi wallet instantly
+            </div>
+            <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 8, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b", marginBottom: 6 }}>KUTOA M-Pesa:</div>
+              <div style={{ fontSize: 11, color: "#cbd5e1", lineHeight: 1.8, fontFamily: "monospace" }}>
+                1. Piga <strong style={{ color: "#f8fafc" }}>*150*00#</strong><br/>
+                2. Chagua <strong>2</strong> \u2013 Kutoa Pesa<br/>
+                3. Namba ya wakala: <strong style={{ color: "#f8fafc" }}>1228685</strong><br/>
+                4. Kiasi: <strong style={{ color: "#f59e0b" }}>{parseInt(amountTZS).toLocaleString()} TZS</strong><br/>
+                5. Jina: <strong style={{ color: "#f8fafc" }}>BRIAN</strong><br/>
+                6. Weka PIN yako na uthibitishe
+              </div>
             </div>
           </div>
 

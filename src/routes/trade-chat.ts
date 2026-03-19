@@ -69,7 +69,7 @@ router.post("/:escrowId/messages", (req: AuthenticatedRequest, res: Response) =>
     if (!role) return res.status(403).json({ error: "Not a participant" });
 
     const { encrypted } = req.body;
-    if (!encrypted || typeof encrypted !== "string" || encrypted.length < 10) {
+    if (!encrypted || typeof encrypted !== "string" || encrypted.length < 1) {
       return res.status(400).json({ error: "Missing encrypted message" });
     }
     if (encrypted.length > 5000) {

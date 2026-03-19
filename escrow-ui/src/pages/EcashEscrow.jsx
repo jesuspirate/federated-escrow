@@ -876,9 +876,9 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
       {view === "join" && <JoinView pubkey={pubkey} onBack={() => setView("list")} onJoined={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "detail" && selected && <DetailView escrow={selected} pubkey={pubkey} onBack={() => {
         if (cameFromMarketplace && onSwitchToMarketplaceOrders) {
-          // Return directly to marketplace orders list — no escrow ID lookup needed
+          // Return to marketplace order detail for this escrow
           setCameFromMarketplace(false);
-          onSwitchToMarketplaceOrders();
+          onSwitchToMarketplaceOrders(selected?.id || null);
         } else {
           setSelected(null); setView("list"); loadEscrows();
         }
@@ -1522,7 +1522,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       if (expectedPrefix && notes.length > 10) {
         const notePrefix = notes.substring(0, 10);
         if (notePrefix !== expectedPrefix) {
-          showToast("Wrong federation selected! Please pick the same federation as the seller. Returning sats...", "error");
+          showToast("Oops! Those sats are from a different federation. No worries \u2014 they are being returned to your wallet. Please select the same federation as the seller and try again.", "error");
           try { await window.fediInternal.receiveEcash(notes); showToast("Sats returned to your wallet."); } catch { showToast("Auto-return failed. Save notes: " + notes.substring(0, 40) + "...", "error"); }
           setLocking(false);
           return;
