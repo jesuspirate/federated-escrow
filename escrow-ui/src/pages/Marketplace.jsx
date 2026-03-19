@@ -595,7 +595,9 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
   const showToast = useCallback((msg, type = "ok") => {
     clearTimeout(toastTimer.current);
     setToast({ msg, type, visible: true });
-    toastTimer.current = setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
+    const isFedError = type === "error" && (msg.includes("federation") || msg.includes("Federation"));
+    const duration = isFedError ? 20000 : type === "error" ? 6000 : 3000;
+    toastTimer.current = setTimeout(() => setToast(prev => ({ ...prev, visible: false })), duration);
   }, []);
 
   const switchLocale = useCallback((code) => {
