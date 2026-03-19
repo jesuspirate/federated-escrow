@@ -1984,9 +1984,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)", fontSize: 16, padding: "16px 20px" }} onClick={() => setConfirmVote("release")} disabled={loading}>
               {loading ? t("voting") : isP2PTrade ? "✓ I sent the fiat payment" : isLending ? "✓ I received the loan" : "✓ I received what I paid for"}
             </button>
-            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #b45309, #92400e)", fontSize: 13, padding: "12px 16px" }} onClick={() => setConfirmVote("refund")} disabled={loading}>
-              {isP2PTrade ? "⚠ Dispute — seller did not deliver" : isLending ? "⚠ Dispute — loan issue" : "⚠ Dispute — I didn’t receive what I paid for"}
-            </button>
+            {!isP2PTrade && <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #b45309, #92400e)", fontSize: 13, padding: "12px 16px" }} onClick={() => setConfirmVote("refund")} disabled={loading}>
+              {isLending ? "⚠ Dispute — loan issue" : "⚠ Dispute — I didn’t receive what I paid for"}
+            </button>}
           </div>
         )}
         {canBuyerVote && confirmVote === "refund" && (
