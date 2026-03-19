@@ -1220,14 +1220,14 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   const [activeCategory, setActiveCategory] = useState("all");
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
   const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
-  const mineCount = useMemo(() => listings.filter(l => l.sellerPubkey === pubkey).filter(subdomainFilter).length, [listings, pubkey, subdomain]);
-  // Subdomain-based listing filter
   const subdomainFilter = (l) => {
     if (subdomain === "p2p") return isSatsForFiat(l.category);
     if (subdomain === "lending") return isLending(l.category);
     if (subdomain === "market") return !isSatsForFiat(l.category) && !isLending(l.category);
     return true; // legacy satoshimarket.app shows all
   };
+  const mineCount = useMemo(() => listings.filter(l => l.sellerPubkey === pubkey).filter(subdomainFilter).length, [listings, pubkey, subdomain]);
+  // Subdomain-based listing filter
 
   const filteredListings = (activeCategory === "all"
     ? listings.filter(subdomainFilter)
