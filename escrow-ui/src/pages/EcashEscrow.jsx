@@ -58,6 +58,7 @@ class NostrRejectedError extends Error {
 }
 
 async function getNostrPubkey() {
+  if (isDevMode()) return null;
   if (!window.nostr) return null;
   try { return await window.nostr.getPublicKey(); }
   catch {
@@ -762,7 +763,7 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
 	// when Nostr auth succeeded on mount but ?dev is in the URL
   const switchDevIdentity = useCallback((role) => {
     setDevRole(role); _devPubkey = DEV_IDENTITIES[role]; setPubkey(_devPubkey);
-    setView("list"); setSelected(null); setEscrows([]);
+    setEscrows([]); loadEscrows();
   }, []);
 
   const switchLocale = useCallback((code) => {
@@ -787,18 +788,15 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
     setLoading(true);
     try { const data = await api(`/${id}`); if (data.error) throw new Error(data.error); setSelected(data); }
     catch (err) {
-      showToast(err.message, "error");
-      // If we came from marketplace, always go back on error — never show escrow list
-      if (cameFromMarketplace && onSwitchToMarketplace) {
-        showToast(err.message || "Failed to load trade", "error");
+      showToast(err.message || "Failed to load trade", "error");
+      // If we came from marketplace, go back to marketplace on auth errors
+      if (cameFromMarketplace && onSwitchToMarketplace && err.name === "NostrRejectedError") {
         onSwitchToMarketplace();
         return;
       }
-      if (err.name === "NostrRejectedError" && onSwitchToMarketplace) {
-        onSwitchToMarketplace();
-        return;
-      }
-      setView("list");
+      // Stay on current view for transient errors (rate limits, network)
+      // Only go to list if we have no selected escrow to display
+      if (!selected) setView("list");
     }
     setLoading(false);
   }, [showToast, onSwitchToMarketplace]);
