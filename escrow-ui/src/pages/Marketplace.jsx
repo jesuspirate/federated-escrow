@@ -1222,8 +1222,9 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
   // Federation prefix → friendly name mapping
   const FED_NAMES = {
-    "AwEEiItw7A": { name: "Global Bitcoin Federation", emoji: "🏛️", color: "#f59e0b" },
-    "AwEEG8tk5g": { name: "Bitcoin Life", emoji: "🏛️", color: "#a78bfa" },
+    "AwEEiItw7A": { name: "Bitcoin Life", emoji: "🏛️", color: "#a78bfa" },
+    "AwEEG8tk5g": { name: "Global Bitcoin Federation", emoji: "🏛️", color: "#f59e0b" },
+    "AwEE_yhqbg": { name: "Afribit Kibera", emoji: "🏛️", color: "#10b981" },
   };
   const getFedInfo = (prefix, domain) => {
     if (prefix && FED_NAMES[prefix]) return FED_NAMES[prefix];
