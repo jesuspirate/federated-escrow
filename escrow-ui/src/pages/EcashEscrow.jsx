@@ -2043,7 +2043,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           </div>
         )}
         {canLock && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", fontSize: 16, padding: "16px 20px", marginBottom: 8 }} onClick={handleLockEcash} disabled={locking}>
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", fontSize: 16, padding: "16px 20px", marginBottom: 8 }} onClick={isDevMode() ? handleLockFetch : handleLockEcash} disabled={locking}>
             {locking ? "Locking e-cash…" : labels.lockBtn}
           </button>
         )}

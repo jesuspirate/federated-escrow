@@ -2628,7 +2628,7 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
         <div style={{ ...M.card, padding: 16, textAlign: "center" }}>
           <div style={{ fontSize: 28, marginBottom: 8 }}>₿</div>
           <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>
-            You will receive: <span style={{ color: "#f59e0b" }}>{invoice.amountSats || invoice.satsAmount || "?"} sats</span>
+            You will receive: <span style={{ color: "#f59e0b" }}>{invoice.calculatedSats || invoice.amountSats || invoice.satsAmount || "?"} sats</span>
           </div>
           <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>
             for {parseInt(amountTZS).toLocaleString()} TZS via M-Pesa
@@ -2673,10 +2673,10 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
               let bolt11;
               if (window.webln) {
                 await window.webln.enable();
-                const inv = await window.webln.makeInvoice({ amount: invoice.amountSats || invoice.satsAmount });
+                const inv = await window.webln.makeInvoice({ amount: invoice.calculatedSats || invoice.amountSats || invoice.satsAmount });
                 bolt11 = inv.paymentRequest;
               } else {
-                bolt11 = prompt("Paste a Lightning invoice for " + (invoice.amountSats || invoice.satsAmount) + " sats:");
+                bolt11 = prompt("Paste a Lightning invoice for " + (invoice.calculatedSats || invoice.amountSats || invoice.satsAmount) + " sats:");
               }
               if (!bolt11) { setLoading(false); return; }
               const res = await fetch("/api/chapsmart/buy-sats/send", {
@@ -2686,7 +2686,7 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
               const data = await res.json();
               if (data.success === false) { showToast(data.error || "Failed", "error"); }
               else {
-                setResult({ amountTZS, status: "completed", sats: invoice.amountSats || invoice.satsAmount });
+                setResult({ amountTZS, status: "completed", sats: invoice.calculatedSats || invoice.amountSats || invoice.satsAmount });
                 setStep(3);
                 showToast("Sats incoming! Check your wallet.", "ok");
               }
