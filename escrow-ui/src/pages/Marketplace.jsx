@@ -192,6 +192,13 @@ function fmtFiat(msats, rates, currency = "USD") {
 }
 
 function fmtSats(msats) { return Math.floor(msats / 1000).toLocaleString(); }
+function fmtSatsShort(msats) {
+  const sats = Math.floor(msats / 1000);
+  if (sats >= 1000000) return (sats / 1000000).toFixed(1) + "M";
+  if (sats >= 10000) return (sats / 1000).toFixed(0) + "K";
+  if (sats >= 1000) return (sats / 1000).toFixed(1) + "K";
+  return sats.toLocaleString();
+}
 function fmtVolume(msats) {
   const sats = Math.floor(msats / 1000);
   if (sats >= 1_000_000_000) return (sats / 1_000_000_000).toFixed(1) + "B";
