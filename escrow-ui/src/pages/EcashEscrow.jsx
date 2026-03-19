@@ -1392,6 +1392,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const status = e.status;
   const [showBurst, setShowBurst] = useState(false);
   const [locking, setLocking] = useState(false);
+  const [fedMismatch, setFedMismatch] = useState(null);
   const prevStatus = useRef(status);
 
   // Trade type detection from escrow description prefix
@@ -1522,12 +1523,19 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       if (expectedPrefix && notes.length > 10) {
         const notePrefix = notes.substring(0, 10);
         if (notePrefix !== expectedPrefix) {
-          showToast("Oops! Those sats are from a different federation. No worries \u2014 they are being returned to your wallet. Please select the same federation as the seller and try again.", "error");
-          try { await window.fediInternal.receiveEcash(notes); showToast("Sats returned to your wallet."); } catch { showToast("Auto-return failed. Save notes: " + notes.substring(0, 40) + "...", "error"); }
+          // Auto-refund the notes
+          try { await window.fediInternal.receiveEcash(notes); } catch {}
+          // Show persistent federation mismatch banner
+          setFedMismatch({
+            expected: expectedPrefix,
+            got: notePrefix,
+          });
           setLocking(false);
           return;
         }
       }
+      // Clear any previous mismatch on successful prefix match
+      setFedMismatch(null);
 
       // Notes valid — proceed (remove duplicate return below)
       if (false) {
@@ -2019,6 +2027,20 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           </div>
         )}
         {/* ── E-cash lock (primary) ── */}
+        {fedMismatch && (
+          <div style={{ padding: "14px 16px", marginBottom: 12, borderRadius: 12, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", animation: "slideUp 0.3s ease-out" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 20 }}>{"🏛️"}</span>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b" }}>Wrong Federation Selected</span>
+            </div>
+            <div style={{ fontSize: 12, color: "#cbd5e1", lineHeight: 1.6, marginBottom: 10 }}>
+              Your sats have been safely returned to your wallet. This trade requires a specific federation. Please tap Lock again and choose the correct federation from the picker.
+            </div>
+            <button onClick={() => setFedMismatch(null)} style={{ background: "transparent", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 8, padding: "6px 14px", color: "#f59e0b", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+              Dismiss
+            </button>
+          </div>
+        )}
         {canLock && (
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", fontSize: 16, padding: "16px 20px", marginBottom: 8 }} onClick={handleLockEcash} disabled={locking}>
             {locking ? "Locking e-cash…" : labels.lockBtn}
