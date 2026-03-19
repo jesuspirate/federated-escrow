@@ -1883,7 +1883,14 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
             // Return the 1 sat immediately
             try { await window.fediInternal.receiveEcash(probe); } catch {}
           }
-        } catch { /* user cancelled probe — proceed without prefix */ }
+        } catch { /* user cancelled probe */ }
+      }
+
+      // REQUIRE federation prefix — block listing if probe failed
+      if (!sellerFedPrefix) {
+        showToast("Federation detection failed — please try again. Make sure to select a federation when prompted.", "error");
+        setLoading(false);
+        return;
       }
 
       const res = await mapi("/", {
