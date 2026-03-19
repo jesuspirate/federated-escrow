@@ -1290,6 +1290,117 @@ function TradeChat({ escrowId, pubkey, participants }) {
     setSending(false);
   };
 
+  // ── Blossom Image Upload ──────────────────────────────────────────
+  const fileInputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
+
+  const uploadImage = async (file) => {
+    if (!file || !file.type.startsWith("image/")) {
+      return null;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      return null; // 20MB free limit on blossom.band
+    }
+    setUploading(true);
+    try {
+      // Compute SHA-256 hash of the file
+      const arrayBuffer = await file.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const sha256 = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+
+      // Sign Blossom auth event (kind 24242)
+      if (!window.nostr) throw new Error("Nostr not available");
+      const authEvent = {
+        kind: 24242,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ["t", "upload"],
+          ["x", sha256],
+          ["expiration", String(Math.floor(Date.now() / 1000) + 300)],
+        ],
+        content: "Upload image for trade chat",
+      };
+      const signed = await window.nostr.signEvent(authEvent);
+      const authHeader = "Nostr " + btoa(JSON.stringify(signed));
+
+      // Upload to blossom.band
+      const res = await fetch("https://blossom.band/upload", {
+        method: "PUT",
+        headers: {
+          "Authorization": authHeader,
+          "Content-Type": file.type,
+        },
+        body: file,
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText || "Upload failed (" + res.status + ")");
+      }
+
+      const data = await res.json();
+      // blossom.band returns { url, sha256, size, type, uploaded }
+      return data.url || ("https://blossom.band/" + sha256);
+    } catch (err) {
+      console.warn("[blossom] upload failed:", err);
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleImagePick = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so same file can be picked again
+    e.target.value = "";
+
+    const url = await uploadImage(file);
+    if (!url) {
+      // Show inline error — don't use showToast (not passed to TradeChat)
+      setMessages(prev => [...prev, {
+        id: "err_" + Date.now(),
+        sender_pubkey: pubkey,
+        sender_role: myRole,
+        encrypted: "\u26a0 Image upload failed. Try a smaller image or check your connection.",
+        text: "\u26a0 Image upload failed. Try a smaller image or check your connection.",
+        timestamp: Date.now(),
+        isError: true,
+      }]);
+      return;
+    }
+
+    // Send image URL as a chat message with [img] marker
+    const msgText = "[img]" + url;
+    setMessages(prev => [...prev, {
+      id: "local_" + Date.now(),
+      sender_pubkey: pubkey,
+      sender_role: myRole,
+      encrypted: msgText,
+      text: msgText,
+      timestamp: Date.now(),
+    }]);
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+
+    // Send to server
+    try {
+      const sendResult = await chatFetch("/" + escrowId + "/messages", {
+        method: "POST",
+        body: JSON.stringify({ encrypted: msgText }),
+      });
+      if (sendResult.messageId) {
+        setMessages(prev => prev.map(m =>
+          m.id && m.id.startsWith("local_") && m.text === msgText
+            ? { ...m, id: sendResult.messageId, timestamp: sendResult.timestamp || m.timestamp }
+            : m
+        ));
+      }
+    } catch (err) {
+      console.warn("[chat] image send failed:", err);
+    }
+  };
+
   // Track unread count when chat is closed
   const [unreadCount, setUnreadCount] = useState(0);
   useEffect(() => {
@@ -1352,11 +1463,19 @@ function TradeChat({ escrowId, pubkey, participants }) {
                 {isMe ? "You" : roleLabels[msg.sender_role] || msg.sender_role}
               </div>
               <div style={{
-                maxWidth: "80%", padding: "8px 12px", borderRadius: isMe ? "12px 12px 0 12px" : "12px 12px 12px 0",
+                maxWidth: "80%", padding: msg.text?.startsWith("[img]") ? "4px" : "8px 12px",
+                borderRadius: isMe ? "12px 12px 0 12px" : "12px 12px 12px 0",
                 background: isMe ? "rgba(59,130,246,0.15)" : "#1e293b",
-                color: msg.text === "[encrypted]" ? "#475569" : "#e2e8f0", fontSize: 13, lineHeight: 1.4,
+                color: msg.isError ? "#f59e0b" : msg.text === "[encrypted]" ? "#475569" : "#e2e8f0", fontSize: 13, lineHeight: 1.4,
+                overflow: "hidden",
               }}>
-                {msg.text}
+                {msg.text?.startsWith("[img]") ? (
+                  <a href={msg.text.slice(5)} target="_blank" rel="noopener noreferrer">
+                    <img src={msg.text.slice(5)} alt="Shared image" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 8, display: "block" }}
+                      onError={(e) => { e.target.style.display = "none"; e.target.parentElement.textContent = "\ud83d\uddbc Image failed to load"; }}
+                    />
+                  </a>
+                ) : msg.text}
               </div>
               <div style={{ fontSize: 9, color: "#475569", marginTop: 2 }}>
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -1368,7 +1487,21 @@ function TradeChat({ escrowId, pubkey, participants }) {
       </div>
 
       {/* Input */}
-      <div style={{ display: "flex", gap: 8, padding: "8px 16px 12px", borderTop: "1px solid #1e293b" }}>
+      {/* Upload indicator */}
+      {uploading && (
+        <div style={{ padding: "6px 16px", fontSize: 11, color: "#3b82f6", textAlign: "center", animation: "pulse 1.5s infinite" }}>
+          Uploading image...
+        </div>
+      )}
+      <div style={{ display: "flex", gap: 6, padding: "8px 16px 12px", borderTop: "1px solid #1e293b", alignItems: "center" }}>
+        <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImagePick} style={{ display: "none" }} />
+        <button onClick={() => fileInputRef.current?.click()} disabled={uploading} style={{
+          width: 38, height: 38, borderRadius: 10, border: "none", cursor: "pointer",
+          background: "#0f1629", color: uploading ? "#475569" : "#64748b", fontSize: 16,
+          display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        }} title="Share image">
+          {uploading ? "..." : "\ud83d\udcf7"}
+        </button>
         <input
           style={{ flex: 1, background: "#0f1629", border: "1px solid #1e293b", borderRadius: 10, padding: "10px 14px", color: "#f8fafc", fontSize: 13, outline: "none" }}
           value={draft} onChange={e => setDraft(e.target.value)}
