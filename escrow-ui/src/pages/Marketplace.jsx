@@ -2613,7 +2613,7 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
               <div style={{ fontSize: 11, fontWeight: 700, color: "#f59e0b", marginBottom: 6 }}>KUTOA M-Pesa:</div>
               <div style={{ fontSize: 11, color: "#cbd5e1", lineHeight: 1.8, fontFamily: "monospace" }}>
                 1. Piga <strong style={{ color: "#f8fafc" }}>*150*00#</strong><br/>
-                2. Chagua <strong>2</strong> \u2013 Kutoa Pesa<br/>
+                2. Chagua <strong>2</strong> – Kutoa Pesa<br/>
                 3. Namba ya wakala: <strong style={{ color: "#f8fafc" }}>1228685</strong><br/>
                 4. Kiasi: <strong style={{ color: "#f59e0b" }}>{parseInt(amountTZS).toLocaleString()} TZS</strong><br/>
                 5. Jina: <strong style={{ color: "#f8fafc" }}>BRIAN</strong><br/>
