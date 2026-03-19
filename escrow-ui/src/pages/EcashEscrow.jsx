@@ -1796,7 +1796,11 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         }
         await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
         showToast("Sats claimed! (sandbox mode)");
-        onRefresh();
+        if (cameFromMarketplace && onSwitchToMarketplaceOrders) {
+          setTimeout(() => onSwitchToMarketplaceOrders(e.id), 1500);
+        } else {
+          onRefresh();
+        }
         setLoading(false);
         return;
       }
