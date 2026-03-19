@@ -1220,6 +1220,21 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   const [activeCategory, setActiveCategory] = useState("all");
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
   const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
+  // Federation prefix → friendly name mapping
+  const FED_NAMES = {
+    "AwEEiItw7A": { name: "Global Bitcoin Federation", emoji: "🌍", color: "#f59e0b" },
+    "AwEEG8tk5g": { name: "Bitcoin Life", emoji: "⚡", color: "#a78bfa" },
+  };
+  const getFedInfo = (prefix, domain) => {
+    if (prefix && FED_NAMES[prefix]) return FED_NAMES[prefix];
+    if (domain) {
+      // Derive from domain if prefix not mapped
+      const short = domain.replace(/^m\d+\./, "").replace(/\.in$/, "").replace(/\.com$/, "");
+      return { name: short, emoji: "🏛", color: "#64748b" };
+    }
+    return null;
+  };
+
   const subdomainFilter = (l) => {
     if (subdomain === "p2p") return isSatsForFiat(l.category);
     if (subdomain === "lending") return isLending(l.category);
@@ -1441,6 +1456,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                     ...M.categoryBadge,
                     ...(isSatsForFiat(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : isLending(l.category) ? { background: "rgba(16,185,129,0.15)", color: "#10b981", fontWeight: 700 } : {}),
                   }}>{isSatsForFiat(l.category) ? "₿ P2P Trade" : isLending(l.category) ? "🤝 Lending" : l.category}</span>}
+                  {(() => { const fi = getFedInfo(l.sellerFedPrefix, l.sellerFedDomain); return fi ? <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 9, fontWeight: 700, background: fi.color + "15", color: fi.color, border: "1px solid " + fi.color + "25", display: "inline-flex", alignItems: "center", gap: 3 }}>{fi.emoji} {fi.name}</span> : null; })()}
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, ...(l.status === "paused" ? { color: "#64748b" } : l.quantity > 1 ? { color: "#10b981" } : l.quantity === 1 ? { color: "#f59e0b", animation: "pulse 2s ease infinite" } : { color: "#ef4444" }) }}>
                   {l.status === "paused" ? "⏸ Paused" : l.quantity > 1 ? `🟢 ${t("mkQtyAvailable", { qty: l.quantity })}` : l.quantity === 1 ? `🔥 ${t("mkQtyOneLeft")}` : `❌ ${t("mkQtySoldOut")}`}
