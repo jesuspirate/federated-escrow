@@ -722,6 +722,10 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
       // Reload escrows for new role but preserve current view
       setEscrows([]);
       setPubkey(propPubkey);
+      // If viewing a detail, reload it to get the new role's perspective
+      if (selected && selected.id) {
+        setTimeout(() => loadDetail(selected.id), 100);
+      }
     }
   }, [propPubkey]);
 
