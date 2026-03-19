@@ -1786,9 +1786,21 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         return;
       }
 
-      // ── LIGHTNING PAYOUT — commented out, e-cash only ──
-      // Lightning claim path removed. All claims go through e-cash flow above.
-      showToast("This escrow uses e-cash. Use the Receive button above.", "error");
+      // ── DEV/SANDBOX MODE: Skip receiveEcash, just confirm on server ──
+      if (isDevMode()) {
+        try {
+          const claim = await api("/" + e.id + "/claim", { method: "POST" });
+          if (claim.error && !String(claim.error).includes("CLAIMED")) throw new Error(claim.error);
+        } catch (claimErr) {
+          if (!String(claimErr.message || "").includes("CLAIMED") && !String(claimErr.message || "").includes("APPROVED")) throw claimErr;
+        }
+        await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
+        showToast("Sats claimed! (sandbox mode)");
+        onRefresh();
+        setLoading(false);
+        return;
+      }
+      showToast("E-cash not available in this environment.", "error");
       setLoading(false);
       return;
       /* LIGHTNING PAYOUT CODE REMOVED — see git history for reference */
