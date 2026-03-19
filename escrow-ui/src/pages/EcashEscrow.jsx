@@ -1700,7 +1700,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       let amountSats = Math.floor((e.amountMsats || 0) / 1000);
 
       // ── E-CASH PAYOUT: Two-step flow to ensure receiveEcash runs from user tap ──
-      if (e.lockMode === "ecash" && window.fediInternal && window.fediInternal.receiveEcash) {
+      if (e.lockMode === "ecash" && !isDevMode() && window.fediInternal && window.fediInternal.receiveEcash) {
 
         // STEP 2: If we already have notes, redeem them (called from direct user tap)
         if (pendingNotes) {
