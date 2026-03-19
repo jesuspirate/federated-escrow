@@ -1872,6 +1872,20 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
 
     setLoading(true);
     try {
+      // Federation probe: generate 1 sat to capture federation prefix
+      let sellerFedPrefix = null;
+      if (window.fediInternal && window.fediInternal.generateEcash) {
+        try {
+          showToast("Detecting your federation...");
+          const probe = await window.fediInternal.generateEcash({ amount: 1 });
+          if (probe && probe.length > 10) {
+            sellerFedPrefix = probe.substring(0, 10);
+            // Return the 1 sat immediately
+            try { await window.fediInternal.receiveEcash(probe); } catch {}
+          }
+        } catch { /* user cancelled probe — proceed without prefix */ }
+      }
+
       const res = await mapi("/", {
         method: "POST",
         body: JSON.stringify({
@@ -1885,6 +1899,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
           condition: isSpecial ? "service" : condition,
           communityLink: community.trim() || undefined,
           sellerFedDomain: myFederation || undefined,
+          sellerFedPrefix: sellerFedPrefix || undefined,
           quantity: parseInt(quantity) || 1,
         }),
       });

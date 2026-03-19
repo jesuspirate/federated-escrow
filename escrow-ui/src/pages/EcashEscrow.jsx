@@ -1516,42 +1516,16 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         return;
       }
 
-      // POST-GENERATE federation check: verify notes prefix matches expected federation
-      // Known prefix → federation domain mapping
-      const KNOWN_FED_PREFIXES = { "AwEEiItw7A": "m1.8fa.in" };
-      const escrowFed = e.federationId || e.federation_id;
-      if (escrowFed && notes.length > 10) {
+
+      // POST-GENERATE federation check: compare notes prefix against seller's stored prefix
+      const expectedPrefix = e.sellerFedPrefix || e.seller_fed_prefix;
+      if (expectedPrefix && notes.length > 10) {
         const notePrefix = notes.substring(0, 10);
-        const noteFed = KNOWN_FED_PREFIXES[notePrefix] || localStorage.getItem("fed_prefix_" + notePrefix);
-        
-        if (noteFed && noteFed === escrowFed) {
-          // Known prefix, correct federation — proceed
-        } else if (noteFed && noteFed !== escrowFed) {
-          // Known prefix, WRONG federation — refund
-          showToast("Wrong federation! Sats from " + noteFed + " but trade requires " + escrowFed + ". Returning sats...", "error");
-          try { await window.fediInternal.receiveEcash(notes); showToast("Sats returned to your wallet."); } catch { showToast("Auto-return failed. Notes: " + notes.substring(0, 40) + "...", "error"); }
+        if (notePrefix !== expectedPrefix) {
+          showToast("Wrong federation selected! Please pick the same federation as the seller. Returning sats...", "error");
+          try { await window.fediInternal.receiveEcash(notes); showToast("Sats returned to your wallet."); } catch { showToast("Auto-return failed. Save notes: " + notes.substring(0, 40) + "...", "error"); }
           setLocking(false);
           return;
-        } else {
-          // UNKNOWN prefix — check against getAuthenticatedMember
-          let detectedFed = null;
-          try {
-            if (window.fediInternal.getAuthenticatedMember) {
-              const m = await window.fediInternal.getAuthenticatedMember();
-              if (m && m.id) { const p = m.id.split(":"); detectedFed = p.length >= 2 ? p[p.length-1] : null; }
-            }
-          } catch {}
-          
-          if (detectedFed && detectedFed === escrowFed) {
-            // User's default federation matches — store prefix mapping and proceed
-            try { localStorage.setItem("fed_prefix_" + notePrefix, escrowFed); } catch {}
-          } else {
-            // Unknown prefix AND user's default doesn't match — likely wrong federation
-            showToast("These sats may be from a different federation than " + escrowFed + ". Returning sats to be safe...", "error");
-            try { await window.fediInternal.receiveEcash(notes); showToast("Sats returned. Please select " + escrowFed + " in the federation picker next time."); } catch { showToast("Auto-return failed. Notes: " + notes.substring(0, 40) + "...", "error"); }
-            setLocking(false);
-            return;
-          }
         }
       }
 

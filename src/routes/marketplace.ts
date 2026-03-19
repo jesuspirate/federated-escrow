@@ -169,6 +169,7 @@ db.exec(`
 try { db.exec("ALTER TABLE listings ADD COLUMN min_price_msats INTEGER"); } catch(e) {}
 try { db.exec("ALTER TABLE listings ADD COLUMN max_price_msats INTEGER"); } catch(e) {}
 try { db.exec("ALTER TABLE listings ADD COLUMN seller_fed_domain TEXT"); } catch(e) {}
+try { db.exec("ALTER TABLE listings ADD COLUMN seller_fed_prefix TEXT"); } catch(e) {}
 
 // ── Migration: fix ratings UNIQUE constraint (allow both parties to rate) ──
 // Old schema had UNIQUE(order_id) — new schema uses UNIQUE(order_id, rater_pubkey)
@@ -228,8 +229,8 @@ function pickArbiter(excludePubkeys: string[]): string | null {
 const stmts = {
   // Listings
   insert: db.prepare(`
-    INSERT INTO listings (id, seller_pubkey, title, description, price_msats, currency_display, category, condition, images, terms, community_link, status, quantity, min_price_msats, max_price_msats, seller_fed_domain)
-    VALUES (@id, @seller_pubkey, @title, @description, @price_msats, @currency_display, @category, @condition, @images, @terms, @community_link, 'active', @quantity, @min_price_msats, @max_price_msats, @seller_fed_domain)
+    INSERT INTO listings (id, seller_pubkey, title, description, price_msats, currency_display, category, condition, images, terms, community_link, status, quantity, min_price_msats, max_price_msats, seller_fed_domain, seller_fed_prefix)
+    VALUES (@id, @seller_pubkey, @title, @description, @price_msats, @currency_display, @category, @condition, @images, @terms, @community_link, 'active', @quantity, @min_price_msats, @max_price_msats, @seller_fed_domain, @seller_fed_prefix)
   `),
   getById: db.prepare(`SELECT * FROM listings WHERE id = ?`),
   listActive: db.prepare(`SELECT * FROM listings WHERE status = ? ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END, updated_at DESC LIMIT ? OFFSET ?`),
@@ -361,6 +362,7 @@ function formatListing(row: ListingRow) {
     maxPriceMsats: row.max_price_msats || null,
     minPriceSats: row.min_price_msats ? Math.floor(row.min_price_msats / 1000) : null,
     sellerFedDomain: row.seller_fed_domain || null,
+    sellerFedPrefix: row.seller_fed_prefix || null,
     maxPriceSats: row.max_price_msats ? Math.floor(row.max_price_msats / 1000) : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -512,7 +514,7 @@ const requireAuth = [extractPubkey, rateLimit];
 router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
   try {
     const pk = req.pubkey!;
-    const { title, description, priceMsats, currencyDisplay, category, condition, images, terms, communityLink, quantity, minPriceMsats, maxPriceMsats, sellerFedDomain } = req.body;
+    const { title, description, priceMsats, currencyDisplay, category, condition, images, terms, communityLink, quantity, minPriceMsats, maxPriceMsats, sellerFedDomain, sellerFedPrefix } = req.body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0)
       return res.status(400).json({ error: "title is required" });
@@ -558,6 +560,7 @@ router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
       min_price_msats: minPriceMsats ? Math.floor(minPriceMsats) : null,
       max_price_msats: maxPriceMsats ? Math.floor(maxPriceMsats) : null,
       seller_fed_domain: sellerFedDomain?.trim() || null,
+      seller_fed_prefix: sellerFedPrefix?.trim() || null,
     });
 
     const row = stmts.getById.get(id) as ListingRow;
@@ -883,6 +886,7 @@ router.post("/:id/update", ...requireAuth, (req: AuthenticatedRequest, res: Resp
       title: "title", description: "description", priceMsats: "price_msats",
       minPriceMsats: "min_price_msats", maxPriceMsats: "max_price_msats",
       sellerFedDomain: "seller_fed_domain",
+      sellerFedPrefix: "seller_fed_prefix",
       currencyDisplay: "currency_display", category: "category", condition: "condition",
       images: "images", terms: "terms", communityLink: "community_link",
       quantity: "quantity", status: "status",
@@ -1115,6 +1119,9 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     // Marketplace: buyer locks (buyer pays with sats)
     const lockRole = isP2PTrade || isLenderTrade(listing.category) ? "seller" : "buyer";
 
+    // Store seller's federation prefix on the escrow for lock validation
+    const sellerFedPrefix = listing.seller_fed_prefix || null;
+
     DB.createEscrow({
       id: escrowId,
       amountMsats: tradeAmountMsats,
@@ -1130,6 +1137,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
       federationId,
       sellerPubkey: escrowSellerPubkey,
       lockRole,
+      sellerFedPrefix,
     });
 
     // Join escrow buyer (status stays CREATED — arbiter not yet joined)

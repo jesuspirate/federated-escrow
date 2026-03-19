@@ -191,6 +191,12 @@ export interface VoteRow {
     console.log("[db] Migration 4: chat_messages table created");
   }
 
+  if (currentVersion < 5) {
+    try { db.exec("ALTER TABLE escrows ADD COLUMN seller_fed_prefix TEXT"); } catch {}
+    db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(5);
+    console.log("[db] Migration 5: seller_fed_prefix on escrows");
+  }
+
 // ── Prepared Statements ───────────────────────────────────────────────────
 
 const stmts = {
@@ -302,7 +308,7 @@ export function getNextId(): string {
 
 export function createEscrow(p: {
   id: string; amountMsats: number; description: string; terms: string;
-  communityLink: string; federationId: string; sellerPubkey: string; lockRole?: string;
+  communityLink: string; federationId: string; sellerPubkey: string; lockRole?: string; sellerFedPrefix?: string;
 }): EscrowRow {
   const now = Date.now();
   stmts.insertEscrow.run({
@@ -314,6 +320,10 @@ export function createEscrow(p: {
   // Set lock_role if specified (default is "seller")
   if (p.lockRole && p.lockRole !== "seller") {
     db.prepare("UPDATE escrows SET lock_role = ? WHERE id = ?").run(p.lockRole, p.id);
+  }
+  // Store seller's federation prefix for lock validation
+  if (p.sellerFedPrefix) {
+    db.prepare("UPDATE escrows SET seller_fed_prefix = ? WHERE id = ?").run(p.sellerFedPrefix, p.id);
   }
   return stmts.getEscrow.get(p.id) as EscrowRow;
 }
