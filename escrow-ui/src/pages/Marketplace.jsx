@@ -1447,7 +1447,10 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={M.cardTitle}>{l.title}</span>
 		<span style={M.cardPrice}>
-                  <span style={{ color: "#f7931a", fontWeight: 800 }}>₿</span>{fmtSats(l.priceMsats)}
+                  <span style={{ color: "#f7931a", fontWeight: 800 }}>₿</span>
+                  {l.minPriceSats && l.maxPriceSats && l.minPriceSats !== l.maxPriceSats
+                    ? <>{fmtSatsShort(l.minPriceMsats)}<span style={{ color: "#475569", fontWeight: 400 }}>{" — "}</span>{fmtSatsShort(l.maxPriceMsats)}</>
+                    : fmtSats(l.priceMsats)}
                 </span>
               </div>
               {l.description && <p style={M.cardDesc}>{l.description}</p>}
@@ -1455,7 +1458,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   {l.status === "paused" && <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(100,116,139,0.2)", color: "#94a3b8", border: "1px solid #334155" }}>⏸ {t("mkStatusPaused")}</span>}
                   {l.condition && !isSatsForFiat(l.category) && !isLending(l.category) && l.status !== "paused" && <span style={M.conditionBadge}>{t(CONDITION_KEYS[l.condition] || l.condition)}</span>}
-                  {l.category && <span style={{
+                  {l.category && !(subdomain === "p2p" && isSatsForFiat(l.category)) && !(subdomain === "lending" && isLending(l.category)) && <span style={{
                     ...M.categoryBadge,
                     ...(isSatsForFiat(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : isLending(l.category) ? { background: "rgba(16,185,129,0.15)", color: "#10b981", fontWeight: 700 } : {}),
                   }}>{isSatsForFiat(l.category) ? "₿ P2P Trade" : isLending(l.category) ? "🤝 Lending" : l.category}</span>}
@@ -1504,6 +1507,8 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
   const [quantity, setQuantity] = useState(l.quantity ?? 1);
   const [minPrice, setMinPrice] = useState(l.minPriceSats || "");
   const [maxPrice, setMaxPrice] = useState(l.maxPriceSats || "");
+  const [editPremium, setEditPremium] = useState("");
+  const isP2PEdit = isSatsForFiat(l.category);
   const isP2P = isSatsForFiat(l.category);
 
   const handleSave = async () => {
@@ -1578,6 +1583,20 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
           <div style={M.sectionLabel}>Trade Terms</div>
           <textarea style={{ ...M.input, minHeight: 60, resize: "vertical" }} value={terms} onChange={e => setTerms(e.target.value)} placeholder="Terms and conditions..." maxLength={1000} />
         </div>
+
+        {isP2PEdit && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={M.sectionLabel}>Rate Premium (%)</div>
+            <input style={M.input} type="number" placeholder="e.g., 3" value={editPremium} onChange={e => setEditPremium(e.target.value)} />
+            {editPremium && price && (
+              <p style={{ fontSize: 11, color: "#f59e0b", fontWeight: 600, marginTop: 4 }}>
+                {minPrice && maxPrice
+                  ? "Range with premium: ₿ " + Math.ceil(Number(minPrice) * (1 + Number(editPremium) / 100)).toLocaleString() + " — ₿ " + Math.ceil(Number(maxPrice) * (1 + Number(editPremium) / 100)).toLocaleString() + " sats"
+                  : "Total with premium: ₿ " + Math.ceil(Number(price) * (1 + Number(editPremium) / 100)).toLocaleString() + " sats"}
+              </p>
+            )}
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 10 }}>
           <button style={{ ...M.secondaryBtn, flex: 1 }} onClick={() => onBack(null)}>Cancel</button>
@@ -2228,7 +2247,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       {/* ── Common fields: Description + Terms + Community ── */}
       <div style={M.formGroup}><label style={M.label}>{t("description")}</label><textarea style={{ ...M.input, minHeight: 72, resize: "vertical" }} placeholder={isP2P ? "Any additional details about your trade..." : t("mkFieldDescHint")} value={desc} onChange={e => setDesc(e.target.value)} /></div>
       <div style={M.formGroup}><label style={M.label}>{t("tradeTerms")}</label><textarea style={{ ...M.input, minHeight: 60, resize: "vertical" }} placeholder={isP2P ? "Payment window, confirmation steps..." : t("mkFieldTermsHint")} value={terms} onChange={e => setTerms(e.target.value)} /></div>
-      <div style={M.formGroup}><label style={M.label}>{t("communityLink")}</label><input style={M.input} placeholder="fedi:room:!roomId:federation.domain:::" value={community} onChange={e => setCommunity(e.target.value)} /><p style={M.hint}>{t("mkCommunityHint")}</p></div>
+
 
       <button style={{ ...M.primaryBtn, width: "100%", marginTop: 8, padding: "14px 0" }} onClick={handleCreate} disabled={loading}>
         {loading ? t("creating") : t("mkCreateListing")}
