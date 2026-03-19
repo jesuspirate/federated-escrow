@@ -2568,10 +2568,10 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
           </div>
           <div style={{ marginBottom: 10 }}>
             <label style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>Amount (TZS)</label>
-            <input style={M.input} type="number" value={amountTZS} onChange={e => setAmountTZS(e.target.value)} placeholder="5000" />
+            <input style={M.input} type="number" value={amountTZS} onChange={e => setAmountTZS(e.target.value)} placeholder="1,000 — 20,000" />
           </div>
           <button onClick={async () => {
-            if (!amountTZS || parseInt(amountTZS) < 500) { showToast("Minimum 500 TZS", "error"); return; }
+            if (!amountTZS || parseInt(amountTZS) < 1000) { showToast("Minimum 1,000 TZS", "error"); return; }
             setLoading(true);
             try {
               const acct = account || await ensureAccount();
