@@ -1520,7 +1520,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
       // POST-GENERATE federation check: compare notes prefix against seller's stored prefix
       const expectedPrefix = e.sellerFedPrefix || e.seller_fed_prefix;
-      if (expectedPrefix && notes.length > 10) {
+      const _isSandbox = !window.fediInternal || isDevMode();
+      if (!_isSandbox && expectedPrefix && notes.length > 10) {
         const notePrefix = notes.substring(0, 10);
         if (notePrefix !== expectedPrefix) {
           // Auto-refund the notes
@@ -2080,11 +2081,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 10 }}>
               {t("shareEscrowDesc")}
             </div>
-            {e.communityLink && (
-              <a href={e.communityLink} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "8px 16px", borderRadius: 8, background: "rgba(139,92,246,0.12)", color: "#a78bfa", fontSize: 12, fontWeight: 600, border: "1px solid rgba(139,92,246,0.2)", textDecoration: "none" }}>
-                💬 {t("openCommunity")}
-              </a>
-            )}
+
           </div>
         ) : (
           <div style={{ ...S.section, textAlign: "center" }}>

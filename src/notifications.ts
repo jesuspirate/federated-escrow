@@ -102,6 +102,13 @@ function fmtSats(msats: number): string {
   return sats >= 1_000_000 ? `${(sats / 1_000_000).toFixed(1)}M` : sats.toLocaleString();
 }
 
+// Only send DMs to regular users for shipping trades (long delivery times)
+// Arbiter notifications always go through regardless
+function isShippingTrade(description?: string): boolean {
+  if (!description) return false;
+  return description.toLowerCase().includes("shipping");
+}
+
 function truncPk(hex: string): string {
   return hex.slice(0, 8) + "…";
 }
@@ -112,8 +119,9 @@ function truncPk(hex: string): string {
 
 /** Someone joined an escrow — notify the other participants. */
 export function notifyEscrowJoin(
-  escrowId: string, joinerPubkey: string, joinerRole: string, otherPubkeys: string[]
+  escrowId: string, joinerPubkey: string, joinerRole: string, otherPubkeys: string[], description?: string
 ): void {
+  if (!isShippingTrade(description)) return;
   const recipients = otherPubkeys
     .filter(pk => pk && pk !== joinerPubkey && shouldNotify(pk, "escrow"))
     .map(pk => ({
@@ -130,6 +138,7 @@ export function notifyEscrowFunded(
 ): void {
   const amt = amountMsats ? `\n₿ ${fmtSats(amountMsats)} sats` : "";
   const desc = description ? `\n"${description}"` : "";
+  if (!isShippingTrade(description)) return;
   const all = [sellerPk, buyerPk, arbiterPk];
   const recipients = all
     .filter(pk => pk && shouldNotify(pk, "escrow"))
@@ -155,7 +164,7 @@ export function notifyEscrowLocked(
 
   const recipients: Array<{ pubkey: string; message: string }> = [];
 
-  if (buyerPk && shouldNotify(buyerPk, "escrow")) {
+  if (isShippingTrade(description) && buyerPk && shouldNotify(buyerPk, "escrow")) {
     recipients.push({
       pubkey: buyerPk,
       message: `🔒 SatoshiMarket — Sats locked!\n\nTrade ${escrowId}${amt}${desc}\n\nThe seller locked sats in escrow. Complete your side of the deal, then open Fedi to vote and release the sats.`,
@@ -172,8 +181,9 @@ export function notifyEscrowLocked(
 
 /** Vote cast — notify the other participants. */
 export function notifyEscrowVote(
-  escrowId: string, voterPk: string, voterRole: string, otherPubkeys: string[]
+  escrowId: string, voterPk: string, voterRole: string, otherPubkeys: string[], description?: string
 ): void {
+  if (!isShippingTrade(description)) return;
   const recipients = otherPubkeys
     .filter(pk => pk && pk !== voterPk && shouldNotify(pk, "escrow"))
     .map(pk => ({
@@ -187,8 +197,9 @@ export function notifyEscrowVote(
 export function notifyEscrowResolved(
   escrowId: string, outcome: "release" | "refund",
   sellerPk: string, buyerPk: string, arbiterPk: string,
-  amountMsats?: number
+  amountMsats?: number, description?: string
 ): void {
+  if (!isShippingTrade(description)) return;
   const winnerPk = outcome === "release" ? buyerPk : sellerPk;
   const amt = amountMsats ? ` (₿ ${fmtSats(amountMsats)})` : "";
   const all = [sellerPk, buyerPk, arbiterPk];
@@ -204,7 +215,8 @@ export function notifyEscrowResolved(
 }
 
 /** Payout complete — winner got their sats. */
-export function notifyEscrowCompleted(escrowId: string, winnerPk: string, amountMsats?: number): void {
+export function notifyEscrowCompleted(escrowId: string, winnerPk: string, amountMsats?: number, description?: string): void {
+  if (!isShippingTrade(description)) return;
   const amt = amountMsats ? ` ₿ ${fmtSats(amountMsats)}` : "";
   if (winnerPk && shouldNotify(winnerPk, "escrow")) {
     sendDM(winnerPk, `⚡ SatoshiMarket — Payout complete!\n\nTrade ${escrowId}:${amt} sent to your Lightning wallet.\n\nCheck your Fedi balance. Thank you for trading! 🥜`).catch(() => {});
@@ -254,8 +266,9 @@ export function notifyArbiterReplaced(
 export function notifyListingPurchased(
   listingId: string, listingTitle: string,
   sellerPk: string, buyerPk: string, escrowId: string,
-  amountMsats?: number
+  amountMsats?: number, description?: string
 ): void {
+  if (!isShippingTrade(description)) return;
   const title = listingTitle.length > 50 ? listingTitle.slice(0, 47) + "…" : listingTitle;
   const amt = amountMsats ? `\n₿ ${fmtSats(amountMsats)} sats` : "";
 
@@ -269,8 +282,9 @@ export function notifyListingPurchased(
 
 /** Order status changed. */
 export function notifyOrderStatusChange(
-  orderId: string, newStatus: string, buyerPk: string, sellerPk: string
+  orderId: string, newStatus: string, buyerPk: string, sellerPk: string, description?: string
 ): void {
+  if (!isShippingTrade(description)) return;
   const msgs: Record<string, string> = {
     active: "🔒 Sats locked — the trade is live. Open Fedi to continue.",
     completed: "🎉 Trade completed! Open Fedi to leave a rating for your partner.",
@@ -290,6 +304,7 @@ export function notifyOrderStatusChange(
 
 /** New rating received. */
 export function notifyNewRating(ratedPk: string, score: number, raterPk: string): void {
+  return; // Ratings don't need DM notifications
   if (ratedPk && shouldNotify(ratedPk, "order")) {
     const stars = "⭐".repeat(score);
     sendDM(ratedPk, `${stars} SatoshiMarket — New rating!\n\nYou received a ${score}/5 rating from ${truncPk(raterPk)}.\n\nOpen Fedi to view your profile.`).catch(() => {});

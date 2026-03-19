@@ -1601,7 +1601,8 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
   const handleBuy = async () => {
     // Federation probe: verify buyer is on same federation as seller
     const sellerPrefix = l.sellerFedPrefix;
-    if (sellerPrefix && window.fediInternal && window.fediInternal.generateEcash) {
+    const _isSandbox = !window.fediInternal || isDevMode();
+    if (!_isSandbox && sellerPrefix && window.fediInternal && window.fediInternal.generateEcash) {
       setLoading(true);
       try {
         showToast("Verifying your federation...");
@@ -1806,13 +1807,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         </div>
 
         {/* ── Community ── */}
-        {l.communityLink && (
-          <div style={{ marginBottom: 14, textAlign: "center" }}>
-            <a href={l.communityLink} target="_blank" rel="noopener noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 20px", borderRadius: 10, background: "rgba(139,92,246,0.08)", color: "#a78bfa", fontSize: 13, fontWeight: 600, border: "1px solid rgba(139,92,246,0.15)", textDecoration: "none" }}>
-              💬 {t("openCommunity")}
-            </a>
-          </div>
-        )}
+
 
         <div style={{ fontSize: 11, color: "#334155", marginTop: 8, fontFamily: "monospace" }}>
           ID: {l.id}
@@ -1910,7 +1905,8 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
     try {
       // Federation probe: generate 1 sat to capture federation prefix
       let sellerFedPrefix = null;
-      if (window.fediInternal && window.fediInternal.generateEcash) {
+      const _isSandbox = !window.fediInternal || isDevMode();
+      if (!_isSandbox && window.fediInternal && window.fediInternal.generateEcash) {
         try {
           showToast("Detecting your federation...");
           const probe = await window.fediInternal.generateEcash({ amount: 1 });
@@ -1923,7 +1919,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       }
 
       // REQUIRE federation prefix — block listing if probe failed
-      if (!sellerFedPrefix) {
+      if (!sellerFedPrefix && !_isSandbox) {
         showToast("Federation detection failed — please try again. Make sure to select a federation when prompted.", "error");
         setLoading(false);
         return;
