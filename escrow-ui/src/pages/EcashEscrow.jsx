@@ -719,10 +719,8 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
       // Set module-level _devPubkey BEFORE React state update
       if (isDevMode()) { _devPubkey = propPubkey; }
       else { _devPubkey = null; }
-      // Clear stale data from previous role
+      // Reload escrows for new role but preserve current view
       setEscrows([]);
-      setSelected(null);
-      setView("list");
       setPubkey(propPubkey);
     }
   }, [propPubkey]);
