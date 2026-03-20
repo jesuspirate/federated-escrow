@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SatoshiMarket — Non-Custodial Bitcoin Marketplace Protocol</title>
-<meta name="description" content="Trade Bitcoin without custody risk. Shamir 2-of-3 escrow on Fedimint e-cash. P2P exchange, marketplace, lending. No KYC. Instant settlement.">
+<title>SatoshiMarket — Protocole de Marché Bitcoin Non-Custodial</title>
+<meta name="description" content="Échangez du Bitcoin sans risque de garde. Escrow Shamir 2-sur-3 sur Fedimint e-cash. Échange P2P, marché, prêts. Sans KYC. Règlement instantané.">
 <link rel="icon" href="/favicon.png">
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@400;700&family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -375,7 +375,7 @@ body::after {
     <a href="#fees">Fees</a>
     <a href="#learn">Learn</a>
   </div>
-  <a href="/landing-fr.html" style="color:#3b82f6;text-decoration:none;font-weight:600;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid rgba(59,130,246,0.2)">🇫🇷 Français</a>
+  <a href="/landing.html" style="color:#f59e0b;text-decoration:none;font-weight:600;font-size:13px;padding:8px 12px;border-radius:8px;border:1px solid rgba(245,158,11,0.2)">🇬🇧 English</a>
     <a href="https://fedi.xyz/product" target="_blank" class="nav-cta">Download Fedi</a>
 </nav>
 
@@ -387,8 +387,8 @@ body::after {
   <p class="hero-sub reveal d2">SatoshiMarket is a Bitcoin-native protocol for P2P exchange, marketplace commerce, and community lending — powered by Fedimint e-cash and Shamir Secret Sharing. No custody. No KYC. Instant settlement.</p>
   <div class="hero-stats reveal d3">
     <div class="hero-stat"><div class="hero-stat-value" style="color:var(--orange)">2-of-3</div><div class="hero-stat-label">Escrow threshold</div></div>
-    <div class="hero-stat"><div class="hero-stat-value" style="color:var(--green)">0%</div><div class="hero-stat-label">Custody risk</div></div>
-    <div class="hero-stat"><div class="hero-stat-value" style="color:var(--purple)">&lt;1s</div><div class="hero-stat-label">Settlement</div></div>
+    <div class="hero-stat"><div class="hero-stat-value" style="color:var(--green)">0%</div><div class="hero-stat-label">Garde risk</div></div>
+    <div class="hero-stat"><div class="hero-stat-value" style="color:var(--purple)">&lt;1s</div><div class="hero-stat-label">Règlement</div></div>
     <div class="hero-stat"><div class="hero-stat-value" style="color:var(--blue)">2M</div><div class="hero-stat-label">Max sats/trade</div></div>
   </div>
   <div class="hero-scroll">↓ Scroll to explore</div>
@@ -396,18 +396,18 @@ body::after {
 
 <!-- MANIFESTO -->
 <section class="manifesto reveal">
-  <h2>Exchanges custody your funds.<br>We <em>mathematically can't.</em></h2>
-  <p>Every sat locked in SatoshiMarket is split into three Shamir shares. No single party — not even the server — can access the funds. Only when two of three participants agree does the trade resolve. This isn't a policy. It's cryptography.</p>
+  <h2>Les plateformes gardent vos fonds.<br>Nous, <em>c'est mathématiquement impossible.</em></h2>
+  <p>Chaque sat verrouillé dans SatoshiMarket est divisé en trois parts Shamir. Aucune partie — même pas le serveur — ne peut accéder aux fonds. Seul l'accord de deux des trois participants résout l'échange. Ce n'est pas une politique. C'est de la cryptographie.</p>
 </section>
 
 <!-- VERSUS -->
 <section class="versus" id="compare">
-  <h2 class="reveal">How we compare</h2>
-  <p class="subtitle reveal d1">SatoshiMarket vs. the competition. No bias — just facts.</p>
+  <h2 class="reveal">Comparaison</h2>
+  <p class="subtitle reveal d1">SatoshiMarket face à la concurrence. Sans parti pris — que des faits.</p>
   <table class="vs-table reveal d2">
     <thead>
       <tr>
-        <th>Feature</th>
+        <th>Fonctionnalité</th>
         <th class="us">SatoshiMarket</th>
         <th>Bisq</th>
         <th>HodlHodl</th>
@@ -415,49 +415,49 @@ body::after {
       </tr>
     </thead>
     <tbody>
-      <tr class="winner"><td class="feature">Custody model</td><td class="us">Shamir 2-of-3 <br><small style="opacity:0.6;font-weight:400">non-custodial</small></td><td class="them">Multisig (non-custodial)</td><td class="them">Multisig (semi-custodial)</td><td class="them">Lightning escrow (custodial during trade)</td></tr>
-      <tr class="winner"><td class="feature">Settlement speed</td><td class="us">&lt; 1 second <br><small style="opacity:0.6;font-weight:400">e-cash</small></td><td class="them">~1 hour (on-chain)</td><td class="them">~30 min (on-chain)</td><td class="them">~seconds (Lightning)</td></tr>
-      <tr class="winner"><td class="feature">KYC required</td><td class="us">Never</td><td class="them">Never</td><td class="them">Optional</td><td class="them">Never</td></tr>
-      <tr class="winner"><td class="feature">Mobile native</td><td class="us">Fedi Mini-App <br><small style="opacity:0.6;font-weight:400">iOS + Android</small></td><td class="them">Desktop only</td><td class="them">Web only</td><td class="them">Tor browser only</td></tr>
-      <tr class="winner"><td class="feature">Fiat off-ramp</td><td class="us">ChapSmart M-Pesa <br><small style="opacity:0.6;font-weight:400">built-in</small></td><td class="them">Manual bank transfer</td><td class="them">Manual bank transfer</td><td class="them">None</td></tr>
-      <tr class="winner"><td class="feature">Trade chat</td><td class="us">NIP-44 encrypted <br><small style="opacity:0.6;font-weight:400">built-in</small></td><td class="them">Tor-based</td><td class="them">None</td><td class="them">None</td></tr>
-      <tr class="winner"><td class="feature">Privacy</td><td class="us">Fedimint e-cash <br><small style="opacity:0.6;font-weight:400">blinded tokens</small></td><td class="them">On-chain (traceable)</td><td class="them">On-chain (traceable)</td><td class="them">Lightning (routing visible)</td></tr>
-      <tr><td class="feature">Arbiter</td><td class="us">Community-chosen <br><small style="opacity:0.6;font-weight:400">1% fee</small></td><td class="them">DAO mediators</td><td class="them">HodlHodl staff</td><td class="them">None (automated)</td></tr>
-      <tr class="winner"><td class="feature">Marketplace</td><td class="us">Full marketplace + lending</td><td class="them">P2P only</td><td class="them">P2P only</td><td class="them">P2P only</td></tr>
+      <tr class="winner"><td class="feature">Modèle de garde</td><td class="us">Shamir 2-of-3 <br><small style="opacity:0.6;font-weight:400">non-custodial</small></td><td class="them">Multisig (non-custodial)</td><td class="them">Multisig (semi-custodial)</td><td class="them">Lightning escrow (custodial during trade)</td></tr>
+      <tr class="winner"><td class="feature">Vitesse de règlement</td><td class="us">&lt; 1 second <br><small style="opacity:0.6;font-weight:400">e-cash</small></td><td class="them">~1 hour (on-chain)</td><td class="them">~30 min (on-chain)</td><td class="them">~seconds (Lightning)</td></tr>
+      <tr class="winner"><td class="feature">KYC requis</td><td class="us">Jamais</td><td class="them">Never</td><td class="them">Optionnel</td><td class="them">Never</td></tr>
+      <tr class="winner"><td class="feature">Application mobile</td><td class="us">Fedi Mini-App <br><small style="opacity:0.6;font-weight:400">iOS + Android</small></td><td class="them">Bureau uniquement</td><td class="them">Web uniquement</td><td class="them">Navigateur Tor uniquement</td></tr>
+      <tr class="winner"><td class="feature">Sortie vers fiat</td><td class="us">ChapSmart M-Pesa <br><small style="opacity:0.6;font-weight:400">intégré</small></td><td class="them">Virement bancaire manuel</td><td class="them">Manual bank transfer</td><td class="them">None</td></tr>
+      <tr class="winner"><td class="feature">Chat de trade</td><td class="us">NIP-44 encrypted <br><small style="opacity:0.6;font-weight:400">built-in</small></td><td class="them">Tor-based</td><td class="them">None</td><td class="them">None</td></tr>
+      <tr class="winner"><td class="feature">Confidentialité</td><td class="us">Fedimint e-cash <br><small style="opacity:0.6;font-weight:400">jetons aveugles</small></td><td class="them">On-chain (traçable)</td><td class="them">On-chain (traceable)</td><td class="them">Lightning (routage visible)</td></tr>
+      <tr><td class="feature">Arbitre</td><td class="us">Choisi par la communauté <br><small style="opacity:0.6;font-weight:400">1% fee</small></td><td class="them">Médiateurs DAO</td><td class="them">Équipe HodlHodl</td><td class="them">Aucun (automatisé)</td></tr>
+      <tr class="winner"><td class="feature">Marché</td><td class="us">Marché complet + prêts</td><td class="them">P2P uniquement</td><td class="them">P2P only</td><td class="them">P2P only</td></tr>
     </tbody>
   </table>
 </section>
 
 <!-- PRODUCTS -->
 <section class="products" id="products">
-  <h2 class="reveal">Four products. One protocol.</h2>
+  <h2 class="reveal">Quatre produits. Un seul protocole.</h2>
   <div class="product-grid">
     <a href="https://escrow.satoshimarket.app" class="product-card escrow reveal d1">
       <div class="emoji">⚖️</div>
       <div class="name">Escrow</div>
-      <div class="tagline">The raw primitive</div>
-      <div class="desc">Lock sats, choose any arbiter, vote to release or refund. Pure 2-of-3 multisig escrow for any trade, any amount, any counterparty. The cypherpunk's tool.</div>
+      <div class="tagline">La primitive brute</div>
+      <div class="desc">Verrouillez des sats, choisissez un arbitre, votez pour libérer ou rembourser. Escrow 2-sur-3 pur pour tout échange, tout montant, toute contrepartie. L'outil du cypherpunk.</div>
       <div class="arrow">→</div>
     </a>
     <a href="https://p2p.satoshimarket.app" class="product-card p2p reveal d2">
       <div class="emoji">₿</div>
-      <div class="name">P2P Exchange</div>
-      <div class="tagline">Buy & sell Bitcoin, no middleman</div>
-      <div class="desc">Seller locks sats in escrow. Buyer sends fiat externally. Both confirm. Sats released. No order books, no custody, no counterparty risk. Just trade.</div>
+      <div class="name">Échange P2P</div>
+      <div class="tagline">Achetez et vendez du Bitcoin, sans intermédiaire</div>
+      <div class="desc">Le vendeur verrouille les sats en escrow. L'acheteur envoie le fiat séparément. Les deux confirment. Sats libérés. Pas de carnet d'ordres, pas de garde, pas de risque de contrepartie.</div>
       <div class="arrow">→</div>
     </a>
     <a href="https://market.satoshimarket.app" class="product-card market reveal d3">
       <div class="emoji">🛒</div>
       <div class="name">Marketplace</div>
-      <div class="tagline">Buy anything with Bitcoin</div>
-      <div class="desc">Buyer pays with sats, seller ships goods. Escrow protects both. ChapSmart M-Pesa integration for East African off-ramp. Real commerce on e-cash.</div>
+      <div class="tagline">Achetez tout avec du Bitcoin</div>
+      <div class="desc">L'acheteur paie en sats, le vendeur expédie. L'escrow protège les deux. Intégration ChapSmart M-Pesa pour l'Afrique de l'Est. Du vrai commerce sur e-cash.</div>
       <div class="arrow">→</div>
     </a>
     <a href="https://lending.satoshimarket.app" class="product-card lending reveal d4">
       <div class="emoji">🤝</div>
-      <div class="name">Community Lending</div>
-      <div class="tagline">Trust built through escrow</div>
-      <div class="desc">Lender locks sats, borrower confirms receipt, repays on agreed terms. Community arbiters ensure accountability. Microfinance on Bitcoin.</div>
+      <div class="name">Prêts Communautaires</div>
+      <div class="tagline">La confiance construite par l'escrow</div>
+      <div class="desc">Le prêteur verrouille les sats, l'emprunteur confirme réception, rembourse selon les termes convenus. Les arbitres communautaires assurent la responsabilité. Microfinance sur Bitcoin.</div>
       <div class="arrow">→</div>
     </a>
   </div>
@@ -465,53 +465,53 @@ body::after {
 
 <!-- TECHNOLOGY -->
 <section class="tech" id="technology">
-  <h2 class="reveal">Built different</h2>
-  <p class="subtitle reveal d1">Every design decision serves one goal: eliminate trust.</p>
+  <h2 class="reveal">Conçu différemment</h2>
+  <p class="subtitle reveal d1">Chaque décision de conception sert un objectif : éliminer la confiance.</p>
   <div class="tech-grid">
-    <div class="tech-card reveal d1"><div class="icon">🔐</div><div class="name">Shamir Secret Sharing</div><div class="desc">E-cash notes split into 2-of-3 shares. Server can never access funds unilaterally. Cryptographically enforced.</div></div>
-    <div class="tech-card reveal d2"><div class="icon">⚡</div><div class="name">Fedimint E-Cash</div><div class="desc">Blinded tokens, instant settlement, zero routing fees. Privacy by default, not by policy.</div></div>
-    <div class="tech-card reveal d3"><div class="icon">🔑</div><div class="name">Nostr Authentication</div><div class="desc">NIP-98 signed sessions. One key, one identity. No passwords, no emails, no accounts to manage.</div></div>
-    <div class="tech-card reveal d4"><div class="icon">🌍</div><div class="name">M-Pesa via ChapSmart</div><div class="desc">Bitcoin to mobile money. Send TZS, buy airtime, or purchase sats. Real-world rails for East Africa.</div></div>
+    <div class="tech-card reveal d1"><div class="icon">🔐</div><div class="name">Shamir Secret Sharing</div><div class="desc">Les notes e-cash sont divisées en parts 2-sur-3. Le serveur ne peut jamais accéder aux fonds unilatéralement. Garanti par la cryptographie.</div></div>
+    <div class="tech-card reveal d2"><div class="icon">⚡</div><div class="name">Fedimint E-Cash</div><div class="desc">Jetons aveugles, règlement instantané, zéro frais de routage. Confidentialité par défaut, pas par politique.</div></div>
+    <div class="tech-card reveal d3"><div class="icon">🔑</div><div class="name">Authentification Nostr</div><div class="desc">Sessions signées NIP-98. Une clé, une identité. Pas de mot de passe, pas d'email, pas de compte à gérer.</div></div>
+    <div class="tech-card reveal d4"><div class="icon">🌍</div><div class="name">M-Pesa via ChapSmart</div><div class="desc">Bitcoin vers mobile money. Envoyez des TZS, achetez du crédit téléphone ou des sats. Infrastructure réelle pour l'Afrique de l'Est.</div></div>
   </div>
 </section>
 
 <!-- FEES -->
 <section class="fees" id="fees">
-  <h2 class="reveal">Transparent fees</h2>
-  <p class="subtitle reveal d1">Arbiter takes 1% only on disputed trades. No platform fee. No hidden costs.</p>
+  <h2 class="reveal">Frais transparents</h2>
+  <p class="subtitle reveal d1">L'arbitre prend 1% uniquement sur les trades contestés. Aucun frais de plateforme. Aucun coût caché.</p>
   <div class="fee-tiers reveal d2">
     <div class="fee-tier active">
-      <div class="tier-name">Escrow fee</div>
+      <div class="tier-name">Frais d'escrow</div>
       <div class="tier-rate">0%</div>
-      <div class="tier-vol">Platform takes nothing</div>
+      <div class="tier-vol">La plateforme ne prend rien</div>
     </div>
     <div class="fee-tier">
-      <div class="tier-name">Arbiter fee</div>
+      <div class="tier-name">Frais d'arbitre</div>
       <div class="tier-rate">1%</div>
-      <div class="tier-vol">Only on disputed trades</div>
+      <div class="tier-vol">Uniquement sur les trades contestés</div>
     </div>
     <div class="fee-tier">
       <div class="tier-name">ChapSmart</div>
       <div class="tier-rate">2.2%</div>
-      <div class="tier-vol">M-Pesa off-ramp (Bronze tier)</div>
+      <div class="tier-vol">Sortie M-Pesa (niveau Bronze)</div>
     </div>
   </div>
 </section>
 
 <!-- SCREENSHOTS (placeholder slots for real screenshots) -->
 <section class="screenshots">
-  <h2 class="reveal">See it in action</h2>
+  <h2 class="reveal">Voyez-le en action</h2>
   <div class="screenshot-row reveal d1">
     <div class="screenshot-frame">
       <img src="/ss-trade-voting.png" alt="P2P Trade — Voting with Fiat Received and Dispute buttons" loading="lazy">
-      <div class="screenshot-label">2-of-3 Escrow Voting</div>
+      <div class="screenshot-label">Vote Escrow 2-sur-3</div>
     </div>
     <div class="screenshot-frame">
-      <img src="/ss-trade-chat.png" alt="Encrypted Trade Chat between buyer and seller" loading="lazy">
+      <img src="/ss-trade-chat.png" alt="Chat de Trade Chiffré between buyer and seller" loading="lazy">
       <div class="screenshot-label">Encrypted Trade Chat</div>
     </div>
     <div class="screenshot-frame">
-      <img src="/ss-trade-complete.png" alt="Trade Complete — sats delivered" loading="lazy">
+      <img src="/ss-trade-complete.png" alt="Trade Terminé — sats delivered" loading="lazy">
       <div class="screenshot-label">Trade Complete</div>
     </div>
 
@@ -520,26 +520,26 @@ body::after {
 
 <!-- LEARN -->
 <section class="learn" id="learn">
-  <h2 class="reveal">Understand the stack</h2>
+  <h2 class="reveal">Comprendre la technologie</h2>
   <div class="learn-grid">
     <a href="https://bitcoin.org/en/getting-started" target="_blank" class="learn-card reveal d1">
       <div class="icon">₿</div>
-      <div><div class="title" style="color:var(--orange)">What is Bitcoin?</div><div class="sub">Sound money for the digital age. Peer-to-peer, censorship-resistant, finite supply.</div></div>
+      <div><div class="title" style="color:var(--orange)">Qu'est-ce que le Bitcoin ?</div><div class="sub">Monnaie saine pour l'ère numérique. Pair-à-pair, résistant à la censure, offre limitée.</div></div>
       <div class="arrow">↗</div>
     </a>
     <a href="https://www.fedi.xyz" target="_blank" class="learn-card reveal d2">
       <div class="icon">🛡️</div>
-      <div><div class="title" style="color:var(--purple)">What is Fedi?</div><div class="sub">The private Bitcoin wallet for communities. Federated custody, zero counterparty risk.</div></div>
+      <div><div class="title" style="color:var(--purple)">Qu'est-ce que Fedi ?</div><div class="sub">Le portefeuille Bitcoin privé pour les communautés. Garde fédérée, zéro risque de contrepartie.</div></div>
       <div class="arrow">↗</div>
     </a>
     <a href="https://fedimint.org" target="_blank" class="learn-card reveal d3">
       <div class="icon">🏛️</div>
-      <div><div class="title" style="color:var(--green)">Federated Custody</div><div class="sub">Multi-guardian Bitcoin security. No single point of failure. Community-managed trust.</div></div>
+      <div><div class="title" style="color:var(--green)">Garde Fédérée</div><div class="sub">Sécurité Bitcoin multi-gardiens. Aucun point de défaillance unique. Confiance gérée par la communauté.</div></div>
       <div class="arrow">↗</div>
     </a>
     <a href="https://en.wikipedia.org/wiki/Shamir%27s_secret_sharing" target="_blank" class="learn-card reveal d4">
       <div class="icon">🔐</div>
-      <div><div class="title" style="color:var(--blue)">Shamir Secret Sharing</div><div class="sub">Split a secret into shares. Any 2 of 3 can reconstruct. The math behind our escrow.</div></div>
+      <div><div class="title" style="color:var(--blue)">Shamir Secret Sharing</div><div class="sub">Divisez un secret en parts. N'importe quels 2 sur 3 peuvent reconstruire. Les mathématiques derrière notre escrow.</div></div>
       <div class="arrow">↗</div>
     </a>
   </div>
@@ -547,29 +547,29 @@ body::after {
 
 <!-- COMMUNITY -->
 <section class="community">
-  <h2 class="reveal">Start trading in 30 seconds</h2>
-  <p class="subtitle reveal d1">No registration. No KYC. No email. Just Bitcoin.</p>
+  <h2 class="reveal">Commencez à échanger en 30 secondes</h2>
+  <p class="subtitle reveal d1">Pas d'inscription. Pas de KYC. Pas d'email. Juste du Bitcoin.</p>
   
   <div class="reveal d1" style="max-width:400px;margin:0 auto 24px;padding:18px 20px;border-radius:14px;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.15);text-align:left">
-    <div style="font-size:14px;font-weight:700;color:#10b981;margin-bottom:10px">🚀 Get started:</div>
+    <div style="font-size:14px;font-weight:700;color:#10b981;margin-bottom:10px">🚀 Commencez :</div>
     <div style="font-size:13px;color:#cbd5e1;line-height:2.4">
-      <span style="color:#f59e0b;font-weight:800">1.</span> Install Fedi from your app store<br>
-      <span style="color:#f59e0b;font-weight:800">2.</span> Tap <strong style="color:#f8fafc">Get Started</strong><br>
-      <span style="color:#f59e0b;font-weight:800">3.</span> Tap <strong style="color:#f8fafc">Do it later</strong> at the bottom<br>
-      <span style="color:#f59e0b;font-weight:800">4.</span> Come back here and join a community below
+      <span style="color:#f59e0b;font-weight:800">1.</span> Installez Fedi depuis votre app store<br>
+      <span style="color:#f59e0b;font-weight:800">2.</span> Tap <strong style="color:#f8fafc">Commencer</strong><br>
+      <span style="color:#f59e0b;font-weight:800">3.</span> Tap <strong style="color:#f8fafc">Plus tard</strong> at the bottom<br>
+      <span style="color:#f59e0b;font-weight:800">4.</span> Revenez ici et rejoignez une communauté ci-dessous
     </div>
   </div>
 
-  <a href="https://fedi.xyz/product" target="_blank" class="big-cta reveal d2" style="margin-bottom:20px">📲 Download Fedi (Free)</a>
+  <a href="https://fedi.xyz/product" target="_blank" class="big-cta reveal d2" style="margin-bottom:20px">📲 Télécharger Fedi (Gratuit)</a>
 
-  <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px" class="reveal d2">Then join your community</div>
+  <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:12px" class="reveal d2">Puis rejoignez votre communauté</div>
   <div class="comm-btns reveal d3">
     <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" class="comm-btn en">🇬🇧 English Community</a>
     <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" class="comm-btn fr">🇫🇷 Communauté Française</a>
   </div>
 
   <div class="reveal d3" style="margin-top:16px">
-    <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Need help?</div>
+    <div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Besoin d'aide ?</div>
     <div style="display:flex;gap:8px;justify-content:center">
       <a href="fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::" style="padding:8px 16px;border-radius:8px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.15);color:#a78bfa;font-size:12px;font-weight:600;text-decoration:none">💬 Support (EN)</a>
       <a href="fedi:room:!qHlVxBJBCKqUbetBnA:m1.8fa.in:::" style="padding:8px 16px;border-radius:8px;background:rgba(139,92,246,0.08);border:1px solid rgba(139,92,246,0.15);color:#a78bfa;font-size:12px;font-weight:600;text-decoration:none">💬 Support (FR)</a>
@@ -579,7 +579,7 @@ body::after {
 
 <!-- FOOTER -->
 <footer class="footer">
-  <div class="footer-main">⚡ EST. BLOCK 934,669 🥜 · OPEN SOURCE · BUILT FOR FEDI</div>
+  <div class="footer-main">⚡ EST. BLOCK 934,669 🥜 · OPEN SOURCE · CONSTRUIT POUR FEDI</div>
   <div class="footer-links">
     <a href="https://github.com/jesuspirate/federated-escrow" target="_blank">GitHub ↗</a>
     <a href="https://sandbox.satoshimarket.app">🧪 Sandbox</a>
