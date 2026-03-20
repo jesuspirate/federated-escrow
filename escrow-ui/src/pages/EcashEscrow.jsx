@@ -1890,16 +1890,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             if (errMsg.includes("already") || errMsg.includes("spent")) {
               showToast("These notes have already been redeemed.", "error");
               setPendingNotes(null);
-            } else if (errMsg.includes("federation") || errMsg.includes("mint") || errMsg.includes("unknown")) {
-              if (window.fediInternal.joinCommunity && e.communityLink) {
-                showToast("Joining the trade federation...");
-                try {
-                  await window.fediInternal.joinCommunity(e.communityLink);
-                  showToast("Federation joined! Tap Receive again to claim your sats.");
-                } catch { showToast("Could not join federation automatically.", "error"); }
-              } else {
-                showToast("E-cash from a different federation. Try again — Fedi may handle it.", "error");
-              }
+            } else if (errMsg.includes("federation") || errMsg.includes("mint") || errMsg.includes("unknown") || errMsg.includes("failed to receive")) {
+              const fedName = e.federationId || e.federation_id || "the seller's federation";
+              showToast("These sats are from " + fedName + ". Go to your Fedi home screen, switch to that federation, then come back and tap Receive again.", "error");
             } else {
               const escrowFed = e.federationId || e.federation_id || "";
               if (escrowFed) {
