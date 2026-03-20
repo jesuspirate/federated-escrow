@@ -80,6 +80,78 @@ import * as Notify from "../notifications";
 import * as FM from "../fedimint";
 import { matrixBot } from "./matrix-bot";
 import { splitNotes, combineShares, validateReconstructedNotes } from "../shamir";
+import { execFile } from "child_process";
+import { promisify } from "util";
+
+const execFileAsync = promisify(execFile);
+const FM_CLI = process.env.FEDIMINT_CLI_PATH || "/usr/bin/fedimint-cli";
+const PLATFORM_FEE_BPS = parseInt(process.env.PLATFORM_FEE_BPS || "0");
+const PLATFORM_WALLET_BASE = process.env.PLATFORM_WALLET_DIR || "/home/satoshi/federated-escrow/platform-wallet";
+
+// Map e-cash note prefixes to federation wallet data dirs
+const FED_PREFIX_TO_WALLET: Record<string, string> = {
+  "AwEEiItw7A": "bitcoin-life",
+  "AwEEG8tk5g": "global-bitcoin-federation",
+  "AwEE_yhqbg": "afribit-kibera",
+};
+
+async function fmCli(walletDir: string, ...args: string[]): Promise<string> {
+  const dataDir = PLATFORM_WALLET_BASE + "/" + walletDir;
+  const { stdout } = await execFileAsync(FM_CLI, ["--data-dir", dataDir, ...args], {
+    timeout: 60000,
+    env: { ...process.env, RUST_LOG: "warn" },
+  });
+  return stdout.trim();
+}
+
+async function collectFee(notes: string, amountMsats: number, escrowId: string, fedPrefix: string): Promise<{ winnerNotes: string; feeMsats: number } | null> {
+  if (PLATFORM_FEE_BPS <= 0) return null;
+  
+  const walletDir = FED_PREFIX_TO_WALLET[fedPrefix];
+  if (!walletDir) {
+    console.warn("[fee] Unknown federation prefix:", fedPrefix, "— skipping fee collection for", escrowId);
+    return null;
+  }
+  
+  const feeMsats = Math.floor(amountMsats * PLATFORM_FEE_BPS / 10000);
+  const winnerMsats = amountMsats - feeMsats;
+  
+  if (feeMsats < 1000) {
+    // Fee less than 1 sat — not worth collecting
+    console.log("[fee] Fee too small (" + feeMsats + " msats) for", escrowId, "— skipping");
+    return null;
+  }
+  
+  try {
+    // Step 1: Reissue (receive) the original notes into platform wallet
+    console.log("[fee] Reissuing", amountMsats, "msats for", escrowId, "via", walletDir);
+    await fmCli(walletDir, "reissue", notes);
+    
+    // Step 2: Spend (generate) new notes for the winner (amount minus fee)
+    console.log("[fee] Spending", winnerMsats, "msats for winner of", escrowId);
+    const spendResult = await fmCli(walletDir, "spend", String(winnerMsats), "--allow-overpay");
+    
+    // Parse the spend result — it returns JSON with "notes" field
+    let winnerNotes: string;
+    try {
+      const parsed = JSON.parse(spendResult);
+      winnerNotes = parsed.notes || parsed;
+    } catch {
+      winnerNotes = spendResult;
+    }
+    
+    if (!winnerNotes || winnerNotes.length < 10) {
+      throw new Error("Spend returned invalid notes");
+    }
+    
+    console.log("[fee] \u2705 Fee collected for", escrowId, ":", feeMsats, "msats (" + (PLATFORM_FEE_BPS / 100) + "%). Winner gets", winnerMsats, "msats");
+    return { winnerNotes, feeMsats };
+  } catch (err: any) {
+    console.error("[fee] \u274c Fee collection FAILED for", escrowId, ":", err.message);
+    console.error("[fee] Returning original notes to winner (no fee deducted)");
+    return null; // Fail gracefully — winner gets full amount
+  }
+}
 
 type Role = "buyer" | "seller" | "arbiter";
 type Outcome = "release" | "refund";
@@ -953,13 +1025,34 @@ router.get("/:id/ecash-payout", async (req: AuthenticatedRequest, res: Response)
       notes = DB.decryptNotes(row.locked_notes);
     }
     
+    // ── FEE COLLECTION ──────────────────────────────────────────────
+    let finalNotes = notes;
+    let feeMsats = 0;
+    
+    if (PLATFORM_FEE_BPS > 0) {
+      // Determine federation from the note prefix
+      const fedPrefix = notes.substring(0, 10);
+      const feeResult = await collectFee(notes, row.amount_msats, row.id, fedPrefix);
+      if (feeResult) {
+        finalNotes = feeResult.winnerNotes;
+        feeMsats = feeResult.feeMsats;
+      }
+    }
+    
+    const winnerAmountMsats = row.amount_msats - feeMsats;
+
     // DON'T complete here — wait for confirm-ecash-received
 
     res.json({
       escrowId: row.id, mode: "ecash",
-      notes,
-      amountMsats: row.amount_msats, amountSats: Math.floor(row.amount_msats / 1000),
-      message: "Redeem these notes in your wallet using mint.redeemEcash()",
+      notes: finalNotes,
+      amountMsats: winnerAmountMsats, amountSats: Math.floor(winnerAmountMsats / 1000),
+      originalAmountMsats: row.amount_msats,
+      platformFeeMsats: feeMsats,
+      platformFeeBps: PLATFORM_FEE_BPS,
+      message: feeMsats > 0
+        ? "Platform fee of " + Math.floor(feeMsats / 1000) + " sats (" + (PLATFORM_FEE_BPS / 100) + "%) deducted. Redeem your " + Math.floor(winnerAmountMsats / 1000) + " sats."
+        : "Redeem these notes in your wallet using mint.redeemEcash()",
     });
   } catch (err: any) {
     console.error("[ecash-escrow] GET /:id/ecash-payout error:", err);
