@@ -1894,7 +1894,25 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
     if (listingImages.length >= 4) { showToast("Maximum 4 images", "error"); return; }
     setImgUploading(true);
     try {
-      const buf = await file.arrayBuffer();
+      // Strip EXIF metadata by re-encoding through canvas
+      const stripped = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const max = 1920;
+          let w = img.width, h = img.height;
+          if (w > max || h > max) {
+            if (w > h) { h = Math.round(h * max / w); w = max; }
+            else { w = Math.round(w * max / h); h = max; }
+          }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Canvas encode failed")), "image/jpeg", 0.85);
+        };
+        img.onerror = () => reject(new Error("Image load failed"));
+        img.src = URL.createObjectURL(file);
+      });
+      const buf = await stripped.arrayBuffer();
       const hashBuf = await crypto.subtle.digest("SHA-256", buf);
       const sha256 = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
       if (!window.nostr) throw new Error("Nostr not available");
@@ -1907,8 +1925,8 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       const signed = await window.nostr.signEvent(authEvent);
       const res = await fetch("https://blossom.band/upload", {
         method: "PUT",
-        headers: { "Authorization": "Nostr " + btoa(JSON.stringify(signed)), "Content-Type": file.type },
-        body: file,
+        headers: { "Authorization": "Nostr " + btoa(JSON.stringify(signed)), "Content-Type": "image/jpeg" },
+        body: stripped,
       });
       if (!res.ok) throw new Error("Upload failed (" + res.status + ")");
       const data = await res.json();

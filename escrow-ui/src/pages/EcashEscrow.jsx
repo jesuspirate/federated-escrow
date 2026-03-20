@@ -1304,7 +1304,25 @@ function TradeChat({ escrowId, pubkey, participants }) {
     setUploading(true);
     try {
       // Compute SHA-256 hash of the file
-      const arrayBuffer = await file.arrayBuffer();
+      // Strip EXIF metadata by re-encoding through canvas
+      const stripped = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const max = 1920;
+          let w = img.width, h = img.height;
+          if (w > max || h > max) {
+            if (w > h) { h = Math.round(h * max / w); w = max; }
+            else { w = Math.round(w * max / h); h = max; }
+          }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Canvas encode failed")), "image/jpeg", 0.85);
+        };
+        img.onerror = () => reject(new Error("Image load failed"));
+        img.src = URL.createObjectURL(file);
+      });
+      const arrayBuffer = await stripped.arrayBuffer();
       const hashBuffer = await crypto.subtle.digest("SHA-256", arrayBuffer);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       const sha256 = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
@@ -1331,7 +1349,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
           "Authorization": authHeader,
           "Content-Type": file.type,
         },
-        body: file,
+        body: stripped,
       });
 
       if (!res.ok) {

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html><head><meta name="viewport" content="width=device-width"><title>Blossom Upload Probe</title></head>
+<body style="background:#0a0e17;color:#f8fafc;font-family:monospace;padding:20px;font-size:12px">
+<h3 style="color:#f59e0b">Blossom Upload Probe</h3>
+<input type="file" accept="image/*" id="fileInput" style="margin:10px 0" />
+<button onclick="testUpload()" style="padding:10px 20px;background:#f59e0b;color:#000;border:none;border-radius:8px;font-weight:700">Upload Test</button>
+<pre id="out" style="white-space:pre-wrap;color:#10b981;margin-top:12px"></pre>
+<script>
+const log = s => document.getElementById('out').textContent += s + '\n';
+async function testUpload() {
+  const file = document.getElementById('fileInput').files[0];
+  if (!file) { log('No file selected'); return; }
+  log('File: ' + file.name + ' (' + file.size + ' bytes, ' + file.type + ')');
+  
+  try {
+    // Step 1: SHA-256
+    log('Computing SHA-256...');
+    const buf = await file.arrayBuffer();
+    const hashBuf = await crypto.subtle.digest('SHA-256', buf);
+    const sha256 = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    log('SHA-256: ' + sha256);
+    
+    // Step 2: Sign auth event
+    log('Signing kind 24242 event...');
+    if (!window.nostr) { log('ERROR: window.nostr not available'); return; }
+    
+    const authEvent = {
+      kind: 24242,
+      created_at: Math.floor(Date.now() / 1000),
+      tags: [
+        ['t', 'upload'],
+        ['x', sha256],
+        ['expiration', String(Math.floor(Date.now() / 1000) + 300)],
+      ],
+      content: 'Upload test',
+    };
+    log('Auth event: ' + JSON.stringify(authEvent));
+    
+    const signed = await window.nostr.signEvent(authEvent);
+    log('Signed! Event ID: ' + (signed.id || 'none').substring(0, 16) + '...');
+    log('Pubkey: ' + (signed.pubkey || 'none').substring(0, 16) + '...');
+    
+    const authHeader = 'Nostr ' + btoa(JSON.stringify(signed));
+    log('Auth header length: ' + authHeader.length);
+    
+    // Step 3: Upload
+    log('Uploading to blossom.band...');
+    const res = await fetch('https://blossom.band/upload', {
+      method: 'PUT',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': file.type,
+      },
+      body: file,
+    });
+    
+    log('Response status: ' + res.status);
+    const text = await res.text();
+    log('Response: ' + text);
+    
+    if (res.ok) {
+      try {
+        const data = JSON.parse(text);
+        log('SUCCESS! URL: ' + (data.url || 'none'));
+      } catch { log('Response not JSON: ' + text); }
+    }
+  } catch (err) {
+    log('ERROR: ' + err.message);
+    log('Stack: ' + (err.stack || '').substring(0, 300));
+  }
+}
+</script>
+</body></html>
