@@ -1730,24 +1730,28 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
       try {
         showToast("Verifying your federation...");
         const probe = await window.fediInternal.generateEcash({ amount: 1 });
-        if (probe && probe.length > 10) {
-          const buyerPrefix = probe.substring(0, 10);
-          try { await window.fediInternal.receiveEcash(probe); } catch {}
-          if (buyerPrefix !== sellerPrefix) {
-            showToast("This trade requires the same federation as the seller. Please switch to the correct federation in Fedi and try again. Your 1 sat probe has been returned.", "error");
-            setLoading(false);
-            return;
-          }
+        if (!probe || probe.length <= 10) {
+          showToast("Federation verification failed. Please try again and make sure to approve the prompt.", "error");
+          setLoading(false);
+          return;
+        }
+        const buyerPrefix = probe.substring(0, 10);
+        try { await window.fediInternal.receiveEcash(probe); } catch {}
+        if (buyerPrefix !== sellerPrefix) {
+          showToast("This trade requires the same federation as the seller. Please switch to the correct federation in Fedi and try again. Your 1 sat probe has been returned.", "error");
+          setLoading(false);
+          return;
         }
       } catch {
-        showToast("Federation check failed. Please try again.", "error");
+        showToast("Federation verification failed. Please try again.", "error");
         setLoading(false);
         return;
       }
-    } else if (myFederation && l.sellerFedDomain && myFederation !== l.sellerFedDomain) {
-      showToast("This listing is from federation " + l.sellerFedDomain + " but you're on " + myFederation + ". Trades require same federation.", "error");
+    } else if (!_isSandbox && sellerPrefix) {
+      // No generateEcash available but listing has prefix — block trade
+      showToast("Cannot verify your federation. Please update your Fedi app and try again.", "error");
       return;
-    }
+
     setLoading(true);
     try {
       const customMsats = hasRange && buyAmount ? parseInt(buyAmount) * 1000 : undefined;
