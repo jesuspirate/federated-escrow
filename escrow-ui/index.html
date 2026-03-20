@@ -22,6 +22,12 @@
     var link = document.querySelector("link[rel='icon']") || document.createElement("link");
     link.rel = "icon"; link.type = "image/svg+xml"; link.href = "/favicon-" + sub + ".svg";
     document.head.appendChild(link);
+    var apple = document.querySelector("link[rel='apple-touch-icon']");
+    if (apple) apple.href = "/favicon-" + sub + ".png";
+  } else {
+    var link = document.querySelector("link[rel='icon']") || document.createElement("link");
+    link.rel = "icon"; link.type = "image/svg+xml"; link.href = "/favicon-main.svg";
+    document.head.appendChild(link);
   }
 })();
 </script>

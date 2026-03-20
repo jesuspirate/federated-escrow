@@ -1802,17 +1802,33 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         )}
 
         {/* Trade type indicator */}
-        {isP2P && (
-          <div style={{ ...M.infoBanner, borderColor: "rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.06)", marginBottom: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-              <span style={{ fontSize: 14 }}>₿</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b" }}>P2P Sats-for-Fiat Trade</span>
+        {isP2P && (() => {
+          // Extract P2P details from terms
+          const termsStr = l.terms || "";
+          const p2pSection = termsStr.split("--- P2P Details ---")[1] || "";
+          const getDetail = (key) => { const m = p2pSection.match(new RegExp(key + ":\\s*(.+)")); return m ? m[1].trim() : null; };
+          const currency = getDetail("Currency");
+          const payment = getDetail("Payment");
+          const rate = getDetail("Rate");
+          return (
+            <div style={{ ...M.infoBanner, borderColor: "rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.06)", marginBottom: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                <span style={{ fontSize: 14 }}>₿</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b" }}>P2P Sats-for-Fiat Trade</span>
+              </div>
+              <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5, marginBottom: 8 }}>
+                Seller locks ₿ sats in escrow. You send fiat externally. Once both confirm, you receive the sats.
+              </div>
+              {(currency || payment || rate) && (
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  {currency && <div style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(245,158,11,0.12)", fontSize: 11, fontWeight: 700, color: "#f59e0b" }}>{currency}</div>}
+                  {payment && <div style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(139,92,246,0.12)", fontSize: 11, fontWeight: 700, color: "#a78bfa" }}>{payment}</div>}
+                  {rate && rate !== "N/A" && <div style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(16,185,129,0.12)", fontSize: 11, fontWeight: 700, color: "#10b981" }}>+{rate}% premium</div>}
+                </div>
+              )}
             </div>
-            <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
-              Seller locks ₿ sats in escrow. You send fiat (or other payment) externally. Once both confirm, you receive the ₿ sats.
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Amount picker for P2P range listings */}
         {canBuy && hasRange && (
