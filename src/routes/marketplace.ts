@@ -365,6 +365,7 @@ function formatListing(row: ListingRow) {
     sellerFedPrefix: row.seller_fed_prefix || null,
     shippingCostMsats: row.shipping_cost_msats || 0,
     shippingCostSats: row.shipping_cost_msats ? Math.floor(row.shipping_cost_msats / 1000) : 0,
+    platformFeeBps: parseInt(process.env.PLATFORM_FEE_BPS || "0"),
     maxPriceSats: row.max_price_msats ? Math.floor(row.max_price_msats / 1000) : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
