@@ -1517,6 +1517,59 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
   const [editPremium, setEditPremium] = useState("");
   const isP2PEdit = isSatsForFiat(l.category);
   const isP2P = isSatsForFiat(l.category);
+  const [editImages, setEditImages] = useState(l.images || []);
+  const [editImgUploading, setEditImgUploading] = useState(false);
+  const editFileRef = useRef(null);
+
+  const uploadEditImage = async (file) => {
+    if (!file || !file.type.startsWith("image/")) { showToast("Please select an image", "error"); return; }
+    if (file.size > 20 * 1024 * 1024) { showToast("Image too large (max 20MB)", "error"); return; }
+    if (editImages.length >= 4) { showToast("Maximum 4 images", "error"); return; }
+    setEditImgUploading(true);
+    try {
+      const stripped = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const max = 1920;
+          let w = img.width, h = img.height;
+          if (w > max || h > max) {
+            if (w > h) { h = Math.round(h * max / w); w = max; }
+            else { w = Math.round(w * max / h); h = max; }
+          }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error("Canvas encode failed")), "image/jpeg", 0.85);
+        };
+        img.onerror = () => reject(new Error("Image load failed"));
+        img.src = URL.createObjectURL(file);
+      });
+      const buf = await stripped.arrayBuffer();
+      const hashBuf = await crypto.subtle.digest("SHA-256", buf);
+      const sha256 = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, "0")).join("");
+      if (!window.nostr) throw new Error("Nostr not available");
+      const authEvent = {
+        kind: 24242,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [["t", "upload"], ["x", sha256], ["expiration", String(Math.floor(Date.now() / 1000) + 300)]],
+        content: "Upload listing image",
+      };
+      const signed = await window.nostr.signEvent(authEvent);
+      const res = await fetch("https://blossom.band/upload", {
+        method: "PUT",
+        headers: { "Authorization": "Nostr " + btoa(JSON.stringify(signed)), "Content-Type": "image/jpeg" },
+        body: stripped,
+      });
+      if (!res.ok) throw new Error("Upload failed (" + res.status + ")");
+      const data = await res.json();
+      const url = data.url || ("https://blossom.band/" + sha256);
+      setEditImages(prev => [...prev, url]);
+      showToast("Image uploaded!");
+    } catch (err) {
+      showToast("Upload failed: " + (err.message || ""), "error");
+    }
+    setEditImgUploading(false);
+  };
 
   const handleSave = async () => {
     if (!title.trim()) return showToast("Title is required", "error");
@@ -1533,6 +1586,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
           quantity: Number(quantity),
           minPriceMsats: minPrice ? Number(minPrice) * 1000 : null,
           maxPriceMsats: maxPrice ? Number(maxPrice) * 1000 : null,
+          images: editImages.length > 0 ? editImages : [],
         }),
       });
       if (res.error) throw new Error(res.error);
@@ -1562,6 +1616,33 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
           <div style={M.sectionLabel}>Description</div>
           <textarea style={{ ...M.input, minHeight: 80, resize: "vertical" }} value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe your item..." maxLength={2000} />
         </div>
+
+        {!isP2P && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={M.sectionLabel}>Photos</div>
+            <input type="file" accept="image/*" ref={editFileRef} onChange={e => { if (e.target.files?.[0]) uploadEditImage(e.target.files[0]); e.target.value = ""; }} style={{ display: "none" }} />
+            {editImages.length > 0 && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                {editImages.map((url, i) => (
+                  <div key={i} style={{ position: "relative", width: 72, height: 72, borderRadius: 8, overflow: "hidden", border: "1px solid #1e293b" }}>
+                    <img src={url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <button onClick={() => setEditImages(prev => prev.filter((_, j) => j !== i))} style={{
+                      position: "absolute", top: 2, right: 2, width: 18, height: 18, borderRadius: "50%",
+                      background: "rgba(0,0,0,0.7)", color: "#fff", fontSize: 10, border: "none", cursor: "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>✕</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button onClick={() => editFileRef.current?.click()} disabled={editImgUploading || editImages.length >= 4} style={{
+              padding: "10px 16px", borderRadius: 10, border: "1px dashed #334155", background: "transparent",
+              color: editImgUploading ? "#475569" : "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer", width: "100%",
+            }}>
+              {editImgUploading ? "Uploading..." : editImages.length > 0 ? "📷 Add photo (" + editImages.length + "/4)" : "📷 Add photos"}
+            </button>
+          </div>
+        )}
 
         <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
           <div style={{ flex: 1 }}>
