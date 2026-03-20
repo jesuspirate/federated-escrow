@@ -229,8 +229,8 @@ function pickArbiter(excludePubkeys: string[]): string | null {
 const stmts = {
   // Listings
   insert: db.prepare(`
-    INSERT INTO listings (id, seller_pubkey, title, description, price_msats, currency_display, category, condition, images, terms, community_link, status, quantity, min_price_msats, max_price_msats, seller_fed_domain, seller_fed_prefix)
-    VALUES (@id, @seller_pubkey, @title, @description, @price_msats, @currency_display, @category, @condition, @images, @terms, @community_link, 'active', @quantity, @min_price_msats, @max_price_msats, @seller_fed_domain, @seller_fed_prefix)
+    INSERT INTO listings (id, seller_pubkey, title, description, price_msats, currency_display, category, condition, images, terms, community_link, status, quantity, min_price_msats, max_price_msats, seller_fed_domain, seller_fed_prefix, shipping_cost_msats)
+    VALUES (@id, @seller_pubkey, @title, @description, @price_msats, @currency_display, @category, @condition, @images, @terms, @community_link, 'active', @quantity, @min_price_msats, @max_price_msats, @seller_fed_domain, @seller_fed_prefix, @shipping_cost_msats)
   `),
   getById: db.prepare(`SELECT * FROM listings WHERE id = ?`),
   listActive: db.prepare(`SELECT * FROM listings WHERE status = ? ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END, updated_at DESC LIMIT ? OFFSET ?`),
@@ -363,6 +363,8 @@ function formatListing(row: ListingRow) {
     minPriceSats: row.min_price_msats ? Math.floor(row.min_price_msats / 1000) : null,
     sellerFedDomain: row.seller_fed_domain || null,
     sellerFedPrefix: row.seller_fed_prefix || null,
+    shippingCostMsats: row.shipping_cost_msats || 0,
+    shippingCostSats: row.shipping_cost_msats ? Math.floor(row.shipping_cost_msats / 1000) : 0,
     maxPriceSats: row.max_price_msats ? Math.floor(row.max_price_msats / 1000) : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -514,7 +516,7 @@ const requireAuth = [extractPubkey, rateLimit];
 router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
   try {
     const pk = req.pubkey!;
-    const { title, description, priceMsats, currencyDisplay, category, condition, images, terms, communityLink, quantity, minPriceMsats, maxPriceMsats, sellerFedDomain, sellerFedPrefix } = req.body;
+    const { title, description, priceMsats, currencyDisplay, category, condition, images, terms, communityLink, quantity, minPriceMsats, maxPriceMsats, sellerFedDomain, sellerFedPrefix, shippingCostSats } = req.body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0)
       return res.status(400).json({ error: "title is required" });
@@ -561,6 +563,7 @@ router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
       max_price_msats: maxPriceMsats ? Math.floor(maxPriceMsats) : null,
       seller_fed_domain: sellerFedDomain?.trim() || null,
       seller_fed_prefix: sellerFedPrefix?.trim() || null,
+      shipping_cost_msats: shippingCostSats ? Math.floor(Number(shippingCostSats) * 1000) : 0,
     });
 
     const row = stmts.getById.get(id) as ListingRow;
@@ -889,6 +892,7 @@ router.post("/:id/update", ...requireAuth, (req: AuthenticatedRequest, res: Resp
       sellerFedPrefix: "seller_fed_prefix",
       currencyDisplay: "currency_display", category: "category", condition: "condition",
       images: "images", terms: "terms", communityLink: "community_link",
+      shippingCostSats: "shipping_cost_msats",
       quantity: "quantity", status: "status",
     };
 
@@ -910,6 +914,7 @@ router.post("/:id/update", ...requireAuth, (req: AuthenticatedRequest, res: Resp
         if (bodyKey === "communityLink" && val && !isValidCommunityLink(val))
           return res.status(400).json({ error: 'communityLink format: "fedi:room:!roomId:federation.domain:::"' });
         if (bodyKey === "images") val = JSON.stringify(val);
+        if (bodyKey === "shippingCostSats") val = Math.floor(Number(val) * 1000);
         if (typeof val === "string" && ["title", "description", "terms", "category"].includes(bodyKey))
           val = val.trim();
 
@@ -1094,7 +1099,8 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     //   Flow: Buyer locks sats → Seller ships item → Both confirm → Seller gets sats
 
     // ── Bracket pricing: buyer picks amount within range ──────────────
-    let tradeAmountMsats = listing.price_msats;
+    const shippingMsats = listing.shipping_cost_msats || 0;
+    let tradeAmountMsats = listing.price_msats + shippingMsats;
     const { amountMsats: customAmount } = req.body;
     if (customAmount && typeof customAmount === "number" && customAmount > 0) {
       // Validate against listing range

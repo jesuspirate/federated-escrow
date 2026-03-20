@@ -197,6 +197,12 @@ export interface VoteRow {
     console.log("[db] Migration 5: seller_fed_prefix on escrows");
   }
 
+  if (currentVersion < 6) {
+    try { db.exec("ALTER TABLE listings ADD COLUMN shipping_cost_msats INTEGER DEFAULT 0"); } catch {}
+    db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(6);
+    console.log("[db] Migration 6: shipping_cost_msats on listings");
+  }
+
 // ── Prepared Statements ───────────────────────────────────────────────────
 
 const stmts = {

@@ -1515,6 +1515,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
   const [minPrice, setMinPrice] = useState(l.minPriceSats || "");
   const [maxPrice, setMaxPrice] = useState(l.maxPriceSats || "");
   const [editPremium, setEditPremium] = useState("");
+  const [editShipping, setEditShipping] = useState(l.shippingCostSats || "");
   const isP2PEdit = isSatsForFiat(l.category);
   const isP2P = isSatsForFiat(l.category);
   const [editImages, setEditImages] = useState(l.images || []);
@@ -1587,6 +1588,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
           minPriceMsats: minPrice ? Number(minPrice) * 1000 : null,
           maxPriceMsats: maxPrice ? Number(maxPrice) * 1000 : null,
           images: editImages.length > 0 ? editImages : [],
+          shippingCostSats: editShipping ? parseInt(editShipping) : 0,
         }),
       });
       if (res.error) throw new Error(res.error);
@@ -1654,6 +1656,13 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
             <input style={M.input} type="number" value={quantity} onChange={e => setQuantity(e.target.value)} min={1} max={999} />
           </div>
         </div>
+
+        {!isP2P && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={M.sectionLabel}>Shipping Cost (sats, optional)</div>
+            <input style={M.input} type="number" placeholder="e.g., 500" value={editShipping} onChange={e => setEditShipping(e.target.value)} />
+          </div>
+        )}
 
         {isP2P && (
           <div style={{ marginBottom: 14 }}>
@@ -1851,6 +1860,18 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         )}
 
         {/* Marketplace buyer info */}
+        {l.shippingCostSats > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", marginBottom: 10, borderRadius: 10, background: "rgba(59,130,246,0.04)", border: "1px solid rgba(59,130,246,0.15)" }}>
+            <span style={{ fontSize: 12, color: "#94a3b8" }}>📦 Shipping</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#3b82f6" }}>₿ {l.shippingCostSats.toLocaleString()} sats</span>
+          </div>
+        )}
+        {l.shippingCostSats > 0 && (
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", marginBottom: 14, borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#f59e0b" }}>Total</span>
+            <span style={{ fontSize: 16, fontWeight: 900, color: "#f8fafc" }}>₿ {(Math.floor(l.priceMsats / 1000) + l.shippingCostSats).toLocaleString()} sats</span>
+          </div>
+        )}
         {canBuy && !isP2P && (
           <div style={{ ...M.infoBanner, borderColor: "rgba(16,185,129,0.2)", background: "rgba(16,185,129,0.04)", marginBottom: 14 }}>
             <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
@@ -1983,6 +2004,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
   const [listingImages, setListingImages] = useState([]);
   const [imgUploading, setImgUploading] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState("");
+  const [shippingCost, setShippingCost] = useState("");
   const listingFileRef = useRef(null);
 
   const uploadListingImage = async (file) => {
@@ -2144,6 +2166,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
           sellerFedPrefix: sellerFedPrefix || undefined,
           quantity: parseInt(quantity) || 1,
           images: listingImages.length > 0 ? listingImages : undefined,
+          shippingCostSats: shippingCost ? parseInt(shippingCost) : undefined,
         }),
       });
       if (res.error) throw new Error(res.error);
@@ -2456,6 +2479,11 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
           <div style={{ marginTop: 8 }}>
             <input style={M.input} placeholder="https://your-shop.com (optional)" value={websiteUrl} onChange={e => setWebsiteUrl(e.target.value)} />
             <p style={{ fontSize: 10, color: "#475569", marginTop: 4 }}>Link to your shop, portfolio, or product page</p>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <div style={M.sectionLabel}>SHIPPING COST (sats, optional)</div>
+            <input style={M.input} type="number" placeholder="e.g., 500" value={shippingCost} onChange={e => setShippingCost(e.target.value)} />
+            <p style={{ fontSize: 10, color: "#475569", marginTop: 4 }}>Added to the item price. Buyer pays item + shipping.</p>
           </div>
         </div>
       )}
