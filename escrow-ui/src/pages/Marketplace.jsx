@@ -1751,7 +1751,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
       // No generateEcash available but listing has prefix — block trade
       showToast("Cannot verify your federation. Please update your Fedi app and try again.", "error");
       return;
-
+    }
     setLoading(true);
     try {
       const customMsats = hasRange && buyAmount ? parseInt(buyAmount) * 1000 : undefined;
