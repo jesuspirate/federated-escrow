@@ -1039,7 +1039,9 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
                   {e.expiresIn && <span style={S.cardExpiry}><I.Clock /> {e.expiresIn}</span>}
                 </div>
                 {e.status === "FUNDED" && e.yourRole === "seller" && (
-                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(245,158,11,0.1)", fontSize: 11, fontWeight: 600, color: "#f59e0b", textAlign: "center" }}>🔒 Lock your ₿ sats to start</div>
+                  <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(245,158,11,0.1)", fontSize: 11, fontWeight: 600, color: "#f59e0b", textAlign: "center" }}>
+                    {e.description?.startsWith("Lending:") ? "🤝 Lock sats to fund the loan" : e.description?.startsWith("Loan Repayment:") ? "💰 Awaiting borrower repayment" : "🔒 Lock your ₿ sats to start"}
+                  </div>
                 )}
                 {e.status === "FUNDED" && e.yourRole !== "seller" && (
                   <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(100,116,139,0.1)", fontSize: 11, color: "#64748b", textAlign: "center" }}>Waiting for seller to lock</div>
