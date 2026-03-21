@@ -494,101 +494,6 @@ async function fetchRates() {
 fetchRates();
 setInterval(fetchRates, RATES_TTL);
 
-// ── POST /:id/create-repayment — Create repayment escrow for a completed loan ──
-router.post("/:id/create-repayment", ...requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const pk = req.pubkey!;
-    const order = stmts.getOrder.get(req.params.id) as any;
-    if (!order) return res.status(404).json({ error: "Order not found" });
-
-    const listing = stmts.getById.get(order.listing_id) as any;
-    if (!listing || !isLenderTrade(listing.category)) {
-      return res.status(400).json({ error: "This is not a lending order" });
-    }
-
-    // Only the lender (listing seller) can create the repayment escrow
-    if (pk !== listing.seller_pubkey) {
-      return res.status(403).json({ error: "Only the lender can create the repayment escrow" });
-    }
-
-    // Check if repayment escrow already exists
-    const existingEscrow = db.prepare("SELECT id FROM escrows WHERE loan_parent_id = ?").get(order.escrow_id);
-    if (existingEscrow) {
-      return res.json({ repaymentEscrowId: (existingEscrow as any).id, message: "Repayment escrow already exists" });
-    }
-
-    // Parse loan terms from listing
-    const terms = listing.terms || "";
-    const interestMatch = terms.match(/Interest:\s*(\d+)/);
-    const repaymentMatch = terms.match(/Repayment:\s*(\d+)\s*days?/i) || terms.match(/(\d+)\s*day/i);
-    const interestBps = interestMatch ? parseInt(interestMatch[1]) * 100 : 0;
-    const repaymentDays = repaymentMatch ? parseInt(repaymentMatch[1]) : 14;
-
-    // Calculate repayment amount (principal + interest)
-    const principalMsats = order.amount_msats;
-    const interestMsats = Math.floor(principalMsats * interestBps / 10000);
-    const repaymentMsats = principalMsats + interestMsats;
-
-    // Due date
-    const dueAt = new Date(Date.now() + repaymentDays * 24 * 60 * 60 * 1000).toISOString();
-
-    // Generate repayment escrow ID
-    const maxIdRow = db.prepare("SELECT MAX(CAST(SUBSTR(id, 7) AS INTEGER)) as max_id FROM escrows").get() as any;
-    const repaymentId = "ecash_" + ((maxIdRow?.max_id || 0) + 1);
-    const now = new Date().toISOString();
-
-    db.prepare(
-      "INSERT INTO escrows (id, status, created_at, updated_at, amount_msats, description, terms, community_link, federation_id, seller_pubkey, buyer_pubkey, arbiter_pubkey, lock_role, loan_parent_id, loan_status, loan_due_at, loan_interest_bps, seller_fed_prefix) VALUES (?, 'FUNDED', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'buyer', ?, 'active', ?, ?, ?)"
-    ).run(
-      repaymentId, now, now,
-      repaymentMsats,
-      "Loan Repayment: " + listing.title,
-      "Repayment of " + Math.floor(principalMsats / 1000) + " sats + " + Math.floor(interestMsats / 1000) + " sats interest. Due: " + new Date(dueAt).toLocaleDateString(),
-      listing.community_link || "",
-      listing.seller_fed_domain || "",
-      order.buyer_pubkey,  // Borrower is now the "seller" (they lock repayment)
-      order.seller_pubkey, // Lender is now the "buyer" (they receive repayment)
-      order.arbiter_pubkey,
-      order.escrow_id,     // Link to original loan
-      dueAt,
-      interestBps,
-      listing.seller_fed_prefix || null
-    );
-
-    // Update the original escrow with the repayment link
-    db.prepare("UPDATE escrows SET loan_repayment_id = ?, loan_status = 'disbursed' WHERE id = ?").run(repaymentId, order.escrow_id);
-
-    // Create a repayment order
-    const repayOrderId = generateOrderId();
-    stmts.insertOrder.run({
-      id: repayOrderId,
-      listing_id: order.listing_id,
-      escrow_id: repaymentId,
-      buyer_pubkey: order.seller_pubkey,  // Lender receives
-      seller_pubkey: order.buyer_pubkey,  // Borrower repays
-      arbiter_pubkey: order.arbiter_pubkey,
-      amount_msats: repaymentMsats,
-      status: "active",
-    });
-
-    console.log("[lending] Repayment escrow created:", repaymentId, "for loan", order.escrow_id, "amount:", repaymentMsats, "msats, due:", dueAt);
-
-    res.json({
-      repaymentEscrowId: repaymentId,
-      repaymentOrderId: repayOrderId,
-      principalMsats,
-      interestMsats,
-      repaymentMsats,
-      repaymentSats: Math.floor(repaymentMsats / 1000),
-      dueAt,
-      message: "Repayment escrow created. Borrower must lock " + Math.floor(repaymentMsats / 1000) + " sats by " + new Date(dueAt).toLocaleDateString(),
-    });
-  } catch (err: any) {
-    console.error("[lending] create-repayment error:", err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 router.get("/rates", (_req, res) => {
   if (!ratesCache) return res.status(503).json({ error: "Rates not yet loaded" });
   res.json({
@@ -970,6 +875,102 @@ router.get("/:id", (req: AuthenticatedRequest, res: Response) => {
     activeOrders: orders.filter(o => !["completed", "cancelled", "expired"].includes(o.status)).length,
   });
 });
+
+// ── POST /:id/create-repayment — Create repayment escrow for a completed loan ──
+router.post("/:id/create-repayment", ...requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const pk = req.pubkey!;
+    const order = stmts.getOrder.get(req.params.id) as any;
+    if (!order) return res.status(404).json({ error: "Order not found" });
+
+    const listing = stmts.getById.get(order.listing_id) as any;
+    if (!listing || !isLenderTrade(listing.category)) {
+      return res.status(400).json({ error: "This is not a lending order" });
+    }
+
+    // Only the lender (listing seller) can create the repayment escrow
+    if (pk !== listing.seller_pubkey) {
+      return res.status(403).json({ error: "Only the lender can create the repayment escrow" });
+    }
+
+    // Check if repayment escrow already exists
+    const existingEscrow = db.prepare("SELECT id FROM escrows WHERE loan_parent_id = ?").get(order.escrow_id);
+    if (existingEscrow) {
+      return res.json({ repaymentEscrowId: (existingEscrow as any).id, message: "Repayment escrow already exists" });
+    }
+
+    // Parse loan terms from listing
+    const terms = listing.terms || "";
+    const interestMatch = terms.match(/Interest:\s*(\d+)/);
+    const repaymentMatch = terms.match(/Repayment:\s*(\d+)\s*days?/i) || terms.match(/(\d+)\s*day/i);
+    const interestBps = interestMatch ? parseInt(interestMatch[1]) * 100 : 0;
+    const repaymentDays = repaymentMatch ? parseInt(repaymentMatch[1]) : 14;
+
+    // Calculate repayment amount (principal + interest)
+    const principalMsats = order.amount_msats;
+    const interestMsats = Math.floor(principalMsats * interestBps / 10000);
+    const repaymentMsats = principalMsats + interestMsats;
+
+    // Due date
+    const dueAt = new Date(Date.now() + repaymentDays * 24 * 60 * 60 * 1000).toISOString();
+
+    // Generate repayment escrow ID
+    const maxIdRow = db.prepare("SELECT MAX(CAST(SUBSTR(id, 7) AS INTEGER)) as max_id FROM escrows").get() as any;
+    const repaymentId = "ecash_" + ((maxIdRow?.max_id || 0) + 1);
+    const now = new Date().toISOString();
+
+    db.prepare(
+      "INSERT INTO escrows (id, status, created_at, updated_at, amount_msats, description, terms, community_link, federation_id, seller_pubkey, buyer_pubkey, arbiter_pubkey, lock_role, loan_parent_id, loan_status, loan_due_at, loan_interest_bps, seller_fed_prefix) VALUES (?, 'FUNDED', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'buyer', ?, 'active', ?, ?, ?)"
+    ).run(
+      repaymentId, now, now,
+      repaymentMsats,
+      "Loan Repayment: " + listing.title,
+      "Repayment of " + Math.floor(principalMsats / 1000) + " sats + " + Math.floor(interestMsats / 1000) + " sats interest. Due: " + new Date(dueAt).toLocaleDateString(),
+      listing.community_link || "",
+      listing.seller_fed_domain || "",
+      order.buyer_pubkey,  // Borrower is now the "seller" (they lock repayment)
+      order.seller_pubkey, // Lender is now the "buyer" (they receive repayment)
+      order.arbiter_pubkey,
+      order.escrow_id,     // Link to original loan
+      dueAt,
+      interestBps,
+      listing.seller_fed_prefix || null
+    );
+
+    // Update the original escrow with the repayment link
+    db.prepare("UPDATE escrows SET loan_repayment_id = ?, loan_status = 'disbursed' WHERE id = ?").run(repaymentId, order.escrow_id);
+
+    // Create a repayment order
+    const repayOrderId = generateOrderId();
+    stmts.insertOrder.run({
+      id: repayOrderId,
+      listing_id: order.listing_id,
+      escrow_id: repaymentId,
+      buyer_pubkey: order.seller_pubkey,  // Lender receives
+      seller_pubkey: order.buyer_pubkey,  // Borrower repays
+      arbiter_pubkey: order.arbiter_pubkey,
+      amount_msats: repaymentMsats,
+      status: "active",
+    });
+
+    console.log("[lending] Repayment escrow created:", repaymentId, "for loan", order.escrow_id, "amount:", repaymentMsats, "msats, due:", dueAt);
+
+    res.json({
+      repaymentEscrowId: repaymentId,
+      repaymentOrderId: repayOrderId,
+      principalMsats,
+      interestMsats,
+      repaymentMsats,
+      repaymentSats: Math.floor(repaymentMsats / 1000),
+      dueAt,
+      message: "Repayment escrow created. Borrower must lock " + Math.floor(repaymentMsats / 1000) + " sats by " + new Date(dueAt).toLocaleDateString(),
+    });
+  } catch (err: any) {
+    console.error("[lending] create-repayment error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // ── POST /:id/update — Update listing (seller only) ─────────────────────
 
