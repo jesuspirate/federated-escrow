@@ -2628,12 +2628,6 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
               <div style={{ fontSize: 11, fontFamily: "monospace", color: "#334155", marginTop: 4 }}>
                 {o.id} → {o.escrowId}
               </div>
-          {detail?.listing?.shippingCostSats > 0 && (
-            <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 4, fontSize: 11, color: "#64748b" }}>
-              <span>Item: ₿ {(Math.floor(o.amountMsats / 1000) - (detail?.listing?.shippingCostSats || 0)).toLocaleString()}</span>
-              <span>📦 Shipping: ₿ {detail.listing.shippingCostSats.toLocaleString()}</span>
-            </div>
-          )}
             </button>
           ))}
         </div>
@@ -3191,6 +3185,12 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
           <div style={{ fontSize: 36, fontWeight: 900, color: "#f8fafc", letterSpacing: -1 }}>
             <span style={{ color: "#f7931a", fontWeight: 800, fontSize: 34 }}>₿</span>{fmtSats(o.amountMsats)}
           </div>
+          {detail?.listing?.shippingCostSats > 0 && (
+            <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 4, fontSize: 11, color: "#64748b" }}>
+              <span>Item: ₿ {(Math.floor(o.amountMsats / 1000) - detail.listing.shippingCostSats).toLocaleString()}</span>
+              <span>📦 Shipping: ₿ {detail.listing.shippingCostSats.toLocaleString()}</span>
+            </div>
+          )}
           {fiatRates && <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>≈ {fmtFiat(o.amountMsats, fiatRates, "USD")}</div>}
         </div>
 
