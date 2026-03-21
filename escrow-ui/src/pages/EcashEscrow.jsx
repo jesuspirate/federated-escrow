@@ -1572,6 +1572,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const [lockStep, setLockStep] = useState("idle"); // idle | fetching | ready | paying | done
   const [claimRetry, setClaimRetry] = useState(() => status === "CLAIMED"); // auto-detect if escrow is already claimed (user rejected invoice on prior attempt)
   const [pendingNotes, setPendingNotes] = useState(null);
+  const [payoutInfo, setPayoutInfo] = useState(null); // { feeMsats, winnerMsats, feeBps }
 
   const handleLockFetch = async () => {
     const amountSats = Math.floor((e.amountMsats || 0) / 1000);
@@ -1877,7 +1878,13 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             // Confirm successful receipt
             await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
             setPendingNotes(null);
-            showToast("E-cash received! " + amountSats.toLocaleString() + " sats in your wallet!");
+            const receivedSats = payoutInfo?.winnerMsats ? Math.floor(payoutInfo.winnerMsats / 1000) : amountSats;
+            const feeSats = payoutInfo?.feeMsats ? Math.floor(payoutInfo.feeMsats / 1000) : 0;
+            if (feeSats > 0) {
+              showToast(receivedSats.toLocaleString() + " sats received! (" + feeSats + " sats platform fee)");
+            } else {
+              showToast("E-cash received! " + receivedSats.toLocaleString() + " sats in your wallet!");
+            }
             // Navigate to the specific order for rating
             if (cameFromMarketplace && onSwitchToMarketplace) {
               setTimeout(() => onSwitchToMarketplace(e.id), 1500);
@@ -1925,7 +1932,16 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
         // Store notes and prompt user to tap again
         setPendingNotes(ecashData.notes);
-        showToast("Notes ready! Tap the redeem button below.");
+        setPayoutInfo({
+          feeMsats: ecashData.platformFeeMsats || 0,
+          winnerMsats: ecashData.amountMsats || 0,
+          feeBps: ecashData.platformFeeBps || 0,
+        });
+        if (ecashData.platformFeeMsats > 0) {
+          showToast("Notes ready! " + Math.floor(ecashData.platformFeeMsats / 1000) + " sats platform fee deducted. Tap redeem below.");
+        } else {
+          showToast("Notes ready! Tap the redeem button below.");
+        }
         setLoading(false);
         return;
       }
@@ -2174,7 +2190,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         )}
         {(canClaim || canReclaimExpired) && !claimRetry && (
           <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "4px 0 12px", animation: "pulseGreen 2s ease infinite", fontSize: 16, padding: "16px 20px" }} onClick={handleClaim} disabled={loading}>
-            {loading ? t("claiming") : pendingNotes ? "🔐 Redeem E-cash Now" : "⚡ Receive " + fmtSats(e.amountMsats) + " sats"}
+            {loading ? t("claiming") : pendingNotes ? (payoutInfo?.feeMsats > 0 ? "🔐 Redeem " + Math.floor((payoutInfo?.winnerMsats || e.amountMsats) / 1000).toLocaleString() + " sats" : "🔐 Redeem E-cash Now") : "⚡ Receive " + fmtSats(e.amountMsats) + " sats"}
           </button>
         )}
         {claimRetry && (
@@ -2183,7 +2199,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
               Your ₿ sats are ready! Tap below and approve the invoice in Fedi to receive them.
             </div>
             <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", animation: "pulseGreen 2s ease infinite", fontSize: 16, padding: "16px 20px" }} onClick={() => { setClaimRetry(false); handleClaim(); }} disabled={loading}>
-              {loading ? t("claiming") : pendingNotes ? "🔐 Redeem E-cash Now" : "⚡ Receive " + fmtSats(e.amountMsats) + " sats"}
+              {loading ? t("claiming") : pendingNotes ? (payoutInfo?.feeMsats > 0 ? "🔐 Redeem " + Math.floor((payoutInfo?.winnerMsats || e.amountMsats) / 1000).toLocaleString() + " sats" : "🔐 Redeem E-cash Now") : "⚡ Receive " + fmtSats(e.amountMsats) + " sats"}
             </button>
           </div>
         )}
