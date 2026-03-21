@@ -864,7 +864,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           onProfile={openProfile}
           fiatRates={fiatRates}
           initialFilter={orderFilterHint}
-          onFilterConsumed={() => setOrderFilterHint(null)}
+          onFilterConsumed={() => setOrderFilterHint(null)} subdomain={subdomain}
         />
       )}
       {view === "orderDetail" && selected && (
@@ -2528,7 +2528,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
 // ORDERS VIEW
 // ═══════════════════════════════════════════════════════════════════════
 
-function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, onProfile, fiatRates, initialFilter, onFilterConsumed }) {
+function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, onProfile, fiatRates, initialFilter, onFilterConsumed, subdomain }) {
   const [orderSearch, setOrderSearch] = useState("");
   const activeCount = orders.filter(o => o.status === "active" || o.status === "pending").length;
   const needsRatingCount = orders.filter(o => o.needsRating).length;
