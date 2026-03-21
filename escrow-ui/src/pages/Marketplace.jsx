@@ -817,7 +817,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
             else setView("detail");
           }}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
-        />
+         subdomain={subdomain}/>
       )}
       {view === "detail" && selected && (
         <ListingDetail
@@ -831,7 +831,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           onOrderCreated={(order) => { setSelected(order); setView("orderDetail"); }}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
           fiatRates={fiatRates}
-        />
+         subdomain={subdomain}/>
       )}
       {view === "detail" && !selected && (
         <div style={M.container}>
@@ -875,7 +875,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           onSwitchToEscrow={onSwitchToEscrow}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
           fiatRates={fiatRates}
-        />
+         subdomain={subdomain}/>
       )}
       {view === "chapsmart" && (
         <ChapSmartView
@@ -1515,7 +1515,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
 // ═══════════════════════════════════════════════════════════════════════
 // EDIT LISTING VIEW — seller can update title, description, price, qty
 // ═══════════════════════════════════════════════════════════════════════
-function EditListingView({ listing: l, onBack, showToast, loading, setLoading }) {
+function EditListingView({ listing: l, onBack, showToast, loading, setLoading, subdomain }) {
   const [title, setTitle] = useState(l.title || "");
   const [description, setDescription] = useState(l.description || "");
   const [price, setPrice] = useState(l.priceMsats ? Math.floor(l.priceMsats / 1000) : "");
@@ -1719,7 +1719,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading })
 // LISTING DETAIL
 // ═══════════════════════════════════════════════════════════════════════
 
-function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, showToast, loading, setLoading, onEdit, onPause, onUnpause, onDelete, fiatRates, myFederation }) {
+function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, showToast, loading, setLoading, onEdit, onPause, onUnpause, onDelete, fiatRates, myFederation, subdomain }) {
   const isSeller = l.sellerPubkey === pubkey;
   const canBuy = !isSeller && l.status === "active" && l.quantity > 0;
   const isP2P = isSatsForFiat(l.category);
@@ -3103,7 +3103,7 @@ function ChapSmartView({ onBack, showToast, pubkey }) {
 }
 
 
-function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow, showToast, loading, setLoading, fiatRates }) {
+function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow, showToast, loading, setLoading, fiatRates, subdomain }) {
   const [detail, setDetail] = useState(null);
   const [rateScore, setRateScore] = useState(0);
   const [rateComment, setRateComment] = useState("");
