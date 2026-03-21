@@ -1886,6 +1886,13 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
             <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b" }}>{(l.platformFeeBps / 100)}% ({Math.ceil(Math.floor(l.priceMsats / 1000) * l.platformFeeBps / 10000).toLocaleString()} sats)</span>
           </div>
         )}
+        {l.sellerFedPrefix && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", marginBottom: 10, borderRadius: 10, background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)" }}>
+            <span style={{ fontSize: 14 }}>{"🏛️"}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#a78bfa" }}>Federation: {(() => { const FN = {"AwEEiItw7A":"Bitcoin Life","AwEEG8tk5g":"Global Bitcoin Federation","AwEE_yhqbg":"Afribit Kibera"}; return FN[l.sellerFedPrefix] || l.sellerFedPrefix; })()}</span>
+            <span style={{ fontSize: 10, color: "#64748b", marginLeft: "auto" }}>Must match yours</span>
+          </div>
+        )}
         {canBuy && !isP2P && (
           <div style={{ ...M.infoBanner, borderColor: "rgba(16,185,129,0.2)", background: "rgba(16,185,129,0.04)", marginBottom: 14 }}>
             <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
@@ -3278,10 +3285,10 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
 
         {/* ── Lending: Loan Disbursed ── */}
         {isLoan && status === "completed" && (
-          <div style={{ borderRadius: 14, padding: "16px", marginBottom: 16, background: "linear-gradient(145deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02))", border: "1px solid rgba(16,185,129,0.2)" }}>
+          <div style={{ borderRadius: 14, padding: "16px", marginBottom: 16, background: loanRepaymentId ? "linear-gradient(145deg, rgba(239,68,68,0.08), rgba(239,68,68,0.03))" : "linear-gradient(145deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02))", border: loanRepaymentId ? "2px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.2)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <span style={{ fontSize: 20 }}>{"🤝"}</span>
-              <span style={{ fontSize: 15, fontWeight: 700, color: "#10b981" }}>Loan Disbursed</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: loanRepaymentId ? "#ef4444" : "#10b981" }}>{loanRepaymentId ? "⚠️ Repayment Required" : "Loan Disbursed"}</span>
             </div>
 
             {!loanRepaymentId && !repaymentEscrow && isLender && (
