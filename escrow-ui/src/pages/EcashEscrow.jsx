@@ -1785,10 +1785,10 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     if (sd === "lending") return {
       lockBtn: "🤝 Lend ₿ " + fmtSats(e.amountMsats),
       lockedStatus: isLocker ? "Loan locked — awaiting borrower" : "Loan available — confirm receipt",
-      releaseBtn: role === "buyer" ? "✓ Loan received" : role === "seller" ? "✓ Confirm disbursement" : t("release"),
+      releaseBtn: role === "buyer" ? "✓ I accept the loan" : role === "seller" ? "✓ Disburse loan" : t("release"),
       refundBtn: "⚠ Dispute",
       claimBtn: "⚡ Receive ₿ " + fmtSats(e.amountMsats) + " loan",
-      voteConfirmRelease: role === "buyer" ? "Confirm you received the loan?" : "Confirm the loan was sent?",
+      voteConfirmRelease: role === "buyer" ? "Accept this loan and its terms?" : "Confirm you want to disburse the loan?",
       voteConfirmRefund: "Open a dispute on this loan?",
     };
     // escrow + marketplace (legacy)

@@ -678,6 +678,13 @@ router.get("/orders/:orderId", ...requireAuth, (req: AuthenticatedRequest, res: 
         amountSats: Math.floor(escrow.amount_msats / 1000),
         lockedAt: escrow.locked_at,
         resolvedOutcome: escrow.resolved_outcome,
+        description: escrow.description || null,
+        terms: escrow.terms || null,
+        loanParentId: escrow.loan_parent_id || null,
+        loanRepaymentId: escrow.loan_repayment_id || null,
+        loanStatus: escrow.loan_status || null,
+        loanDueAt: escrow.loan_due_at || null,
+        loanInterestBps: escrow.loan_interest_bps || 0,
       } : null,
       tradeType: listing && isP2PStyle(listing.category) ? (isLenderTrade(listing.category) ? "lending" : "sats-for-fiat") : "marketplace",
     });

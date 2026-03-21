@@ -3135,6 +3135,17 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
     setLoading(false);
   };
 
+  const handleCreateRepayment = async () => {
+    setRepaymentCreating(true);
+    try {
+      const res = await mapi(`/${o.id}/create-repayment`, { method: "POST" });
+      if (res.error) throw new Error(res.error);
+      setRepaymentEscrow(res);
+      showToast("Repayment escrow created! Borrower must lock " + res.repaymentSats + " sats by " + new Date(res.dueAt).toLocaleDateString());
+    } catch (err) { showToast(err.message, "error"); }
+    setRepaymentCreating(false);
+  };
+
   const escrow = detail?.escrow;
   const status = detail?.order?.status || o.status;
   // Only show rating prompt AFTER detail loads AND confirms no rating exists
@@ -3143,6 +3154,14 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
   const otherPubkey = isBuyer ? o.sellerPubkey : o.buyerPubkey;
   const otherRole = isBuyer ? t("seller") : t("buyer");
   const isP2P = detail?.tradeType === "sats-for-fiat" || isSatsForFiat(detail?.listing?.category);
+  const isLoan = detail?.tradeType === "lending" || isLending(detail?.listing?.category) || (escrow?.description || "").startsWith("Lending:");
+  const isLender = isLoan && o.sellerPubkey === pubkey;
+  const isBorrower = isLoan && o.buyerPubkey === pubkey;
+  const loanRepaymentId = escrow?.loanRepaymentId || null;
+  const loanStatus = escrow?.loanStatus || null;
+  const loanDueAt = escrow?.loanDueAt || null;
+  const [repaymentCreating, setRepaymentCreating] = useState(false);
+  const [repaymentEscrow, setRepaymentEscrow] = useState(null);
   const myExistingRating = detail?.order?.myRating;
 
   return (
@@ -3251,9 +3270,82 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
         )}
 
         {/* ── Completed ── */}
-        {status === "completed" && !needsRating && !rated && (
+        {status === "completed" && !needsRating && !rated && !isLoan && (
           <div style={{ textAlign: "center", padding: "14px 0", color: "#10b981", fontSize: 14, fontWeight: 600 }}>
             ✓ Trade complete
+          </div>
+        )}
+
+        {/* ── Lending: Loan Disbursed ── */}
+        {isLoan && status === "completed" && (
+          <div style={{ borderRadius: 14, padding: "16px", marginBottom: 16, background: "linear-gradient(145deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02))", border: "1px solid rgba(16,185,129,0.2)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <span style={{ fontSize: 20 }}>{"🤝"}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "#10b981" }}>Loan Disbursed</span>
+            </div>
+
+            {!loanRepaymentId && !repaymentEscrow && isLender && (
+              <div>
+                <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12 }}>
+                  The borrower has received the sats. Create a repayment escrow so they can pay you back with interest.
+                </div>
+                <button onClick={handleCreateRepayment} disabled={repaymentCreating} style={{
+                  ...M.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)",
+                  boxShadow: "0 4px 24px rgba(16,185,129,0.3)", fontSize: 15, padding: "14px 20px",
+                }}>
+                  {repaymentCreating ? "Creating..." : "💰 Create Repayment Escrow"}
+                </button>
+              </div>
+            )}
+
+            {!loanRepaymentId && !repaymentEscrow && isBorrower && (
+              <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6, textAlign: "center" }}>
+                You received the loan. The lender will create a repayment escrow for you to pay back.
+              </div>
+            )}
+
+            {(loanRepaymentId || repaymentEscrow) && (
+              <div>
+                <div style={{ fontSize: 12, color: "#cbd5e1", lineHeight: 1.6, marginBottom: 10 }}>
+                  {isBorrower
+                    ? "A repayment escrow has been created. Lock your sats to repay the loan."
+                    : "Repayment escrow is active. Waiting for the borrower to lock repayment sats."
+                  }
+                </div>
+                {repaymentEscrow && (
+                  <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", marginBottom: 10 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                      <span style={{ color: "#64748b" }}>Repayment amount</span>
+                      <span style={{ fontWeight: 700, color: "#f59e0b" }}>{"₿"} {repaymentEscrow.repaymentSats?.toLocaleString()} sats</span>
+                    </div>
+                    {repaymentEscrow.interestMsats > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 4 }}>
+                        <span style={{ color: "#475569" }}>Interest</span>
+                        <span style={{ color: "#10b981" }}>{"₿"} {Math.floor(repaymentEscrow.interestMsats / 1000).toLocaleString()} sats</span>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                      <span style={{ color: "#475569" }}>Due by</span>
+                      <span style={{ color: "#f87171" }}>{new Date(repaymentEscrow.dueAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                )}
+                <button onClick={() => onSwitchToEscrow(loanRepaymentId || repaymentEscrow?.repaymentEscrowId)} style={{
+                  ...M.actionBtn, background: isBorrower
+                    ? "linear-gradient(135deg, #f59e0b, #d97706)"
+                    : "linear-gradient(135deg, #7c3aed, #6d28d9)",
+                  fontSize: 14, padding: "12px 20px",
+                }}>
+                  {isBorrower ? "🔐 Open Repayment Escrow" : "🔍 View Repayment Escrow"}
+                </button>
+              </div>
+            )}
+
+            {loanDueAt && (
+              <div style={{ marginTop: 10, textAlign: "center", fontSize: 11, color: new Date(loanDueAt) < new Date() ? "#ef4444" : "#64748b" }}>
+                {new Date(loanDueAt) < new Date() ? "⚠ OVERDUE" : "Due: " + new Date(loanDueAt).toLocaleDateString()}
+              </div>
+            )}
           </div>
         )}
 
