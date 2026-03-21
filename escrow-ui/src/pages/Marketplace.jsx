@@ -2603,7 +2603,7 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
               ...(o.status === "expired" || o.status === "cancelled" ? { opacity: 0.35 } : {}),
             }} onClick={() => onOpenOrder(o)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={M.cardTitle}>{o.listingTitle || "(deleted)"}</span>
+                <span style={M.cardTitle}>{o.isLoanActive ? "🔴 " : ""}{o.listingTitle || "(deleted)"}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   {o.needsRating && (
                     <span style={{
@@ -3256,7 +3256,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
           >
             {status === "pending"
               ? (isP2P
-                  ? (isBuyer ? "View Trade" : "🔐 Lock E-cash")
+                  ? (isBuyer ? (isLoan ? "✓ Accept Loan" : "View Trade") : (isLoan ? "🤝 Fund Loan" : "🔐 Lock E-cash"))
                   : (isBuyer ? "🔐 Lock Payment" : "View Trade"))
               : "⚡ Open Trade"
             }

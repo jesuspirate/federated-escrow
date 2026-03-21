@@ -2036,11 +2036,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           <div style={{ margin: "0 0 16px", padding: "16px 20px", borderRadius: 16, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", textAlign: "center" }}>
             <div style={{ fontSize: 24, marginBottom: 6 }}>🎉</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#10b981", marginBottom: 4 }}>Trade complete!</div>
-            {cameFromMarketplace && (
-              <button onClick={() => onSwitchToMarketplace ? onSwitchToMarketplace(e.id) : onBack()} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", marginTop: 12, borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontSize: 15, fontWeight: 700 }}>
-                ← Back to My Order
-              </button>
-            )}
+            <button onClick={() => onSwitchToMarketplace ? onSwitchToMarketplace(e.id) : onBack()} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", marginTop: 12, borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontSize: 15, fontWeight: 700 }}>
+              ⭐ Back to Orders — Rate Now
+            </button>
           </div>
         )}
 
