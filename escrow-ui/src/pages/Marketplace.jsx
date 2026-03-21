@@ -2628,6 +2628,12 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
               <div style={{ fontSize: 11, fontFamily: "monospace", color: "#334155", marginTop: 4 }}>
                 {o.id} → {o.escrowId}
               </div>
+          {detail?.listing?.shippingCostSats > 0 && (
+            <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 4, fontSize: 11, color: "#64748b" }}>
+              <span>Item: ₿ {(Math.floor(o.amountMsats / 1000) - (detail?.listing?.shippingCostSats || 0)).toLocaleString()}</span>
+              <span>📦 Shipping: ₿ {detail.listing.shippingCostSats.toLocaleString()}</span>
+            </div>
+          )}
             </button>
           ))}
         </div>

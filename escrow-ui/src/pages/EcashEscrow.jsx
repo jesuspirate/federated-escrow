@@ -1274,6 +1274,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
       const msgText = draft.trim();
       // Optimistic: show message immediately
       setMessages(prev => [...prev, { id: "local_" + Date.now(), sender_pubkey: pubkey, sender_role: myRole, encrypted: msgText, text: msgText, timestamp: Date.now() }]);
+      lastTs.current = Date.now();
       setDraft("");
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
       // Send to server
@@ -1401,6 +1402,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
       text: msgText,
       timestamp: Date.now(),
     }]);
+    lastTs.current = Date.now();
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
 
     // Send to server
