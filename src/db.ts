@@ -203,6 +203,16 @@ export interface VoteRow {
     console.log("[db] Migration 6: shipping_cost_msats on listings");
   }
 
+  if (currentVersion < 7) {
+    try { db.exec("ALTER TABLE escrows ADD COLUMN loan_parent_id TEXT"); } catch {}
+    try { db.exec("ALTER TABLE escrows ADD COLUMN loan_repayment_id TEXT"); } catch {}
+    try { db.exec("ALTER TABLE escrows ADD COLUMN loan_status TEXT DEFAULT NULL"); } catch {}
+    try { db.exec("ALTER TABLE escrows ADD COLUMN loan_due_at TEXT"); } catch {}
+    try { db.exec("ALTER TABLE escrows ADD COLUMN loan_interest_bps INTEGER DEFAULT 0"); } catch {}
+    db.prepare("INSERT INTO schema_version (version) VALUES (?)").run(7);
+    console.log("[db] Migration 7: loan tracking fields on escrows");
+  }
+
 // ── Prepared Statements ───────────────────────────────────────────────────
 
 const stmts = {

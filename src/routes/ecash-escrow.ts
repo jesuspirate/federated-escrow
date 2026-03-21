@@ -538,6 +538,7 @@ router.get("/:id", (req: AuthenticatedRequest, res: Response) => {
     description: row.description, terms: row.terms, communityLink: row.community_link, federationId: row.federation_id,
     participants: { seller: participantInfo(row.seller_pubkey), buyer: participantInfo(row.buyer_pubkey), arbiter: participantInfo(row.arbiter_pubkey) },
     lockedAt: row.locked_at, lockMode: row.lock_mode, lock_role: row.lock_role || "seller", seller_fed_prefix: row.seller_fed_prefix || null,
+    loanParentId: row.loan_parent_id || null, loanRepaymentId: row.loan_repayment_id || null, loanStatus: row.loan_status || null, loanDueAt: row.loan_due_at || null, loanInterestBps: row.loan_interest_bps || 0,
     votes: { release: tally.releaseCount, refund: tally.refundCount, voters: votes.map(v => ({ role: v.role, outcome: v.outcome })) },
     resolvedOutcome: row.resolved_outcome, resolvedAt: row.resolved_at, claimedBy: row.claimed_by, claimedAt: row.claimed_at,
     createdAt: row.created_at, updatedAt: row.updated_at, expiresIn: formatExpiry(row.expires_at),
