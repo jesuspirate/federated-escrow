@@ -661,7 +661,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
       unique.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       const enriched = unique.map(o => ({
         ...o,
-        isRepayment: (o.listingTitle || "").includes("Loan Repayment"),
+        isRepayment: (o.escrowDescription || "").startsWith("Loan Repayment:") || !!o.loanParentId,
         isLoanActive: (o.tradeType === "lending" || (o.listingTitle || "").includes("Lending:")) && o.status === "completed",
       }));
       setOrders(enriched);

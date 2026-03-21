@@ -389,6 +389,8 @@ function formatOrder(row: OrderRow, opts?: { pubkey?: string; listingTitle?: str
 
   // Include listing title if provided
   if (opts?.listingTitle) base.listingTitle = opts.listingTitle;
+  if (opts?.escrowDescription) base.escrowDescription = opts.escrowDescription;
+  if (opts?.loanParentId) base.loanParentId = opts.loanParentId;
 
   // Include rating status if pubkey provided and order is completed
   if (opts?.pubkey && row.status === "completed") {
@@ -461,7 +463,8 @@ function syncOrderWithEscrow(order: OrderRow): OrderRow {
 function syncAndFormatOrder(order: OrderRow, pubkey?: string) {
   const synced = syncOrderWithEscrow(order);
   const listing = stmts.getById.get(synced.listing_id) as ListingRow | undefined;
-  return formatOrder(synced, { pubkey, listingTitle: listing?.title });
+  const escrow = DB.getEscrow(synced.escrow_id);
+  return formatOrder(synced, { pubkey, listingTitle: listing?.title, escrowDescription: escrow?.description || null, loanParentId: escrow?.loan_parent_id || null });
 }
 
 // ══════════════════════════════════════════════════════════════════════════
