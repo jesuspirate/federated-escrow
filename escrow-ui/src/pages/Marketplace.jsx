@@ -2563,8 +2563,8 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
       <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto" }}>
         {[
           { key: "all", label: "All", count: orders.length },
-          { key: "active", label: "Active", count: orders.filter(o => o.status === "active" || o.status === "pending").length },
-          { key: "completed", label: "Done", count: orders.filter(o => o.status === "completed").length },
+          { key: "active", label: "Active", count: orders.filter(o => o.status === "active" || o.status === "pending" || (o.status === "completed" && o.isLoanActive)).length },
+          { key: "completed", label: "Done", count: orders.filter(o => o.status === "completed" && !o.isLoanActive).length },
           { key: "cancelled", label: "Closed", count: orders.filter(o => o.status === "cancelled" || o.status === "expired").length },
         ].map(f => (
           <button key={f.key} onClick={() => setOrderFilter(f.key)} style={{

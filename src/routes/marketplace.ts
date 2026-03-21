@@ -935,8 +935,8 @@ router.post("/:id/create-repayment", ...requireAuth, async (req: AuthenticatedRe
       "Repayment of " + Math.floor(principalMsats / 1000) + " sats + " + Math.floor(interestMsats / 1000) + " sats interest. Due: " + new Date(dueAt).toLocaleDateString(),
       listing.community_link || "",
       listing.seller_fed_domain || "",
-      order.buyer_pubkey,  // Borrower is now the "seller" (they lock repayment)
-      order.seller_pubkey, // Lender is now the "buyer" (they receive repayment)
+      order.seller_pubkey, // Lender is the "seller" (receives repayment sats)
+      order.buyer_pubkey,  // Borrower is the "buyer" (locks repayment sats)
       order.arbiter_pubkey,
       order.escrow_id,     // Link to original loan
       dueAt,
@@ -953,8 +953,8 @@ router.post("/:id/create-repayment", ...requireAuth, async (req: AuthenticatedRe
       id: repayOrderId,
       listing_id: order.listing_id,
       escrow_id: repaymentId,
-      buyer_pubkey: order.seller_pubkey,  // Lender receives
-      seller_pubkey: order.buyer_pubkey,  // Borrower repays
+      buyer_pubkey: order.buyer_pubkey,   // Borrower locks repayment
+      seller_pubkey: order.seller_pubkey, // Lender receives repayment
       arbiter_pubkey: order.arbiter_pubkey,
       amount_msats: repaymentMsats,
       status: "active",
