@@ -659,7 +659,12 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
       const seen = new Set();
       const unique = all.filter(o => { if (seen.has(o.id)) return false; seen.add(o.id); return true; });
       unique.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      setOrders(unique);
+      const enriched = unique.map(o => ({
+        ...o,
+        isRepayment: (o.listingTitle || "").includes("Loan Repayment"),
+        isLoanActive: (o.tradeType === "lending" || (o.listingTitle || "").includes("Lending:")) && o.status === "completed",
+      }));
+      setOrders(enriched);
       // Cache active count for glow badge on next cold start
       try { const ac = unique.filter(o => o.status === "pending" || o.status === "active").length; localStorage.setItem("sm_active_orders", String(ac)); } catch {}
     } catch (err) {
@@ -2533,9 +2538,14 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
   // Sort: needs-rating first, then by date
   const sorted = [...orders].filter(o => {
     // Status filter
-    if (orderFilter === "active") return o.status === "active" || o.status === "pending";
-    if (orderFilter === "completed") return o.status === "completed";
+    // Hide repayment orders from non-lending subdomains
+    if (subdomain !== "lending" && o.isRepayment) return false;
+    if (orderFilter === "repayments") return o.isRepayment;
+    if (orderFilter === "active") return (o.status === "active" || o.status === "pending" || o.isLoanActive) && !o.isRepayment;
+    if (orderFilter === "completed") return o.status === "completed" && !o.isLoanActive && !o.isRepayment;
     if (orderFilter === "cancelled") return o.status === "cancelled" || o.status === "expired";
+    // "all" — but still hide repayments from non-lending
+    if (subdomain !== "lending") return !o.isRepayment;
     return true;
   }).filter(o => {
     if (!orderSearch.trim()) return true;
@@ -2569,7 +2579,7 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
       </div>
       <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto" }}>
         {[
-          { key: "all", label: "All", count: orders.length },
+          { key: "all", label: "All", count: subdomain === "lending" ? orders.length : orders.filter(o => !o.isRepayment).length },
           { key: "active", label: "Active", count: orders.filter(o => (o.status === "active" || o.status === "pending" || (o.status === "completed" && o.isLoanActive)) && !(subdomain !== "lending" && o.isRepayment) && !o.isRepayment).length },
           ...(subdomain === "lending" ? [{ key: "repayments", label: "🔴 Repayments", count: orders.filter(o => o.isRepayment).length }] : []),
           { key: "completed", label: "Done", count: orders.filter(o => o.status === "completed" && !o.isLoanActive && !o.isRepayment).length },
