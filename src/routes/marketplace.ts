@@ -762,6 +762,20 @@ router.get("/profile/:pubkey", (req: AuthenticatedRequest, res: Response) => {
       },
       recentRatings,
       memberSince,
+      loanStats: (() => {
+        const loansGiven = db.prepare("SELECT COUNT(*) as c FROM escrows WHERE seller_pubkey = ? AND description LIKE 'Lending:%' AND status = 'COMPLETED'").get(pk) as any;
+        const loansReceived = db.prepare("SELECT COUNT(*) as c FROM escrows WHERE buyer_pubkey = ? AND description LIKE 'Lending:%' AND status = 'COMPLETED'").get(pk) as any;
+        const activeRepayments = db.prepare("SELECT COUNT(*) as c FROM escrows WHERE buyer_pubkey = ? AND loan_parent_id IS NOT NULL AND status != 'COMPLETED'").get(pk) as any;
+        const overdueLoans = db.prepare("SELECT COUNT(*) as c FROM escrows WHERE buyer_pubkey = ? AND loan_parent_id IS NOT NULL AND loan_due_at < datetime('now') AND status != 'COMPLETED'").get(pk) as any;
+        const defaulted = (overdueLoans?.c || 0) > 0;
+        return {
+          loansGiven: loansGiven?.c || 0,
+          loansReceived: loansReceived?.c || 0,
+          activeRepayments: activeRepayments?.c || 0,
+          overdueLoans: overdueLoans?.c || 0,
+          defaulted,
+        };
+      })(),
     });
   } catch (err: any) {
     console.error("[marketplace] GET /profile/:pubkey error:", err);

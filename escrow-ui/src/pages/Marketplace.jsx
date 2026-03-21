@@ -3306,11 +3306,14 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
 
             {(loanRepaymentId || repaymentEscrow) && (
               <div>
-                <div style={{ fontSize: 12, color: "#cbd5e1", lineHeight: 1.6, marginBottom: 10 }}>
-                  {isBorrower
-                    ? "A repayment escrow has been created. Lock your sats to repay the loan."
-                    : "Repayment escrow is active. Waiting for the borrower to lock repayment sats."
-                  }
+                <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", marginBottom: 12 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b", marginBottom: 6 }}>{isBorrower ? "💰 You owe a repayment" : "⏳ Awaiting borrower repayment"}</div>
+                  <div style={{ fontSize: 12, color: "#cbd5e1", lineHeight: 1.6 }}>
+                    {isBorrower
+                      ? "A repayment escrow has been created. Lock your sats to repay the loan. Failure to repay will flag your profile."
+                      : "Waiting for the borrower to lock repayment sats. If they default, their profile will be flagged."
+                    }
+                  </div>
                 </div>
                 {repaymentEscrow && (
                   <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", marginBottom: 10 }}>
@@ -3342,8 +3345,18 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             )}
 
             {loanDueAt && (
-              <div style={{ marginTop: 10, textAlign: "center", fontSize: 11, color: new Date(loanDueAt) < new Date() ? "#ef4444" : "#64748b" }}>
-                {new Date(loanDueAt) < new Date() ? "⚠ OVERDUE" : "Due: " + new Date(loanDueAt).toLocaleDateString()}
+              <div style={{
+                marginTop: 12, padding: "10px 14px", borderRadius: 10, textAlign: "center",
+                background: new Date(loanDueAt) < new Date() ? "rgba(239,68,68,0.1)" : "rgba(59,130,246,0.06)",
+                border: new Date(loanDueAt) < new Date() ? "1px solid rgba(239,68,68,0.3)" : "1px solid rgba(59,130,246,0.15)",
+              }}>
+                <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>Repayment deadline</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: new Date(loanDueAt) < new Date() ? "#ef4444" : "#3b82f6" }}>
+                  {new Date(loanDueAt) < new Date()
+                    ? "⚠️ OVERDUE — " + Math.floor((Date.now() - new Date(loanDueAt).getTime()) / 86400000) + " days late"
+                    : new Date(loanDueAt).toLocaleDateString() + " (" + Math.ceil((new Date(loanDueAt).getTime() - Date.now()) / 86400000) + " days left)"
+                  }
+                </div>
               </div>
             )}
           </div>

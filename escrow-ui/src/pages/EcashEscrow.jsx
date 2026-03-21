@@ -1784,7 +1784,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     };
     if (sd === "lending") return {
       lockBtn: "🤝 Lend ₿ " + fmtSats(e.amountMsats),
-      lockedStatus: isLocker ? "Loan locked — awaiting borrower" : "Loan available — confirm receipt",
+      lockedStatus: isLocker ? "Loan locked — awaiting borrower acceptance" : "Loan available — review terms and accept",
       releaseBtn: role === "buyer" ? "✓ I accept the loan" : role === "seller" ? "✓ Disburse loan" : t("release"),
       refundBtn: "⚠ Dispute",
       claimBtn: "⚡ Receive ₿ " + fmtSats(e.amountMsats) + " loan",
@@ -2099,7 +2099,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ textAlign: "center", padding: "8px 12px", background: confirmVote === "release" ? "rgba(5,150,105,0.1)" : "rgba(180,83,9,0.1)", border: `1px solid ${confirmVote === "release" ? "rgba(5,150,105,0.3)" : "rgba(180,83,9,0.3)"}`, borderRadius: 10, fontSize: 13, fontWeight: 700, color: confirmVote === "release" ? "#10b981" : "#f59e0b" }}>
                         {confirmVote === "release"
-                          ? (isP2PTrade ? "Confirm: Buyer sent fiat? Release ₿ sats to them." : isLending ? "Confirm: Release loan to borrower?" : "Confirm: Release ₿ sats to buyer?")
+                          ? (isP2PTrade ? "Confirm: Buyer sent fiat? Release ₿ sats to them." : isLending ? "Confirm: Disburse loan to the borrower? The repayment escrow will be created next." : "Confirm: Release ₿ sats to buyer?")
                           : `Confirm: Dispute — refund to ${role === "seller" ? t("toMe") : t("seller")}?`}
                       </div>
                       <div style={{ display: "flex", gap: 8 }}>
@@ -2159,10 +2159,10 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {canBuyerVote && !confirmVote && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "4px 0 12px" }}>
             <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)", fontSize: 16, padding: "16px 20px" }} onClick={() => setConfirmVote("release")} disabled={loading}>
-              {loading ? t("voting") : isP2PTrade ? "✓ I sent the fiat payment" : isLending ? "✓ I received the loan" : "✓ I received what I paid for"}
+              {loading ? t("voting") : isP2PTrade ? "✓ I sent the fiat payment" : isLending ? "✓ I accept the loan" : "✓ I received what I paid for"}
             </button>
             {!isP2PTrade && <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #b45309, #92400e)", fontSize: 13, padding: "12px 16px" }} onClick={() => setConfirmVote("refund")} disabled={loading}>
-              {isLending ? "⚠ Dispute — loan issue" : "⚠ Dispute — I didn’t receive what I paid for"}
+              {isLending ? "⚠ Dispute — I don't agree with the terms" : "⚠ Dispute — I didn’t receive what I paid for"}
             </button>}
           </div>
         )}
@@ -2180,7 +2180,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {canBuyerVote && confirmVote === "release" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "0 0 12px" }}>
             <div style={{ textAlign: "center", padding: "12px 14px", background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.3)", borderRadius: 10, fontSize: 14, fontWeight: 700, color: "#10b981" }}>
-              {isP2PTrade ? "Confirm: You sent fiat? ₿ Sats will release to you." : isLending ? "Confirm: You received the loan?" : "Release ₿ sats to you?"}
+              {isP2PTrade ? "Confirm: You sent fiat? ₿ Sats will release to you." : isLending ? "Confirm: Accept this loan and begin the repayment clock?" : "Release ₿ sats to you?"}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8", fontSize: 15, padding: "14px" }} onClick={cancelConfirm}>Cancel</button>
