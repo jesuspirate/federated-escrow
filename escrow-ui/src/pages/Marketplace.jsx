@@ -19,6 +19,7 @@ const FED_NAMES_GLOBAL = {
   "AwEE_yhqbg": { name: "Afribit Kibera", emoji: "🏛️", color: "#10b981" },
 };
 function getFedName(prefix, domain) {
+  if (domain && domain.toLowerCase().includes("bitsacco")) return "Bitsacco";
   if (prefix && FED_NAMES_GLOBAL[prefix]) return FED_NAMES_GLOBAL[prefix].name;
   if (domain) return domain.replace(/^m\d+\./, "").replace(/\.in$/, "").replace(/\.com$/, "");
   return domain || prefix || "Unknown";
