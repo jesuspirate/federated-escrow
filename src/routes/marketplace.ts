@@ -44,6 +44,12 @@ function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunct
         } else { console.log("[marketplace-auth] Bearer EXPIRED", expiresAt, "<", Date.now()); }
       } else { console.log("[marketplace-auth] Bearer BAD FORMAT, parts:", parts.length); }
     } catch (e) { console.log("[marketplace-auth] Bearer EXCEPTION:", e); }
+    // Fallback: try escrow session token (SQLite-backed)
+    try {
+      const { validateSessionToken } = require("./ecash-escrow");
+      const pubkey = validateSessionToken(token);
+      if (pubkey) { req.pubkey = pubkey; return next(); }
+    } catch {}
   }
 
   if (authHeader && authHeader.startsWith("Nostr ")) {

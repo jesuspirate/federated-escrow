@@ -1243,4 +1243,5 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
   } catch (err: any) { console.error("POST /payout error:", err); res.status(500).json({ error: err.message }); }
 });
 
+export { validateSessionToken };
 export default router;
