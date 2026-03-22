@@ -1258,9 +1258,10 @@ function TradeChat({ escrowId, pubkey, participants }) {
 
   useEffect(() => {
     if (!open || !escrowId) return;
-    // Reset to load all messages when chat opens
-    lastTs.current = 0;
-    setMessages([]);
+    // Only full-reset if escrow changed; otherwise just resume polling
+    if (messages.length === 0) {
+      lastTs.current = 0;
+    }
     loadMessages();
     pollRef.current = setInterval(loadMessages, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
@@ -1937,17 +1938,37 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         if (ecashData.mode !== "ecash" || !ecashData.notes) throw new Error("No e-cash notes available");
 
         // Store notes and prompt user to tap again
+        // Store notes as fallback, then auto-redeem in same gesture chain
         setPendingNotes(ecashData.notes);
         setPayoutInfo({
           feeMsats: ecashData.platformFeeMsats || 0,
           winnerMsats: ecashData.amountMsats || 0,
           feeBps: ecashData.platformFeeBps || 0,
         });
-        if (ecashData.platformFeeMsats > 0) {
-          showToast("Notes ready! " + Math.floor(ecashData.platformFeeMsats / 1000) + " sats platform fee deducted. Tap redeem below.");
-        } else {
-          showToast("Notes ready! Tap the redeem button below.");
+        // Auto-redeem: chain receiveEcash immediately (same user gesture)
+        try {
+          const receivedAmt = ecashData.amountMsats ? Math.floor(ecashData.amountMsats / 1000) : amountSats;
+          const feeSats = ecashData.platformFeeMsats ? Math.floor(ecashData.platformFeeMsats / 1000) : 0;
+          showToast("Receiving " + receivedAmt.toLocaleString() + " sats...");
+          await window.fediInternal.receiveEcash(ecashData.notes);
+          await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
+          setPendingNotes(null);
+          if (feeSats > 0) {
+            showToast(receivedAmt.toLocaleString() + " sats received! (" + feeSats + " sats platform fee)");
+          } else {
+            showToast("E-cash received! " + receivedAmt.toLocaleString() + " sats in your wallet!");
+          }
+          if (cameFromMarketplace && onSwitchToMarketplace) {
+            setTimeout(() => onSwitchToMarketplace(e.id), 1500);
+          } else {
+            onRefresh();
+          }
+        } catch (autoRedeemErr) {
+          // Auto-redeem failed — fall back to manual tap (notes already in state)
+          console.warn("[claim] auto-redeem failed:", autoRedeemErr);
+          showToast("Tap the redeem button to complete.", "error");
         }
+        setClaimInProgress(false);
         setLoading(false);
         return;
       }
