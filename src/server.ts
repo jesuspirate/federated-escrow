@@ -6,6 +6,7 @@ import ecashEscrowRoutes from "./routes/ecash-escrow";
 import marketplaceRoutes from "./routes/marketplace";
 import chapsmartRoutes from "./routes/chapsmart";
 import tradeChatRoutes from "./routes/trade-chat";
+import db from "./db";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -69,3 +70,18 @@ app.listen(PORT, () => {
   console.log(`🚀 Escrow API running at http://localhost:${PORT}`);
   console.log(`📱 UI served from ${distPath}`);
 });
+
+// ── Cleanup: expire stale escrows ──
+const runCleanup = () => {
+  try {
+    const now = Date.now();
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+    const stale = db.prepare("UPDATE escrows SET status = 'EXPIRED', updated_at = ? WHERE status IN ('CREATED', 'FUNDED') AND CAST(created_at AS INTEGER) < ?").run(String(now), now - sevenDaysMs);
+    if (stale.changes > 0) console.log("[cleanup] Expired " + stale.changes + " stale CREATED/FUNDED escrows");
+    const orphaned = db.prepare("UPDATE escrows SET status = 'EXPIRED', updated_at = ? WHERE status = 'LOCKED' AND (seller_fed_prefix IS NULL OR seller_fed_prefix = '') AND CAST(created_at AS INTEGER) < ?").run(String(now), now - fourteenDaysMs);
+    if (orphaned.changes > 0) console.log("[cleanup] Expired " + orphaned.changes + " orphaned LOCKED escrows (no fed prefix)");
+  } catch (err) { console.error("[cleanup] Error:", err); }
+};
+runCleanup(); // Run once on startup
+setInterval(runCleanup, 6 * 60 * 60 * 1000); // Then every 6 hours

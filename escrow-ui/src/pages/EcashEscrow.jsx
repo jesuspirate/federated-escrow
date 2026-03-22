@@ -861,7 +861,9 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes vaultPulse { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.6); opacity: 0; } }
         @keyframes pulseAmber { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
-        @keyframes pulseGreen { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+        @keyframes pulseGreen { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.85; transform: scale(1.03); } }
+        @keyframes pulseGreenBig { 0%,100% { opacity: 1; transform: scale(1); box-shadow: 0 4px 24px rgba(16,185,129,0.3); } 50% { opacity: 0.9; transform: scale(1.04); box-shadow: 0 8px 36px rgba(16,185,129,0.5); } }
+        @keyframes pulseAmberBig { 0%,100% { opacity: 1; transform: scale(1); box-shadow: 0 4px 24px rgba(245,158,11,0.3); } 50% { opacity: 0.9; transform: scale(1.04); box-shadow: 0 8px 36px rgba(245,158,11,0.5); } }
         @keyframes celebrateBounce { 0% { transform: scale(0) rotate(-10deg); } 60% { transform: scale(1.15) rotate(3deg); } 100% { transform: scale(1) rotate(0deg); } }
         @keyframes joinGlow { 0% { box-shadow: 0 0 0 rgba(96,165,250,0), inset 0 0 0 rgba(96,165,250,0); transform: scale(0.85); } 15% { box-shadow: 0 0 32px rgba(96,165,250,0.5), 0 0 12px rgba(96,165,250,0.3), inset 0 0 16px rgba(96,165,250,0.2); transform: scale(1.08); } 40% { box-shadow: 0 0 24px rgba(96,165,250,0.35), inset 0 0 10px rgba(96,165,250,0.12); transform: scale(1); } 100% { box-shadow: 0 4px 12px rgba(0,0,0,0.3); transform: scale(1); } }
         @keyframes joinRingPulse { 0% { transform: scale(1); opacity: 0.6; border-color: rgba(96,165,250,0.5); } 100% { transform: scale(1.8); opacity: 0; border-color: rgba(96,165,250,0); } }
@@ -1433,7 +1435,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
       try {
         const res = await chatFetch("/" + escrowId + "/messages?after=" + lastTs.current);
         if (res.messages && res.messages.length > 0) {
-          setUnreadCount(prev => prev + res.messages.length);
+          setUnreadCount(prev => prev + res.messages.filter(m => m.sender_pubkey !== pubkey).length);
           for (const msg of res.messages) lastTs.current = Math.max(lastTs.current, msg.timestamp);
         }
       } catch {}
@@ -1482,8 +1484,9 @@ function TradeChat({ escrowId, pubkey, participants }) {
           const isMe = msg.sender_pubkey === pubkey;
           return (
             <div key={msg.id || i} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start", marginBottom: 8 }}>
-              <div style={{ fontSize: 10, color: roleColors[msg.sender_role] || "#64748b", marginBottom: 2 }}>
-                {isMe ? "You" : roleLabels[msg.sender_role] || msg.sender_role}
+              <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2, flexDirection: isMe ? "row-reverse" : "row" }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: (roleColors[msg.sender_role] || "#64748b") + "25", border: "1.5px solid " + (roleColors[msg.sender_role] || "#64748b"), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: roleColors[msg.sender_role] || "#64748b", flexShrink: 0 }}>{isMe ? "Y" : (roleLabels[msg.sender_role] || "?")[0]}</div>
+                <span style={{ fontSize: 10, color: roleColors[msg.sender_role] || "#64748b" }}>{isMe ? "You" : roleLabels[msg.sender_role] || msg.sender_role}</span>
               </div>
               <div style={{
                 maxWidth: "80%", padding: msg.text?.startsWith("[img]") ? "4px" : "8px 12px",
@@ -2232,7 +2235,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           </div>
         )}
         {(canClaim || canReclaimExpired) && !claimRetry && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "4px 0 12px", animation: "pulseGreen 2s ease infinite", fontSize: 16, padding: "16px 20px" }} onClick={handleClaim} disabled={loading}>
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "4px 0 12px", animation: "pulseGreenBig 2s ease infinite", fontSize: 16, padding: "16px 20px" }} onClick={() => { try { navigator.vibrate?.([50, 30, 50]); } catch {} handleClaim(); }} disabled={loading}>
             {loading ? t("claiming") : pendingNotes ? (payoutInfo?.feeMsats > 0 ? "🔐 Redeem " + Math.floor((payoutInfo?.winnerMsats || e.amountMsats) / 1000).toLocaleString() + " sats" : "🔐 Redeem E-cash Now") : "⚡ Receive " + fmtSats(e.amountMsats) + " sats"}
           </button>
         )}
@@ -2241,7 +2244,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             <div style={{ textAlign: "center", padding: "10px 14px", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", borderRadius: 10, fontSize: 13, color: "#fbbf24", lineHeight: 1.5 }}>
               Your ₿ sats are ready! Tap below and approve the invoice in Fedi to receive them.
             </div>
-            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", animation: "pulseGreen 2s ease infinite", fontSize: 16, padding: "16px 20px" }} onClick={() => { setClaimRetry(false); handleClaim(); }} disabled={loading}>
+            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", animation: "pulseGreenBig 2s ease infinite", fontSize: 16, padding: "16px 20px" }} onClick={() => { try { navigator.vibrate?.([50, 30, 50]); } catch {} setClaimRetry(false); handleClaim(); }} disabled={loading}>
               {loading ? t("claiming") : pendingNotes ? (payoutInfo?.feeMsats > 0 ? "🔐 Redeem " + Math.floor((payoutInfo?.winnerMsats || e.amountMsats) / 1000).toLocaleString() + " sats" : "🔐 Redeem E-cash Now") : "⚡ Receive " + fmtSats(e.amountMsats) + " sats"}
             </button>
           </div>
@@ -2262,7 +2265,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           </div>
         )}
         {canLock && (
-          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", fontSize: 16, padding: "16px 20px", marginBottom: 8 }} onClick={isDevMode() ? handleLockFetch : handleLockEcash} disabled={locking}>
+          <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #f59e0b, #d97706)", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", animation: "pulseAmberBig 2s ease infinite", fontSize: 16, padding: "16px 20px", marginBottom: 8 }} onClick={() => { try { navigator.vibrate?.([50, 30, 50]); } catch {} (isDevMode() ? handleLockFetch : handleLockEcash)(); }} disabled={locking}>
             {locking ? "Locking e-cash…" : labels.lockBtn}
           </button>
         )}

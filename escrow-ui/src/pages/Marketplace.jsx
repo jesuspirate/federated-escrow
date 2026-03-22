@@ -3360,7 +3360,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
           <div style={{ textAlign: "center", padding: "8px 0", fontSize: 12, color: "#64748b" }}>
             {status === "pending" && (
               isP2P
-                ? (isBuyer ? "Waiting for seller to lock e-cash…" : "Lock your e-cash to start the trade.")
+                ? (isBuyer ? "Waiting for seller to lock e-cash…" : ("🔐 Lock your e-cash to start the trade. Make sure you have ₿ " + fmtSats(o.amountMsats) + " sats in your federation wallet."))
                 : (isBuyer ? "Lock your e-cash as payment." : "Waiting for buyer to lock payment…")
             )}
             {status === "active" && "Trade in progress — open to vote and confirm."}
