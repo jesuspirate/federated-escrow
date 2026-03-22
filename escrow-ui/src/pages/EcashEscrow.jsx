@@ -1576,6 +1576,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const [lockStep, setLockStep] = useState("idle"); // idle | fetching | ready | paying | done
   const [claimRetry, setClaimRetry] = useState(() => status === "CLAIMED"); // auto-detect if escrow is already claimed (user rejected invoice on prior attempt)
   const [pendingNotes, setPendingNotes] = useState(null);
+  const [claimInProgress, setClaimInProgress] = useState(false);
   const [payoutInfo, setPayoutInfo] = useState(null); // { feeMsats, winnerMsats, feeBps }
 
   const handleLockFetch = async () => {
@@ -1851,6 +1852,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   };
 
   const handleClaim = async () => {
+    setClaimInProgress(true);
     setLoading(true);
     try {
       let amountSats = Math.floor((e.amountMsats || 0) / 1000);
@@ -1973,6 +1975,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       return;
       /* LIGHTNING PAYOUT CODE REMOVED — see git history for reference */
     } catch (err) { showToast(err.message, "error"); }
+    setClaimInProgress(false);
     setLoading(false);
   };
 
@@ -1983,8 +1986,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const sellerVoted = e.votes?.voters?.some(v => v.role === "seller");
   const buyerOutcome = e.votes?.voters?.find(v => v.role === "buyer")?.outcome;
   const sellerOutcome = e.votes?.voters?.find(v => v.role === "seller")?.outcome;
-  const canBuyerVote = status === "LOCKED" && role === "buyer" && !hasVoted;
-  const canSellerVote = status === "LOCKED" && role === "seller" && !hasVoted && buyerVoted;
+  const canBuyerVote = status === "LOCKED" && role === "buyer" && !hasVoted && (!isMarketplace || sellerVoted);
+  const canSellerVote = status === "LOCKED" && role === "seller" && !hasVoted && (isMarketplace || buyerVoted);
   const canArbiterVote = status === "LOCKED" && role === "arbiter" && !hasVoted && buyerVoted && sellerVoted && buyerOutcome !== sellerOutcome;
   const lockR = e.lock_role || "seller";
   const releaseWinner = lockR === "seller" ? "buyer" : "seller";
@@ -2009,7 +2012,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   return (
     <div style={S.container}>
       <div style={S.viewHeader}>
-        <button style={S.iconBtn} onClick={onBack}><I.Back /></button>
+        <button style={S.iconBtn} onClick={() => { if (claimInProgress || pendingNotes) { showToast("⚠️ Claim in progress — complete it first!", "error"); return; } onBack(); }}><I.Back /></button>
         <h2 style={S.viewTitle}>Trade #{e.id}</h2>
         <button style={S.iconBtn} onClick={onRefresh}><I.Refresh /></button>
       </div>

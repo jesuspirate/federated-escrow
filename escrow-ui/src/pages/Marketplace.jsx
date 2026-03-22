@@ -2124,7 +2124,6 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
     } else {
       sats = parseInt(price);
       if (ratePremium && Number(ratePremium) > 0) sats = Math.ceil(sats * (1 + Number(ratePremium) / 100));
-      if (interestRate && Number(interestRate) > 0) sats = Math.ceil(sats * (1 + Number(interestRate) / 100));
     }
 
     if (!title.trim()) return showToast(t("mkTitleRequired"), "error");
@@ -3170,11 +3169,11 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
   const detailLoaded = detail != null;
   const needsRating = detailLoaded && status === "completed" && !rated;
   const otherPubkey = isBuyer ? o.sellerPubkey : o.buyerPubkey;
-  const otherRole = isBuyer ? t("seller") : t("buyer");
   const isP2P = detail?.tradeType === "sats-for-fiat" || isSatsForFiat(detail?.listing?.category);
   const isLoan = detail?.tradeType === "lending" || isLending(detail?.listing?.category) || (escrow?.description || "").startsWith("Lending:");
   const isLender = isLoan && o.sellerPubkey === pubkey;
   const isBorrower = isLoan && o.buyerPubkey === pubkey;
+  const otherRole = isLoan ? (isBuyer ? "Lender" : "Borrower") : isBuyer ? t("seller") : t("buyer");
   const loanRepaymentId = escrow?.loanRepaymentId || null;
   const loanStatus = escrow?.loanStatus || null;
   const loanDueAt = escrow?.loanDueAt || null;
