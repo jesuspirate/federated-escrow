@@ -777,6 +777,30 @@ router.get("/profile/:pubkey", (req: AuthenticatedRequest, res: Response) => {
           activeRepayments: activeRepayments?.c || 0,
           overdueLoans: overdueLoans?.c || 0,
           defaulted,
+        const overdueLoans = db.prepare("SELECT COUNT(*) as c FROM escrows WHERE buyer_pubkey = ? AND loan_parent_id IS NOT NULL AND loan_due_at < datetime('now') AND status != 'COMPLETED'").get(pk) as any;
+        const completedRepayments = db.prepare("SELECT id, loan_due_at, updated_at FROM escrows WHERE buyer_pubkey = ? AND loan_parent_id IS NOT NULL AND (status = 'COMPLETED' OR status = 'CLAIMED')").all(pk) as any[];
+        const defaulted = (overdueLoans?.c || 0) > 0;
+        // Trust score: recent on-time repayments worth more
+        const now = Date.now();
+        let trustScore = 0;
+        (completedRepayments || []).forEach((r: any) => {
+          const dueDate = new Date(r.loan_due_at).getTime();
+          const completedDate = new Date(r.updated_at).getTime();
+          const onTime = completedDate <= dueDate;
+          const ageMs = now - completedDate;
+          const ageDays = ageMs / 86400000;
+          const recency = Math.max(0, 1 - ageDays / 365);
+          trustScore += onTime ? (10 * recency + 5) : (2 * recency);
+        });
+        trustScore = Math.round(trustScore);
+        return {
+          loansGiven: loansGiven?.c || 0,
+          loansReceived: loansReceived?.c || 0,
+          completedRepayments: (completedRepayments || []).length,
+          activeRepayments: activeRepayments?.c || 0,
+          overdueLoans: overdueLoans?.c || 0,
+          defaulted,
+          trustScore,
         };
       })(),
     });
