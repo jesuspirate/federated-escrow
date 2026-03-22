@@ -2607,10 +2607,10 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
       <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto" }}>
         {[
           { key: "all", label: "All", count: subdomain === "lending" ? orders.length : orders.filter(o => !o.isRepayment).length },
-          { key: "active", label: "Active", count: orders.filter(o => (o.status === "active" || o.status === "pending" || (o.status === "completed" && o.isLoanActive)) && !(subdomain !== "lending" && o.isRepayment) && !o.isRepayment).length },
+          { key: "active", label: subdomain === "lending" ? "In Progress" : "Active", count: orders.filter(o => (o.status === "active" || o.status === "pending" || (o.status === "completed" && o.isLoanActive)) && !(subdomain !== "lending" && o.isRepayment) && !o.isRepayment).length },
           ...(subdomain === "lending" ? [{ key: "repayments", label: "🔴 Repayments", count: orders.filter(o => o.isRepayment).length }] : []),
           { key: "completed", label: "Done", count: orders.filter(o => o.status === "completed" && !o.isLoanActive && !o.isRepayment).length },
-          { key: "cancelled", label: "Closed", count: orders.filter(o => (o.status === "cancelled" || o.status === "expired") && !(subdomain !== "lending" && o.isRepayment)).length },
+          ...(subdomain !== "lending" ? [{ key: "cancelled", label: "Closed", count: orders.filter(o => (o.status === "cancelled" || o.status === "expired")).length }] : []),
         ].map(f => (
           <button key={f.key} onClick={() => setOrderFilter(f.key)} style={{
             padding: "6px 12px", borderRadius: 99, border: "1px solid",
@@ -3335,7 +3335,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
               ? (isP2P
                   ? (isBuyer ? (isLoan ? "✓ Accept Loan" : "View Trade") : (isLoan ? "🤝 Fund Loan" : "🔐 Lock E-cash"))
                   : (isBuyer ? "🔐 Lock Payment" : "View Trade"))
-              : "⚡ Open Trade"
+              : isLoan ? "🤝 Open Loan" : "⚡ Open Trade"
             }
           </button>
         )}

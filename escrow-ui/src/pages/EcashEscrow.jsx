@@ -1788,6 +1788,16 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       voteConfirmRelease: role === "buyer" ? "Confirm you received the item?" : "Confirm the item was delivered?",
       voteConfirmRefund: "Open a dispute? The arbiter will review.",
     };
+    const isRepayment = e.description?.startsWith("Loan Repayment:");
+    if (sd === "lending" && isRepayment) return {
+      lockBtn: "💰 Repay ₿ " + fmtSats(e.amountMsats),
+      lockedStatus: isLocker ? "Repayment locked — waiting for lender confirmation" : "Borrower has repaid — verify and confirm",
+      releaseBtn: role === "buyer" ? "✓ I have repaid" : role === "seller" ? "✓ Repayment received" : t("release"),
+      refundBtn: "⚠ Dispute repayment",
+      claimBtn: "⚡ Receive ₿ " + fmtSats(e.amountMsats) + " repayment",
+      voteConfirmRelease: role === "buyer" ? "Confirm you have repaid the loan?" : "Confirm you received the repayment?",
+      voteConfirmRefund: "Dispute this repayment? The arbiter will review.",
+    };
     if (sd === "lending") return {
       lockBtn: "🤝 Lend ₿ " + fmtSats(e.amountMsats),
       lockedStatus: isLocker ? "Loan locked — awaiting borrower acceptance" : "Loan available — review terms and accept",
