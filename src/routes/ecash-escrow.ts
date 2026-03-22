@@ -221,6 +221,7 @@ function validateSessionToken(token: string): string | null {
 
 function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   DB.processExpiredEscrows();
+  console.log("[extractPubkey] path:", req.path, "method:", req.method, "auth:", req.headers.authorization?.substring(0, 30) || "NONE");
   // Process arbiter dispute timeouts (4h rotation)
   const arbiterList = ALLOWED_ARBITERS ? [...ALLOWED_ARBITERS] : [];
   DB.processDisputeTimeouts(arbiterList, (escrow, oldArbiter, newArbiter) => {
@@ -239,6 +240,8 @@ function extractPubkey(req: AuthenticatedRequest, res: Response, next: NextFunct
     if (pubkey) {
       req.pubkey = pubkey;
       return next();
+    } else {
+      console.log("[escrow-auth] Bearer token REJECTED, token length:", token.length, "first 20:", token.substring(0, 20));
     }
     // Token expired/invalid — fall through to NIP-98
   }
@@ -802,6 +805,7 @@ router.get("/:id/my-share", (req: AuthenticatedRequest, res: Response) => {
 // ── POST /:id/approve ────────────────────────────────────────────────────
 
 router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
+  console.log("[approve] HIT — escrow:", req.params.id, "pubkey:", req.pubkey, "auth:", req.headers.authorization?.substring(0, 30));
   try {
     const row = DB.getEscrow(req.params.id);
     if (!row) return res.status(404).json({ error: "Escrow not found" });
@@ -824,8 +828,12 @@ router.post("/:id/approve", (req: AuthenticatedRequest, res: Response) => {
 
     if (role === "buyer" && outcome !== "release")
       return res.status(400).json({ error: 'Buyer can only vote "release".' });
-    if (role === "seller" && !buyerVote)
+    // Marketplace: seller votes first (confirms shipment). P2P/Lending: buyer votes first.
+    const isMarketplaceTrade = (row.description || "").startsWith("Marketplace");
+    if (role === "seller" && !buyerVote && !isMarketplaceTrade)
       return res.status(403).json({ error: "Buyer must vote first." });
+    if (role === "buyer" && !sellerVote && isMarketplaceTrade)
+      return res.status(403).json({ error: "Seller must confirm shipment first." });
     if (role === "arbiter") {
       if (!buyerVote || !sellerVote)
         return res.status(403).json({ error: `Arbiter can only vote after both buyer and seller. Buyer ${buyerVote ? "voted" : "pending"}, seller ${sellerVote ? "voted" : "pending"}.` });

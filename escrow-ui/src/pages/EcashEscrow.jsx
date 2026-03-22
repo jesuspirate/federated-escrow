@@ -218,7 +218,11 @@ async function api(path, opts = {}, _retries = 2) {
   const url = `${location.origin}${API}${path}`;
   const headers = { "Content-Type": "application/json" };
   // Session token first, NIP-98 fallback
-  const token = await getSessionToken_escrow();
+  // Use cached token if available, only refresh if missing
+  if (!window.__smToken || !window.__smTokenExpiry || window.__smTokenExpiry < Date.now()) {
+    await getSessionToken_escrow();
+  }
+  const token = window.__smToken;
   if (token) {
     headers["Authorization"] = "Bearer " + token;
   } else if (_devPubkey) {
@@ -236,12 +240,9 @@ async function api(path, opts = {}, _retries = 2) {
     }
   }
   const res = await fetch(url, { ...opts, headers });
-  if ((res.status === 401 || res.status === 403) && _retries > 0) {
-    window.__smToken = null; window.__smTokenExpiry = 0; // Invalidate token
-    return api(path, opts, _retries - 1);
-  }
-  if (res.status === 401 || res.status === 403) {
-    throw new Error("Authentication required — please approve the Nostr signing request");
+  if ((res.status === 401 || res.status === 403)) {
+    window.__smToken = null; window.__smTokenExpiry = 0;
+    throw new Error("Session expired — pull down to refresh and try again");
   }
   const text = await res.text();
   try { return JSON.parse(text); }
@@ -2193,10 +2194,13 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
               )}
 
               {/* ── Seller/arbiter wait banners (inline under tally) ─ */}
-              {status === "LOCKED" && role === "seller" && !buyerVoted && (
+              {status === "LOCKED" && role === "seller" && !buyerVoted && !hasVoted && !isMarketplace && (
                 <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 12, color: "#64748b" }}><I.Clock /> {t("waitBuyerVote")}</div>
               )}
-              {status === "LOCKED" && role === "seller" && hasVoted && (
+              {status === "LOCKED" && role === "seller" && hasVoted && !buyerVoted && isMarketplace && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 12, color: "#64748b" }}><I.Clock /> Waiting for buyer to confirm receipt</div>
+              )}
+              {status === "LOCKED" && role === "seller" && hasVoted && buyerVoted && (
                 <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 12, color: "#64748b" }}><I.Clock /> {t("waitResolution")}</div>
               )}
               {status === "LOCKED" && role === "arbiter" && (!buyerVoted || !sellerVoted) && (
@@ -2334,7 +2338,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
       {/* ═══ STATUS BAR ═══ */}
       <div style={{ padding: "12px 0 20px", textAlign: "center" }}>
-        {status === "LOCKED" && role === "buyer" && hasVoted && !sellerVoted && <div style={S.waitBanner}><I.Clock /> {t("waitSeller")}</div>}
+        {status === "LOCKED" && role === "buyer" && hasVoted && !sellerVoted && !isMarketplace && <div style={S.waitBanner}><I.Clock /> {t("waitSeller")}</div>}
         {status === "LOCKED" && role === "buyer" && hasVoted && sellerVoted && buyerOutcome !== sellerOutcome && <div style={{ ...S.waitBanner, color: "#f59e0b" }}>⚖️ {t("waitArbiter")}</div>}
         {status === "LOCKED" && role === "seller" && hasVoted && !buyerVoted && <div style={S.waitBanner}><I.Clock /> {t("waitBuyerVote")}</div>}
         {status === "LOCKED" && role === "seller" && hasVoted && buyerVoted && buyerOutcome !== sellerOutcome && <div style={{ ...S.waitBanner, color: "#f59e0b" }}>⚖️ {t("waitArbiter")}</div>}
