@@ -1858,6 +1858,34 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
             <label style={{ fontSize: 11, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6, display: "block" }}>How many sats do you want to buy?</label>
             <input style={M.input} type="number" placeholder={l.minPriceSats.toLocaleString() + " — " + l.maxPriceSats.toLocaleString() + " sats"} value={buyAmount} onChange={e => setBuyAmount(e.target.value)} />
             {buyAmount && fiatRates && <div style={{ fontSize: 12, color: "#64748b", marginTop: 4, textAlign: "center" }}>≈ {fmtFiat(parseInt(buyAmount) * 1000 || 0, fiatRates, "USD")}</div>}
+            {buyAmount && (() => {
+              const termsStr = l.terms || "";
+              const p2pBlock = termsStr.split("--- P2P Details ---")[1] || "";
+              const rateMatch = p2pBlock.match(/Rate:\s*(.+)/);
+              const ratePct = rateMatch ? parseFloat(rateMatch[1]) : 0;
+              const base = parseInt(buyAmount) || 0;
+              const premium = ratePct > 0 ? Math.ceil(base * ratePct / 100) : 0;
+              const total = base + premium;
+              if (!base) return null;
+              return (
+                <div style={{ marginTop: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>
+                    <span>Base amount</span>
+                    <span>₿ {base.toLocaleString()} sats</span>
+                  </div>
+                  {premium > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#10b981", marginBottom: 4 }}>
+                      <span>Premium ({ratePct}%)</span>
+                      <span>+ ₿ {premium.toLocaleString()} sats</span>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, color: "#f8fafc", borderTop: "1px solid rgba(245,158,11,0.15)", paddingTop: 6, marginTop: 4 }}>
+                    <span>Total</span>
+                    <span>₿ {total.toLocaleString()} sats</span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -3196,9 +3224,19 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             <span style={{ color: "#f7931a", fontWeight: 800, fontSize: 34 }}>₿</span>{fmtSats(o.amountMsats)}
           </div>
           {detail?.listing?.shippingCostSats > 0 && (
-            <div style={{ display: "flex", justifyContent: "center", gap: 16, marginTop: 4, fontSize: 11, color: "#64748b" }}>
-              <span>Item: ₿ {(Math.floor(o.amountMsats / 1000) - detail.listing.shippingCostSats).toLocaleString()}</span>
-              <span>📦 Shipping: ₿ {detail.listing.shippingCostSats.toLocaleString()}</span>
+            <div style={{ marginTop: 8, padding: "10px 14px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)", maxWidth: 260, margin: "8px auto 0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>
+                <span>Item price</span>
+                <span>₿ {(Math.floor(o.amountMsats / 1000) - detail.listing.shippingCostSats).toLocaleString()} sats</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#3b82f6", marginBottom: 4 }}>
+                <span>📦 Shipping</span>
+                <span>+ ₿ {detail.listing.shippingCostSats.toLocaleString()} sats</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, fontWeight: 700, color: "#f8fafc", borderTop: "1px solid rgba(245,158,11,0.15)", paddingTop: 6, marginTop: 4 }}>
+                <span>Total</span>
+                <span>₿ {fmtSats(o.amountMsats)} sats</span>
+              </div>
             </div>
           )}
           {fiatRates && <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>≈ {fmtFiat(o.amountMsats, fiatRates, "USD")}</div>}
