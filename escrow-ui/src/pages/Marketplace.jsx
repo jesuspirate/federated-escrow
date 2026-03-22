@@ -3203,6 +3203,14 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
           )}
           {fiatRates && <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>≈ {fmtFiat(o.amountMsats, fiatRates, "USD")}</div>}
         </div>
+        {/* ── Federation — shown high for picker visibility ── */}
+        {(detail?.listing?.sellerFedDomain || escrow?.federationId) && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 14px", marginBottom: 16, borderRadius: 10, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
+            <span style={{ fontSize: 14 }}>🏛️</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa" }}>{detail?.listing?.sellerFedDomain || escrow?.federationId}</span>
+            <span style={{ fontSize: 10, color: "#64748b", marginLeft: 4 }}>Federation</span>
+          </div>
+        )}
 
         {/* ── Participants ── */}
         <div style={{ display: "flex", justifyContent: "space-around", marginBottom: 20, padding: "14px 0", borderRadius: 12, background: "rgba(15,23,42,0.5)", border: "1px solid #1e293b" }}>
