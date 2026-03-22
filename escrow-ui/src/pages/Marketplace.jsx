@@ -813,7 +813,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           listing={editingListing}
           onBack={(updated) => {
             setEditingListing(null);
-            if (updated) { loadListings(); setView("browse"); }
+            if (updated) { loadListings(); setSelected(updated.listing || updated); setView("detail"); }
             else setView("detail");
           }}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
@@ -3242,8 +3242,29 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             )}
             {(detail?.listing?.terms || escrow?.terms) && (
               <div>
-                <div style={{ fontSize: 11, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>ⓘ Trade Terms</div>
-                <div style={{ fontSize: 13, color: "#f8fafc", lineHeight: 1.8, fontWeight: 500, textAlign: "center", whiteSpace: "pre-line" }}>{detail?.listing?.terms || escrow?.terms}</div>
+                <div style={{ fontSize: 11, color: "#f59e0b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>ⓘ Trade Terms</div>
+                {(() => {
+                  const raw = detail?.listing?.terms || escrow?.terms || "";
+                  const parts = raw.split(/---\s*(P2P Details|Loan Terms)\s*---/);
+                  const userTerms = (parts[0] || "").trim();
+                  const metaBlock = parts.length > 2 ? parts[2] : "";
+                  const metaLines = metaBlock.split("\n").map(l => l.trim()).filter(Boolean);
+                  const meta = {};
+                  metaLines.forEach(line => { const [k, ...v] = line.split(":"); if (k && v.length) meta[k.trim()] = v.join(":").trim(); });
+                  return <>
+                    {Object.keys(meta).length > 0 && (
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center", marginBottom: userTerms ? 10 : 0 }}>
+                        {Object.entries(meta).map(([k, v]) => (
+                          <div key={k} style={{ padding: "5px 12px", borderRadius: 8, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", fontSize: 12 }}>
+                            <span style={{ color: "#94a3b8" }}>{k}: </span>
+                            <span style={{ color: "#f8fafc", fontWeight: 600 }}>{v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {userTerms && <div style={{ fontSize: 13, color: "#cbd5e1", lineHeight: 1.8, textAlign: "center", whiteSpace: "pre-line" }}>{userTerms}</div>}
+                  </>;
+                })()}
               </div>
             )}
           </div>
