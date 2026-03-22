@@ -1788,14 +1788,21 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       voteConfirmRelease: role === "buyer" ? "Confirm you received the item?" : "Confirm the item was delivered?",
       voteConfirmRefund: "Open a dispute? The arbiter will review.",
     };
-    const isRepayment = e.description?.startsWith("Loan Repayment:");
+    const isRepayment = e.description?.startsWith("Loan Repayment");
+    const isFiatRepayment = e.description?.includes("(Fiat)");
     if (sd === "lending" && isRepayment) return {
-      lockBtn: "💰 Repay ₿ " + fmtSats(e.amountMsats),
-      lockedStatus: isLocker ? "Repayment locked — waiting for lender confirmation" : "Borrower has repaid — verify and confirm",
-      releaseBtn: role === "buyer" ? "✓ I have repaid" : role === "seller" ? "✓ Repayment received" : t("release"),
+      lockBtn: isFiatRepayment ? "💵 Confirm Fiat Repayment" : "💰 Repay ₿ " + fmtSats(e.amountMsats),
+      lockedStatus: isFiatRepayment
+        ? (isLocker ? "Awaiting lender to confirm fiat received" : "Verify the borrower sent fiat and confirm")
+        : (isLocker ? "Repayment locked — waiting for lender confirmation" : "Borrower has repaid — verify and confirm"),
+      releaseBtn: isFiatRepayment
+        ? (role === "buyer" ? "✓ I sent the fiat" : role === "seller" ? "✓ Fiat received" : t("release"))
+        : (role === "buyer" ? "✓ I have repaid" : role === "seller" ? "✓ Repayment received" : t("release")),
       refundBtn: "⚠ Dispute repayment",
-      claimBtn: "⚡ Receive ₿ " + fmtSats(e.amountMsats) + " repayment",
-      voteConfirmRelease: role === "buyer" ? "Confirm you have repaid the loan?" : "Confirm you received the repayment?",
+      claimBtn: isFiatRepayment ? "✅ Repayment confirmed" : "⚡ Receive ₿ " + fmtSats(e.amountMsats) + " repayment",
+      voteConfirmRelease: isFiatRepayment
+        ? (role === "buyer" ? "Confirm you sent the fiat repayment?" : "Confirm you received fiat from the borrower?")
+        : (role === "buyer" ? "Confirm you have repaid the loan?" : "Confirm you received the repayment?"),
       voteConfirmRefund: "Dispute this repayment? The arbiter will review.",
     };
     if (sd === "lending") return {

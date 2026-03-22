@@ -934,6 +934,11 @@ router.post("/:id/create-repayment", ...requireAuth, async (req: AuthenticatedRe
     const principalMsats = order.amount_msats;
     const interestMsats = Math.floor(principalMsats * interestBps / 10000);
     const repaymentMsats = principalMsats + interestMsats;
+    // Detect fiat repayment method — zero-lock escrow
+    const repayMethodMatch = terms.match(/Repayment method:\s*(.+)/i);
+    const repayMethod = repayMethodMatch ? repayMethodMatch[1].trim() : "Sats";
+    const isFiatRepayment = repayMethod.toLowerCase() === "fiat";
+    const finalRepaymentMsats = isFiatRepayment ? 0 : repaymentMsats;
 
     // Due date
     const dueAt = new Date(Date.now() + repaymentDays * 24 * 60 * 60 * 1000).toISOString();
@@ -947,9 +952,9 @@ router.post("/:id/create-repayment", ...requireAuth, async (req: AuthenticatedRe
       "INSERT INTO escrows (id, status, created_at, updated_at, amount_msats, description, terms, community_link, federation_id, seller_pubkey, buyer_pubkey, arbiter_pubkey, lock_role, loan_parent_id, loan_status, loan_due_at, loan_interest_bps, seller_fed_prefix) VALUES (?, 'FUNDED', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'buyer', ?, 'active', ?, ?, ?)"
     ).run(
       repaymentId, now, now,
-      repaymentMsats,
-      "Loan Repayment: " + listing.title,
-      "Repayment of " + Math.floor(principalMsats / 1000) + " sats + " + Math.floor(interestMsats / 1000) + " sats interest. Due: " + new Date(dueAt).toLocaleDateString(),
+      finalRepaymentMsats,
+      isFiatRepayment ? "Loan Repayment (Fiat): " + listing.title : "Loan Repayment: " + listing.title,
+      isFiatRepayment ? "Fiat repayment — confirm " + Math.floor(principalMsats / 1000) + " sats equivalent + " + Math.floor(interestMsats / 1000) + " interest. Due: " + new Date(dueAt).toLocaleDateString() : "Repayment of " + Math.floor(principalMsats / 1000) + " sats + " + Math.floor(interestMsats / 1000) + " sats interest. Due: " + new Date(dueAt).toLocaleDateString(),
       listing.community_link || "",
       listing.seller_fed_domain || "",
       order.seller_pubkey, // Lender is the "seller" (receives repayment sats)

@@ -3146,6 +3146,16 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
           setDetail(data);
           // API is source of truth for rating status
           if (data.order?.myRating != null) setRated(true);
+          // Fetch repayment escrow status if it exists
+          const repId = data.escrow?.loanRepaymentId;
+          if (repId) {
+            try {
+              const repData = await fetch("/api/ecash-escrows/" + repId, {
+                headers: window.__smToken ? { "Authorization": "Bearer " + window.__smToken } : {},
+              }).then(r => r.json());
+              if (repData && !repData.error) setRepaymentEscrow({ ...repData, repaymentEscrowId: repId, repaymentStatus: repData.status });
+            } catch {}
+          }
         }
       } catch {}
     })();
@@ -3394,7 +3404,22 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
               </div>
             )}
 
-            {(loanRepaymentId || repaymentEscrow) && (
+            {/* ── Loan Fully Repaid ── */}
+            {repaymentEscrow?.repaymentStatus && (repaymentEscrow.repaymentStatus === "COMPLETED" || repaymentEscrow.repaymentStatus === "CLAIMED") && (
+              <div style={{ padding: "16px", borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "2px solid rgba(16,185,129,0.3)", textAlign: "center", marginBottom: 12 }}>
+                <div style={{ fontSize: 28, marginBottom: 6 }}>✅</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#10b981", marginBottom: 4 }}>Loan Fully Repaid</div>
+                <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6 }}>
+                  {isBorrower ? "You have successfully repaid this loan. Your trust score has been updated." : "The borrower has repaid in full. Sats have been returned to you."}
+                </div>
+                {repaymentEscrow.amountMsats && (
+                  <div style={{ marginTop: 10, padding: "8px 14px", borderRadius: 8, background: "rgba(16,185,129,0.06)", display: "inline-block" }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#10b981" }}>₿ {Math.floor(repaymentEscrow.amountMsats / 1000).toLocaleString()} sats repaid</span>
+                  </div>
+                )}
+              </div>
+            )}
+            {(loanRepaymentId || repaymentEscrow) && !(repaymentEscrow?.repaymentStatus === "COMPLETED" || repaymentEscrow?.repaymentStatus === "CLAIMED") && (
               <div>
                 <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", marginBottom: 12 }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b", marginBottom: 6 }}>{isBorrower ? "💰 You owe a repayment" : "⏳ Awaiting borrower repayment"}</div>
