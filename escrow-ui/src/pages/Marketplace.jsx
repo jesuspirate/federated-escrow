@@ -2666,6 +2666,11 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
               <div style={{ fontSize: 11, fontFamily: "monospace", color: "#334155", marginTop: 4 }}>
                 {o.id} → {o.escrowId}
               </div>
+              {o.isLoanActive && o.sellerPubkey === pubkey && !o.isRepayment && (
+                <div style={{ marginTop: 6, padding: "6px 12px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", fontSize: 11, fontWeight: 700, color: "#ef4444", textAlign: "center", animation: "pulse 2s infinite" }}>
+                  ⚠️ Create repayment escrow — borrower is waiting
+                </div>
+              )}
             </button>
           ))}
         </div>
