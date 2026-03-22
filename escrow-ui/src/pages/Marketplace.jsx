@@ -3158,7 +3158,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
               const repData = await fetch("/api/ecash-escrows/" + repId, {
                 headers: window.__smToken ? { "Authorization": "Bearer " + window.__smToken } : {},
               }).then(r => r.json());
-              if (repData && !repData.error) setRepaymentEscrow({ ...repData, repaymentEscrowId: repId, repaymentStatus: repData.status });
+              if (repData && !repData.error) setRepaymentEscrow({ ...repData, repaymentEscrowId: repId, repaymentStatus: repData.status, repaymentSats: repData.amountSats || Math.floor((repData.amountMsats || 0) / 1000), dueAt: repData.loanDueAt, interestMsats: Math.floor((repData.amountMsats || 0) * (repData.loanInterestBps || 0) / 10000) });
             } catch {}
           }
         }
@@ -3213,7 +3213,8 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
   const needsRating = detailLoaded && status === "completed" && !rated;
   const otherPubkey = isBuyer ? o.sellerPubkey : o.buyerPubkey;
   const isP2P = detail?.tradeType === "sats-for-fiat" || isSatsForFiat(detail?.listing?.category);
-  const isLoan = detail?.tradeType === "lending" || isLending(detail?.listing?.category) || (escrow?.description || "").startsWith("Lending:");
+  const isLoan = detail?.tradeType === "lending" || isLending(detail?.listing?.category) || (escrow?.description || "").startsWith("Lending:") || (escrow?.description || "").startsWith("Loan Repayment");
+  const isRepayment = (escrow?.description || "").startsWith("Loan Repayment") || (detail?.listing?.category === "lending" && escrow?.loanParentId);
   const isLender = isLoan && o.sellerPubkey === pubkey;
   const isBorrower = isLoan && o.buyerPubkey === pubkey;
   const otherRole = isLoan ? (isBuyer ? "Lender" : "Borrower") : isBuyer ? t("seller") : t("buyer");
@@ -3348,9 +3349,9 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
           >
             {status === "pending"
               ? (isP2P
-                  ? (isBuyer ? (isLoan ? "✓ Accept Loan" : "View Trade") : (isLoan ? "🤝 Fund Loan" : "🔐 Lock E-cash"))
+                  ? (isBuyer ? (isRepayment ? "💰 Lock Repayment" : isLoan ? "✓ Accept Loan" : "View Trade") : (isRepayment ? "🔍 View Repayment" : isLoan ? "🤝 Fund Loan" : "🔐 Lock E-cash"))
                   : (isBuyer ? "🔐 Lock Payment" : "View Trade"))
-              : isLoan ? "🤝 Open Loan" : "⚡ Open Trade"
+              : isRepayment ? "💰 Open Repayment" : isLoan ? "🤝 Open Loan" : "⚡ Open Trade"
             }
           </button>
         )}

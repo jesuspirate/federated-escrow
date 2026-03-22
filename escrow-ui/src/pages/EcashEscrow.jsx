@@ -165,6 +165,10 @@ function getSessionToken_escrow() {
   if (window.__smToken && window.__smTokenExpiry > Date.now() + 60000) {
     return Promise.resolve(window.__smToken);
   }
+  // Cooldown after rejection — don't spam NIP-98 prompts
+  if (window.__smTokenRejectedAt && Date.now() - window.__smTokenRejectedAt < 30000) {
+    return Promise.resolve(null);
+  }
   // If marketplace or another call is already fetching, wait for THAT promise
   if (window.__smTokenPromise) {
     return window.__smTokenPromise.then(() => window.__smToken || null);
@@ -175,16 +179,18 @@ function getSessionToken_escrow() {
       const url = `${location.origin}${API}/auth/session`;
       const headers = { "Content-Type": "application/json" };
       const nip98 = await makeNip98Header(url, "POST");
-      if (!nip98) return null;
+      if (!nip98) { window.__smTokenRejectedAt = Date.now(); return null; }
       headers["Authorization"] = nip98;
       const res = await fetch(url, { method: "POST", headers });
       const data = await res.json();
       if (data.token) {
         window.__smToken = data.token;
         window.__smTokenExpiry = Date.now() + (data.expiresIn || 1800) * 1000;
+        window.__smTokenRejectedAt = null;
       }
       return window.__smToken || null;
     } catch {
+      window.__smTokenRejectedAt = Date.now();
       return null;
     }
   })();
