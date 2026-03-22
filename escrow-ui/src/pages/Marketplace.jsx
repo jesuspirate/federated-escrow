@@ -13,6 +13,17 @@ const MAPI = "/api/marketplace/listings";
 
 // ── Auth ─────────────────────────────────────────────────────────────
 
+const FED_NAMES_GLOBAL = {
+  "AwEEiItw7A": { name: "Bitcoin Life", emoji: "🏛️", color: "#a78bfa" },
+  "AwEEG8tk5g": { name: "Global Bitcoin Federation", emoji: "🏛️", color: "#f59e0b" },
+  "AwEE_yhqbg": { name: "Afribit Kibera", emoji: "🏛️", color: "#10b981" },
+};
+function getFedName(prefix, domain) {
+  if (prefix && FED_NAMES_GLOBAL[prefix]) return FED_NAMES_GLOBAL[prefix].name;
+  if (domain) return domain.replace(/^m\d+\./, "").replace(/\.in$/, "").replace(/\.com$/, "");
+  return domain || prefix || "Unknown";
+}
+
 const DEV_IDENTITIES = {
   seller:  "aa".repeat(32),
   buyer:   "bb".repeat(32),
@@ -1471,6 +1482,19 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
               </div>
               {l.description && <p style={M.cardDesc}>{l.description}</p>}
               <div style={M.cardMeta}>
+              {isLending(l.category) && l.terms && (() => {
+                const interestMatch = l.terms.match(/Interest:\s*(\d+)/);
+                const repayMatch = l.terms.match(/Repayment:\s*(\d+\s*days?)/i);
+                const interest = interestMatch ? interestMatch[1] : null;
+                const repay = repayMatch ? repayMatch[1] : null;
+                if (!interest && !repay) return null;
+                return (
+                  <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                    {interest && <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(16,185,129,0.12)", color: "#10b981" }}>{interest}% interest</span>}
+                    {repay && <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(59,130,246,0.12)", color: "#3b82f6" }}>{repay}</span>}
+                  </div>
+                );
+              })()}
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   {l.status === "paused" && <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(100,116,139,0.2)", color: "#94a3b8", border: "1px solid #334155" }}>⏸ {t("mkStatusPaused")}</span>}
                   {l.condition && !isSatsForFiat(l.category) && !isLending(l.category) && l.status !== "paused" && <span style={M.conditionBadge}>{t(CONDITION_KEYS[l.condition] || l.condition)}</span>}
@@ -1894,7 +1918,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
             {loading
               ? (isP2P ? "Starting trade…" : t("mkBuying"))
               : isP2P
-                ? (hasRange ? ("Start Trade — ₿ " + (buyAmount || "?") + " sats") : ("Start Trade — ₿ " + fmtSats(l.priceMsats) + " sats"))
+                ? (hasRange ? ("Start Trade — ₿ " + (() => { const b = parseInt(buyAmount) || 0; const rm = (l.terms || "").match(/Rate:\s*(\d+)/); const rp = rm ? parseFloat(rm[1]) : 0; return rp > 0 ? (b + Math.ceil(b * rp / 100)).toLocaleString() : (buyAmount || "?"); })() + " sats") : ("Start Trade — ₿ " + fmtSats(l.priceMsats) + " sats"))
                 : ("⚡ Buy for ₿ " + fmtSats(l.priceMsats))
             }
           </button>
@@ -1919,10 +1943,10 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
             <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b" }}>{(l.platformFeeBps / 100)}% ({Math.ceil(Math.floor(l.priceMsats / 1000) * l.platformFeeBps / 10000).toLocaleString()} sats)</span>
           </div>
         )}
-        {l.sellerFedPrefix && (
+        {(l.sellerFedPrefix || l.sellerFedDomain) && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", marginBottom: 10, borderRadius: 10, background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)" }}>
             <span style={{ fontSize: 14 }}>{"🏛️"}</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#a78bfa" }}>Federation: {(() => { const FN = {"AwEEiItw7A":"Bitcoin Life","AwEEG8tk5g":"Global Bitcoin Federation","AwEE_yhqbg":"Afribit Kibera"}; return FN[l.sellerFedPrefix] || l.sellerFedPrefix; })()}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#a78bfa" }}>Federation: {getFedName(l.sellerFedPrefix, l.sellerFedDomain)}</span>
             <span style={{ fontSize: 10, color: "#64748b", marginLeft: "auto" }}>Must match yours</span>
           </div>
         )}
@@ -3261,7 +3285,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
         {(detail?.listing?.sellerFedDomain || escrow?.federationId) && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "8px 14px", marginBottom: 16, borderRadius: 10, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
             <span style={{ fontSize: 14 }}>🏛️</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa" }}>{detail?.listing?.sellerFedDomain || escrow?.federationId}</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa" }}>{getFedName(detail?.listing?.sellerFedPrefix || escrow?.seller_fed_prefix, detail?.listing?.sellerFedDomain || escrow?.federationId)}</span>
             <span style={{ fontSize: 10, color: "#64748b", marginLeft: 4 }}>Federation</span>
           </div>
         )}
@@ -3319,7 +3343,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
                         {Object.entries(meta).map(([k, v]) => (
                           <div key={k} style={{ padding: "5px 12px", borderRadius: 8, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.2)", fontSize: 12 }}>
                             <span style={{ color: "#94a3b8" }}>{k}: </span>
-                            <span style={{ color: "#f8fafc", fontWeight: 600 }}>{v}</span>
+                            <span style={{ color: "#f8fafc", fontWeight: 600 }}>{(k === "Interest" || k === "Rate") && v && !String(v).includes("%") ? v + "%" : v}</span>
                           </div>
                         ))}
                       </div>
