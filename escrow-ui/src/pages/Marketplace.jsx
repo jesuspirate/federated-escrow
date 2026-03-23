@@ -811,7 +811,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           onOpen={openListing}
           onCreate={() => setView("create")}
           onOrders={openOrders}
-          activeOrderCount={orders.length > 0 ? orders.filter(o => o.status === "pending" || o.status === "active").length : cachedOrderCount}
+          activeOrderCount={orders.length > 0 ? orders.filter(o => (o.status === "pending" || o.status === "active") && !o.isRepayment && (subdomain === "lending" ? (o.escrowDescription || "").startsWith("Lending:") : subdomain === "p2p" ? o.tradeType === "sats-for-fiat" : o.tradeType !== "sats-for-fiat" && o.tradeType !== "lending" && !(o.escrowDescription || "").startsWith("Lending:"))).length : cachedOrderCount}
           onRefresh={() => loadListings(searchQuery)}
           onSwitchToEscrow={onSwitchToEscrow}
           onProfile={openProfile}
