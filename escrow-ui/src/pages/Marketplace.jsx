@@ -1490,9 +1490,10 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                 const repay = repayMatch ? repayMatch[1] : null;
                 if (!interest && !repay) return null;
                 return (
-                  <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
                     {interest && <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(16,185,129,0.12)", color: "#10b981" }}>{interest}% interest</span>}
                     {repay && <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(59,130,246,0.12)", color: "#3b82f6" }}>{repay}</span>}
+                    {interest && l.priceMsats && <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(245,158,11,0.12)", color: "#f59e0b" }}>Repay: ₿ {Math.ceil(Math.floor(l.priceMsats / 1000) * (1 + parseInt(interest) / 100)).toLocaleString()}</span>}
                   </div>
                 );
               })()}
@@ -2169,14 +2170,9 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       if (minSats < 1) return showToast("Minimum ₿ 1 sat", "error");
       if (maxSats < minSats) return showToast("Max must be greater than min", "error");
       if (maxSats > 2_000_000) return showToast(t("mkPriceExceeds"), "error");
-      if (ratePremium && Number(ratePremium) > 0) {
-        minSats = Math.ceil(minSats * (1 + Number(ratePremium) / 100));
-        maxSats = Math.ceil(maxSats * (1 + Number(ratePremium) / 100));
-      }
       sats = maxSats; // listing price = max (display price)
     } else {
       sats = parseInt(price);
-      if (ratePremium && Number(ratePremium) > 0) sats = Math.ceil(sats * (1 + Number(ratePremium) / 100));
     }
 
     if (!title.trim()) return showToast(t("mkTitleRequired"), "error");
