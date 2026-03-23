@@ -1920,7 +1920,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
               ? (isP2P ? "Starting trade…" : t("mkBuying"))
               : isP2P
                 ? (hasRange ? ("Start Trade — ₿ " + (() => { const b = parseInt(buyAmount) || 0; const rm = (l.terms || "").match(/Rate:\s*(\d+)/); const rp = rm ? parseFloat(rm[1]) : 0; return rp > 0 ? (b + Math.ceil(b * rp / 100)).toLocaleString() : (buyAmount || "?"); })() + " sats") : ("Start Trade — ₿ " + fmtSats(l.priceMsats) + " sats"))
-                : ("⚡ Buy for ₿ " + fmtSats(l.priceMsats))
+                : ("⚡ Buy for ₿ " + fmtSats(l.priceMsats + (l.shippingCostSats ? l.shippingCostSats * 1000 : 0)))
             }
           </button>
         )}
@@ -1954,7 +1954,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         {canBuy && !isP2P && (
           <div style={{ ...M.infoBanner, borderColor: "rgba(16,185,129,0.2)", background: "rgba(16,185,129,0.04)", marginBottom: 14 }}>
             <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
-		You'll lock <strong style={{ color: "#10b981" }}>₿ {fmtSats(l.priceMsats)}</strong> as payment.
+		You'll lock <strong style={{ color: "#10b981" }}>₿ {fmtSats(l.priceMsats + (l.shippingCostSats ? l.shippingCostSats * 1000 : 0))}</strong> as payment.
             </div>
           </div>
         )}
@@ -3168,27 +3168,32 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
   const isBuyer = o.buyerPubkey === pubkey;
   const canCancel = isBuyer && (o.status === "pending");
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const data = await mapi(`/orders/${o.id}`);
-        if (!data.error) {
-          setDetail(data);
-          // API is source of truth for rating status
-          if (data.order?.myRating != null) setRated(true);
-          // Fetch repayment escrow status if it exists
-          const repId = data.escrow?.loanRepaymentId;
-          if (repId) {
-            try {
-              const repData = await fetch("/api/ecash-escrows/" + repId, {
-                headers: window.__smToken ? { "Authorization": "Bearer " + window.__smToken } : {},
-              }).then(r => r.json());
-              if (repData && !repData.error) setRepaymentEscrow({ ...repData, repaymentEscrowId: repId, repaymentStatus: repData.status, repaymentSats: repData.amountSats || Math.floor((repData.amountMsats || 0) / 1000), dueAt: repData.loanDueAt, interestMsats: Math.floor((repData.amountMsats || 0) * (repData.loanInterestBps || 0) / 10000) });
-            } catch {}
-          }
+  const loadOrderDetail = async () => {
+    try {
+      const data = await mapi(`/orders/${o.id}`);
+      if (!data.error) {
+        setDetail(data);
+        if (data.order?.myRating != null) setRated(true);
+        const repId = data.escrow?.loanRepaymentId;
+        if (repId) {
+          try {
+            const repData = await fetch("/api/ecash-escrows/" + repId, {
+              headers: window.__smToken ? { "Authorization": "Bearer " + window.__smToken } : {},
+            }).then(r => r.json());
+            if (repData && !repData.error) setRepaymentEscrow({ ...repData, repaymentEscrowId: repId, repaymentStatus: repData.status, repaymentSats: repData.amountSats || Math.floor((repData.amountMsats || 0) / 1000), dueAt: repData.loanDueAt, interestMsats: Math.floor((repData.amountMsats || 0) * (repData.loanInterestBps || 0) / 10000) });
+          } catch {}
         }
-      } catch {}
-    })();
+      }
+    } catch {}
+  };
+  useEffect(() => {
+    loadOrderDetail();
+    // Poll for lending orders to pick up auto-created repayment
+    const isLoanOrder = subdomain === "lending" || (o.listingTitle || "").toLowerCase().includes("lend");
+    if (isLoanOrder) {
+      const iv = setInterval(loadOrderDetail, 10000);
+      return () => clearInterval(iv);
+    }
   }, [o.id]);
 
   const handleCancel = async () => {
@@ -3235,7 +3240,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
   const status = detail?.order?.status || o.status;
   // Only show rating prompt AFTER detail loads AND confirms no rating exists
   const detailLoaded = detail != null;
-  const needsRating = detailLoaded && status === "completed" && !rated;
+  const needsRating = detailLoaded && status === "completed" && !rated && (!isLoan || isRepayment);
   const otherPubkey = isBuyer ? o.sellerPubkey : o.buyerPubkey;
   const isP2P = detail?.tradeType === "sats-for-fiat" || isSatsForFiat(detail?.listing?.category);
   const isLoan = detail?.tradeType === "lending" || isLending(detail?.listing?.category) || (escrow?.description || "").startsWith("Lending:") || (escrow?.description || "").startsWith("Loan Repayment");
@@ -3260,7 +3265,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
 
       <div style={{ paddingBottom: 20 }}>
         {/* ── Price + fiat ── */}
-        <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <div style={{ textAlign: "center", marginBottom: 20, opacity: detail ? 1 : 0.5, transition: "opacity 0.3s" }}>
           <div style={{ fontSize: 36, fontWeight: 900, color: "#f8fafc", letterSpacing: -1 }}>
             <span style={{ color: "#f7931a", fontWeight: 800, fontSize: 34 }}>₿</span>{fmtSats(o.amountMsats)}
           </div>
@@ -3375,7 +3380,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             {status === "pending"
               ? (isP2P
                   ? (isBuyer ? (isRepayment ? "💰 Lock Repayment" : isLoan ? "✓ Accept Loan" : "View Trade") : (isRepayment ? "🔍 View Repayment" : isLoan ? "🤝 Fund Loan" : "🔐 Lock E-cash"))
-                  : (isBuyer ? "🔐 Lock Payment" : "View Trade"))
+                  : (isRepayment ? (isBuyer ? "💰 Lock Repayment" : "🔍 View Repayment") : (isBuyer ? "🔐 Lock Payment" : "View Trade")))
               : isRepayment ? "💰 Open Repayment" : isLoan ? "🤝 Open Loan" : "⚡ Open Trade"
             }
           </button>
@@ -3387,7 +3392,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             {status === "pending" && (
               isP2P
                 ? (isBuyer ? "Waiting for seller to lock e-cash…" : ("🔐 Lock your e-cash to start the trade. Make sure you have ₿ " + fmtSats(o.amountMsats) + " sats in your federation wallet."))
-                : (isBuyer ? "Lock your e-cash as payment." : "Waiting for buyer to lock payment…")
+                : (isRepayment ? (isBuyer ? "Lock your sats to repay the loan." : "Waiting for borrower to lock repayment sats…") : (isBuyer ? "Lock your e-cash as payment." : "Waiting for buyer to lock payment…"))
             )}
             {status === "active" && "Trade in progress — open to vote and confirm."}
           </div>
@@ -3415,7 +3420,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
               <span style={{ fontSize: 15, fontWeight: 700, color: loanRepaymentId ? "#ef4444" : "#10b981" }}>{loanRepaymentId ? "⚠️ Repayment Required" : "Loan Disbursed"}</span>
             </div>
 
-            {!loanRepaymentId && !repaymentEscrow && isLender && (
+            {!loanRepaymentId && !repaymentEscrow && isLender && !(repaymentEscrow?.repaymentStatus === "COMPLETED" || repaymentEscrow?.repaymentStatus === "CLAIMED") && (
               <div>
                 <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.6, marginBottom: 12 }}>
                   The borrower has received the sats. Create a repayment escrow so they can pay you back with interest.
