@@ -1720,13 +1720,21 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
           <div style={{ marginBottom: 20 }}>
             <div style={M.sectionLabel}>Rate Premium (%)</div>
             <input style={M.input} type="number" placeholder="e.g., 3" value={editPremium} onChange={e => setEditPremium(e.target.value)} />
-            {editPremium && price && (
-              <p style={{ fontSize: 11, color: "#f59e0b", fontWeight: 600, marginTop: 4 }}>
-                {minPrice && maxPrice
-                  ? "Range with premium: ₿ " + Math.ceil(Number(minPrice) * (1 + Number(editPremium) / 100)).toLocaleString() + " — ₿ " + Math.ceil(Number(maxPrice) * (1 + Number(editPremium) / 100)).toLocaleString() + " sats"
-                  : "Total with premium: ₿ " + Math.ceil(Number(price) * (1 + Number(editPremium) / 100)).toLocaleString() + " sats"}
-              </p>
-            )}
+            {editPremium && price && (() => {
+              const rp = Number(editPremium) / 100;
+              const adjMax = minPrice && maxPrice ? Math.ceil(Number(maxPrice) * (1 + rp)) : Math.ceil(Number(price) * (1 + rp));
+              const adjMin = minPrice ? Math.ceil(Number(minPrice) * (1 + rp)) : adjMax;
+              const exceeds = adjMax > 2_000_000;
+              return <>
+                <p style={{ fontSize: 11, color: exceeds ? "#ef4444" : "#f59e0b", fontWeight: 600, marginTop: 4 }}>
+                  {minPrice && maxPrice
+                    ? "Range with premium: ₿ " + adjMin.toLocaleString() + " — ₿ " + adjMax.toLocaleString() + " sats"
+                    : "Total with premium: ₿ " + adjMax.toLocaleString() + " sats"
+                  }
+                </p>
+                {exceeds && <p style={{ fontSize: 11, color: "#ef4444", fontWeight: 700, marginTop: 2 }}>⚠️ Exceeds 2M sats federation limit!</p>}
+              </>;
+            })()}
           </div>
         )}
 
@@ -1785,7 +1793,14 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
     }
     setLoading(true);
     try {
-      const customMsats = hasRange && buyAmount ? parseInt(buyAmount) * 1000 : undefined;
+      let customMsats = hasRange && buyAmount ? parseInt(buyAmount) * 1000 : undefined;
+      // Apply P2P premium at checkout
+      if (isP2P && customMsats) {
+        const rateM = (l.terms || "").match(/Rate:\s*(\d+)/);
+        const ratePct = rateM ? parseFloat(rateM[1]) : 0;
+        if (ratePct > 0) customMsats = Math.ceil(customMsats * (1 + ratePct / 100));
+        if (customMsats > 2_000_000_000) { showToast("Total with premium exceeds 2M sats federation limit!", "error"); setLoading(false); return; }
+      }
       const res = await mapi(`/${l.id}/buy`, { method: "POST", body: JSON.stringify(customMsats ? { amountMsats: customMsats } : {}) });
       if (res.error) throw new Error(res.error);
       showToast(isP2P ? t("mkTradeStarted") || "Trade started!" : t("mkBuySuccess"));
@@ -2423,14 +2438,21 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
           <div style={M.formGroup}>
             <label style={M.label}>{t("mkRatePremium")} (%)</label>
             <input style={M.input} placeholder="e.g., 3" type="number" value={ratePremium} onChange={e => setRatePremium(e.target.value)} />
-            {ratePremium && (minPrice || price) && (
-              <p style={{ ...M.hint, color: "#f59e0b", fontWeight: 600 }}>
-                {minPrice && maxPrice
-                  ? "Range with premium: ₿ " + Math.ceil(Number(minPrice) * (1 + Number(ratePremium) / 100)).toLocaleString() + " — ₿ " + Math.ceil(Number(maxPrice) * (1 + Number(ratePremium) / 100)).toLocaleString() + " sats"
-                  : "Total with premium: ₿ " + Math.ceil(Number(price) * (1 + Number(ratePremium) / 100)).toLocaleString() + " sats"
-                }
-              </p>
-            )}
+            {ratePremium && (minPrice || price) && (() => {
+              const rp = Number(ratePremium) / 100;
+              const adjMax = minPrice && maxPrice ? Math.ceil(Number(maxPrice) * (1 + rp)) : Math.ceil(Number(price) * (1 + rp));
+              const adjMin = minPrice ? Math.ceil(Number(minPrice) * (1 + rp)) : adjMax;
+              const exceeds = adjMax > 2_000_000;
+              return <>
+                <p style={{ ...M.hint, color: exceeds ? "#ef4444" : "#f59e0b", fontWeight: 600 }}>
+                  {minPrice && maxPrice
+                    ? "Range with premium: ₿ " + adjMin.toLocaleString() + " — ₿ " + adjMax.toLocaleString() + " sats"
+                    : "Total with premium: ₿ " + adjMax.toLocaleString() + " sats"
+                  }
+                </p>
+                {exceeds && <p style={{ ...M.hint, color: "#ef4444", fontWeight: 700 }}>⚠️ Exceeds 2M sats federation limit! Lower price or premium.</p>}
+              </>;
+            })()}
           </div>
         </div>
       )}
