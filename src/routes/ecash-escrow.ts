@@ -1089,8 +1089,49 @@ router.post("/:id/confirm-ecash-received", (req: AuthenticatedRequest, res: Resp
     // Wipe the encrypted notes from DB
     try { db.prepare("UPDATE escrows SET locked_notes = NULL WHERE id = ?").run(row.id); } catch(e) {}
 
+
+    // ── Auto-create repayment escrow for lending trades ──
+    let autoRepaymentId = null;
+    if ((row.description || "").startsWith("Lending:") && !row.loan_repayment_id) {
+      try {
+        const order = db.prepare("SELECT * FROM orders WHERE escrow_id = ?").get(row.id) as any;
+        const listing = order ? db.prepare("SELECT * FROM listings WHERE id = ?").get(order.listing_id) as any : null;
+        if (order && listing) {
+          const terms = listing.terms || "";
+          const intMatch = terms.match(/Interest:\s*(\d+)/);
+          const repMatch = terms.match(/Repayment:\s*(\d+)\s*days?/i) || terms.match(/(\d+)\s*day/i);
+          const intBps = intMatch ? parseInt(intMatch[1]) * 100 : 0;
+          const repDays = repMatch ? parseInt(repMatch[1]) : 14;
+          const principalMs = order.amount_msats;
+          const interestMs = Math.floor(principalMs * intBps / 10000);
+          const repayMs = principalMs + interestMs;
+          const repMethodMatch = terms.match(/Repayment method:\s*(.+)/i);
+          const isFiat = repMethodMatch ? repMethodMatch[1].trim().toLowerCase() === "fiat" : false;
+          const finalMs = isFiat ? 0 : repayMs;
+          const dueAt = new Date(Date.now() + repDays * 24 * 60 * 60 * 1000).toISOString();
+          const maxId = db.prepare("SELECT MAX(CAST(SUBSTR(id, 7) AS INTEGER)) as m FROM escrows").get() as any;
+          const repId = "ecash_" + ((maxId?.m || 0) + 1);
+          const now2 = new Date().toISOString();
+          db.prepare("INSERT INTO escrows (id, status, created_at, updated_at, amount_msats, description, terms, community_link, federation_id, seller_pubkey, buyer_pubkey, arbiter_pubkey, lock_role, loan_parent_id, loan_status, loan_due_at, loan_interest_bps, seller_fed_prefix) VALUES (?, 'FUNDED', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'buyer', ?, 'active', ?, ?, ?)").run(
+            repId, now2, now2, finalMs,
+            isFiat ? "Loan Repayment (Fiat): " + listing.title : "Loan Repayment: " + listing.title,
+            "Repayment of " + Math.floor(principalMs/1000) + " + " + Math.floor(interestMs/1000) + " interest. Due: " + new Date(dueAt).toLocaleDateString(),
+            listing.community_link || "", listing.seller_fed_domain || "",
+            order.seller_pubkey, order.buyer_pubkey, order.arbiter_pubkey,
+            row.id, dueAt, intBps, listing.seller_fed_prefix || null
+          );
+          db.prepare("UPDATE escrows SET loan_repayment_id = ?, loan_status = 'disbursed' WHERE id = ?").run(repId, row.id);
+          const repOrdId = "ord_" + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+          db.prepare("INSERT INTO orders (id, listing_id, escrow_id, buyer_pubkey, seller_pubkey, arbiter_pubkey, amount_msats, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))").run(
+            repOrdId, order.listing_id, repId, order.buyer_pubkey, order.seller_pubkey, order.arbiter_pubkey, repayMs
+          );
+          autoRepaymentId = repId;
+          console.log("[lending] Auto-created repayment escrow:", repId, "for loan", row.id);
+        }
+      } catch (autoErr: any) { console.error("[lending] Auto-repayment creation failed:", autoErr.message); }
+    }
     console.log("[ecash-escrow] E-cash confirmed received for", row.id, "by", role);
-    res.json({ success: true, escrowId: row.id, status: "COMPLETED" });
+    res.json({ success: true, escrowId: row.id, status: "COMPLETED", autoRepaymentId });
   } catch (err: any) {
     console.error("[ecash-escrow] POST /:id/confirm-ecash-received error:", err);
     res.status(500).json({ error: err.message });
