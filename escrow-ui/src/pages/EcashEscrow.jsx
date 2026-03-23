@@ -1257,6 +1257,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
         for (const msg of newMsgs) {
           lastTs.current = Math.max(lastTs.current, msg.timestamp);
         }
+        lastTs.current += 1; // Skip past last seen to avoid re-fetching with >= query
         setMessages(prev => {
           const existing = new Set(prev.map(m => m.id));
           const unique = newMsgs.filter(m => !existing.has(m.id));
@@ -1286,7 +1287,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
       const msgText = draft.trim();
       // Optimistic: show message immediately
       setMessages(prev => [...prev, { id: "local_" + Date.now(), sender_pubkey: pubkey, sender_role: myRole, encrypted: msgText, text: msgText, timestamp: Date.now() }]);
-      lastTs.current = Date.now();
+      lastTs.current = Date.now() + 1;
       setDraft("");
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
       // Send to server
@@ -1414,7 +1415,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
       text: msgText,
       timestamp: Date.now(),
     }]);
-    lastTs.current = Date.now();
+    lastTs.current = Date.now() + 1;
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
 
     // Send to server
@@ -1446,6 +1447,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
         if (res.messages && res.messages.length > 0) {
           setUnreadCount(prev => prev + res.messages.filter(m => m.sender_pubkey !== pubkey).length);
           for (const msg of res.messages) lastTs.current = Math.max(lastTs.current, msg.timestamp);
+          lastTs.current += 1; // Skip past last seen to avoid re-counting with >= query
         }
       } catch {}
     };
@@ -1567,6 +1569,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const isP2PTrade = e.description?.startsWith("P2P Trade:");
   const isLending = e.description?.startsWith("Lending:");
   const isMarketplace = e.description?.startsWith("Marketplace:");
+  const isRepayment = e.description?.startsWith("Loan Repayment");
   const tradeType = isP2PTrade ? "p2p" : isLending ? "lending" : isMarketplace ? "marketplace" : "manual";
 
   useEffect(() => {
@@ -2217,10 +2220,10 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {canBuyerVote && !confirmVote && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "4px 0 12px" }}>
             <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)", fontSize: 16, padding: "16px 20px" }} onClick={() => setConfirmVote("release")} disabled={loading}>
-              {loading ? t("voting") : isP2PTrade ? "✓ I sent the fiat payment" : isLending ? "✓ I accept the loan" : "✓ I received what I paid for"}
+              {loading ? t("voting") : isP2PTrade ? "✓ I sent the fiat payment" : isRepayment ? "✓ I have repaid" : isLending ? "✓ I accept the loan" : "✓ I received what I paid for"}
             </button>
             {!isP2PTrade && <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #b45309, #92400e)", fontSize: 13, padding: "12px 16px" }} onClick={() => setConfirmVote("refund")} disabled={loading}>
-              {isLending ? "⚠ Dispute — I don't agree with the terms" : "⚠ Dispute — I didn’t receive what I paid for"}
+              {isRepayment ? "⚠ Dispute repayment" : isLending ? "⚠ Dispute — I don't agree with the terms" : "⚠ Dispute — I didn’t receive what I paid for"}
             </button>}
           </div>
         )}
@@ -2238,7 +2241,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         {canBuyerVote && confirmVote === "release" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "0 0 12px" }}>
             <div style={{ textAlign: "center", padding: "12px 14px", background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.3)", borderRadius: 10, fontSize: 14, fontWeight: 700, color: "#10b981" }}>
-              {isP2PTrade ? "Confirm: You sent fiat? ₿ Sats will release to you." : isLending ? "Confirm: Accept this loan and begin the repayment clock?" : "Release ₿ sats to you?"}
+              {isP2PTrade ? "Confirm: You sent fiat? ₿ Sats will release to you." : isRepayment ? "Confirm: You have repaid the loan in full?" : isLending ? "Confirm: Accept this loan and begin the repayment clock?" : "Release ₿ sats to you?"}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8", fontSize: 15, padding: "14px" }} onClick={cancelConfirm}>Cancel</button>
