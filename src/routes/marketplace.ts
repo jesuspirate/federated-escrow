@@ -652,7 +652,18 @@ router.get("/orders/mine", ...requireAuth, (req: AuthenticatedRequest, res: Resp
       rows = stmts.getOrdersByBuyer.all(pk) as OrderRow[];
     }
 
-    const orders = rows.map(order => syncAndFormatOrder(order, pk));
+    const orders = rows.map(order => {
+      const synced = syncAndFormatOrder(order, pk);
+      const listing = stmts.getById.get(order.listing_id) as any;
+      const escrow = DB.getEscrow(order.escrow_id);
+      return {
+        ...synced,
+        tradeType: listing && isP2PStyle(listing.category) ? (isLenderTrade(listing.category) ? "lending" : "sats-for-fiat") : "marketplace",
+        escrowDescription: escrow?.description || null,
+        loanParentId: escrow?.loan_parent_id || null,
+        listingCategory: listing?.category || null,
+      };
+    });
 
     res.json({ orders, count: orders.length });
   } catch (err: any) {

@@ -887,9 +887,8 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
       {view === "join" && <JoinView pubkey={pubkey} onBack={() => setView("list")} onJoined={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "detail" && selected && <DetailView escrow={selected} pubkey={pubkey} onBack={() => {
         if (cameFromMarketplace && onSwitchToMarketplaceOrders) {
-          // Return to marketplace order detail for this escrow
           setCameFromMarketplace(false);
-          onSwitchToMarketplaceOrders(selected?.id || null);
+          onSwitchToMarketplaceOrders("__ORDERS__");
         } else {
           setSelected(null); setView("list"); loadEscrows();
         }
