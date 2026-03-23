@@ -1924,12 +1924,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             } else {
               showToast("E-cash received! " + receivedSats.toLocaleString() + " sats in your wallet!");
             }
-            // Navigate to the specific order for rating
-            if (cameFromMarketplace && onSwitchToMarketplace) {
-              setTimeout(() => onSwitchToMarketplace(e.id), 1500);
-            } else {
-              onRefresh();
-            }
+            // Stay on escrow view — show completion, let user navigate via back button
+            onRefresh();
           } catch (redeemErr) {
             const errMsg = String(redeemErr.message || redeemErr || "");
             console.warn("[claim] receiveEcash error:", errMsg);
@@ -1990,11 +1986,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           } else {
             showToast("E-cash received! " + receivedAmt.toLocaleString() + " sats in your wallet!");
           }
-          if (cameFromMarketplace && onSwitchToMarketplace) {
-            setTimeout(() => onSwitchToMarketplace(e.id), 1500);
-          } else {
-            onRefresh();
-          }
+          onRefresh();
         } catch (autoRedeemErr) {
           // Auto-redeem failed — fall back to manual tap (notes already in state)
           console.warn("[claim] auto-redeem failed:", autoRedeemErr);
@@ -2015,11 +2007,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         }
         await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
         showToast("Sats claimed! (sandbox mode)");
-        if (cameFromMarketplace && onSwitchToMarketplaceOrders) {
-          setTimeout(() => onSwitchToMarketplaceOrders(e.id), 1500);
-        } else {
-          onRefresh();
-        }
+        onRefresh();
         setLoading(false);
         return;
       }
@@ -2092,7 +2080,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           <div style={{ margin: "0 0 16px", padding: "16px 20px", borderRadius: 16, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", textAlign: "center" }}>
             <div style={{ fontSize: 24, marginBottom: 6 }}>🎉</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#10b981", marginBottom: 4 }}>Trade complete!</div>
-            <button onClick={() => onSwitchToMarketplace ? onSwitchToMarketplace(e.id) : onBack()} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", marginTop: 12, borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontSize: 15, fontWeight: 700 }}>
+            <button onClick={onBack} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", marginTop: 12, borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontSize: 15, fontWeight: 700 }}>
               ⭐ Back to Orders — Rate Now
             </button>
           </div>
