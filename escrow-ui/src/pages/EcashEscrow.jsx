@@ -2208,7 +2208,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
               {loading ? t("voting") : isP2PTrade ? "✓ I sent the fiat payment" : isRepayment ? "✓ I have repaid" : isLending ? "✓ I accept the loan" : "✓ I received what I paid for"}
             </button>
             {!isP2PTrade && <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #b45309, #92400e)", fontSize: 13, padding: "12px 16px" }} onClick={() => setConfirmVote("refund")} disabled={loading}>
-              {isRepayment ? "⚠ Dispute repayment" : isLending ? "⚠ Dispute — I don't agree with the terms" : "⚠ Dispute — I didn’t receive what I paid for"}
+              {isRepayment ? "⚠ Dispute repayment" : isLending ? "⚠ Dispute terms" : "⚠ Dispute — incorrect"}
             </button>}
           </div>
         )}

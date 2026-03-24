@@ -3431,11 +3431,11 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
         )}
 
         {/* ── Lending: Loan Disbursed ── */}
-        {isLoan && status === "completed" && (
+        {isLoan && status === "completed" && !isRepayment && (
           <div style={{ borderRadius: 14, padding: "16px", marginBottom: 16, background: loanRepaymentId ? "linear-gradient(145deg, rgba(239,68,68,0.08), rgba(239,68,68,0.03))" : "linear-gradient(145deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02))", border: loanRepaymentId ? "2px solid rgba(239,68,68,0.4)" : "1px solid rgba(16,185,129,0.2)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <span style={{ fontSize: 20 }}>{"🤝"}</span>
-              <span style={{ fontSize: 15, fontWeight: 700, color: loanRepaymentId ? "#ef4444" : "#10b981" }}>{loanRepaymentId ? "⚠️ Repayment Required" : "Loan Disbursed"}</span>
+              <span style={{ fontSize: 15, fontWeight: 700, color: loanRepaymentId ? "#ef4444" : "#10b981" }}>{repaymentEscrow?.repaymentStatus === "COMPLETED" || repaymentEscrow?.repaymentStatus === "CLAIMED" ? "✅ Loan Complete" : loanRepaymentId ? "⚠️ Repayment Required" : "✅ Loan Disbursed Successfully"}</span>
             </div>
 
             {!loanRepaymentId && !repaymentEscrow && isLender && !(repaymentEscrow?.repaymentStatus === "COMPLETED" || repaymentEscrow?.repaymentStatus === "CLAIMED") && (
