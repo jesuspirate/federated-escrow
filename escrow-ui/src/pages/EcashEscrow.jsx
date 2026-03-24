@@ -1597,6 +1597,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const startHaptic = () => { try { navigator.vibrate?.([40, 20, 40]); } catch {} hapticInterval.current = setInterval(() => { try { navigator.vibrate?.([30, 40, 30]); } catch {} }, 300); };
   const stopHaptic = () => { if (hapticInterval.current) { clearInterval(hapticInterval.current); hapticInterval.current = null; } try { navigator.vibrate?.(0); } catch {} };
   const [pendingNotes, setPendingNotes] = useState(null);
+  const [autoRepaymentId, setAutoRepaymentId] = useState(null);
   const [claimInProgress, setClaimInProgress] = useState(false);
   const [payoutInfo, setPayoutInfo] = useState(null); // { feeMsats, winnerMsats, feeBps }
 
@@ -1937,7 +1938,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             setClaimProgress({ stage: "Redeeming e-cash...", pct: 50, active: true });
             const redeemResult = await window.fediInternal.receiveEcash(pendingNotes);
             // Confirm successful receipt
-            await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
+            const confirmRes = await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
+            if (confirmRes?.autoRepaymentId) setAutoRepaymentId(confirmRes.autoRepaymentId);
             setClaimProgress({ stage: "Confirming receipt...", pct: 80, active: true });
             setPendingNotes(null);
             const receivedSats = payoutInfo?.winnerMsats ? Math.floor(payoutInfo.winnerMsats / 1000) : amountSats;
@@ -2009,8 +2011,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           showToast("Receiving " + receivedAmt.toLocaleString() + " sats...");
           setClaimProgress({ stage: "Receiving sats...", pct: 60, active: true });
           await window.fediInternal.receiveEcash(ecashData.notes);
-          await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
+          const confirmRes = await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
           setClaimProgress({ stage: "Confirming receipt...", pct: 80, active: true });
+          if (confirmRes?.autoRepaymentId) setAutoRepaymentId(confirmRes.autoRepaymentId);
           setPendingNotes(null);
           if (feeSats > 0) {
             showToast(receivedAmt.toLocaleString() + " sats received! (" + feeSats + " sats platform fee)");
@@ -2112,13 +2115,24 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             </button>
           </div>
         )}
-        {/* ═══ P2P/Lending complete ═══ */}
         {status === "COMPLETED" && !e.description?.startsWith("Marketplace:") && (
-          <div style={{ margin: "0 0 16px", padding: "16px 20px", borderRadius: 16, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", textAlign: "center" }}>
-            <div style={{ fontSize: 24, marginBottom: 6 }}>🎉</div>
-            <div style={{ fontSize: 15, fontWeight: 700, color: "#10b981", marginBottom: 4 }}>Trade complete!</div>
-            <button onClick={onBack} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", marginTop: 12, borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontSize: 15, fontWeight: 700 }}>
-              ⭐ Back to Orders — Rate Now
+          <div style={{ margin: "0 0 16px", padding: "16px 20px", borderRadius: 16, background: autoRepaymentId ? "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04))" : "rgba(16,185,129,0.08)", border: autoRepaymentId ? "2px solid rgba(245,158,11,0.4)" : "1px solid rgba(16,185,129,0.2)", textAlign: "center" }}>
+            <div style={{ fontSize: 28, marginBottom: 6 }}>{autoRepaymentId ? "✅💰" : "🎉"}</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: autoRepaymentId ? "#f59e0b" : "#10b981", marginBottom: 6 }}>
+              {autoRepaymentId ? "Loan Disbursed — Repayment Created" : isLending ? "Loan Complete!" : "Trade complete!"}
+            </div>
+            {autoRepaymentId && (
+              <div style={{ fontSize: 12, color: "#cbd5e1", lineHeight: 1.6, marginBottom: 12 }}>
+                A repayment escrow has been automatically created. The borrower must lock their repayment sats.
+              </div>
+            )}
+            {autoRepaymentId && onSwitchToMarketplace && (
+              <button onClick={() => onSwitchToMarketplace(autoRepaymentId)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", marginBottom: 8, borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontSize: 15, fontWeight: 700, boxShadow: "0 4px 16px rgba(245,158,11,0.25)" }}>
+                💰 Open Repayment Escrow
+              </button>
+            )}
+            <button onClick={onBack} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", borderRadius: 12, border: "none", cursor: "pointer", background: autoRepaymentId ? "#1e293b" : "linear-gradient(135deg, #10b981, #059669)", color: autoRepaymentId ? "#94a3b8" : "#fff", fontSize: 14, fontWeight: 600 }}>
+              {autoRepaymentId ? "← Back to Orders" : "⭐ Back to Orders — Rate Now"}
             </button>
           </div>
         )}

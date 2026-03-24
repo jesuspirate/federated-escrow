@@ -664,6 +664,7 @@ router.get("/orders/mine", ...requireAuth, (req: AuthenticatedRequest, res: Resp
         escrowDescription: escrow?.description || null,
         loanParentId: escrow?.loan_parent_id || null,
         listingCategory: listing?.category || null,
+        loanFullyRepaid: escrow?.loan_repayment_id ? (() => { const rep = DB.getEscrow(escrow.loan_repayment_id); return rep && (rep.status === "COMPLETED" || rep.status === "CLAIMED"); })() : false,
       };
     });
 

@@ -674,7 +674,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
       const enriched = unique.map(o => ({
         ...o,
         isRepayment: (o.escrowDescription || "").startsWith("Loan Repayment:") || !!o.loanParentId,
-        isLoanActive: (o.tradeType === "lending" || (o.listingTitle || "").includes("Lending:")) && o.status === "completed",
+        isLoanActive: (o.tradeType === "lending" || (o.listingTitle || "").includes("Lending:")) && o.status === "completed" && !o.loanFullyRepaid,
       }));
       setOrders(enriched);
       // Cache active count for glow badge on next cold start
