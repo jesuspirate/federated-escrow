@@ -1976,6 +1976,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         }
 
         // STEP 1: Claim on server + fetch notes (stores in state for step 2)
+        setClaimProgress({ stage: "Claiming escrow...", pct: 20, active: true });
         if (status !== "CLAIMED" && status !== "COMPLETED" && !claimRetry) {
           try {
             const claim = await api("/" + e.id + "/claim", { method: "POST" });
@@ -1988,6 +1989,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           }
         }
         showToast("Retrieving e-cash notes...");
+        setClaimProgress({ stage: "Retrieving e-cash...", pct: 40, active: true });
         const ecashData = await api("/" + e.id + "/ecash-payout", {}, 0);
         if (ecashData.error) throw new Error(ecashData.error);
         if (ecashData.mode !== "ecash" || !ecashData.notes) throw new Error("No e-cash notes available");
@@ -2005,6 +2007,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           const receivedAmt = ecashData.amountMsats ? Math.floor(ecashData.amountMsats / 1000) : amountSats;
           const feeSats = ecashData.platformFeeMsats ? Math.floor(ecashData.platformFeeMsats / 1000) : 0;
           showToast("Receiving " + receivedAmt.toLocaleString() + " sats...");
+          setClaimProgress({ stage: "Receiving sats...", pct: 60, active: true });
           await window.fediInternal.receiveEcash(ecashData.notes);
           await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
           setClaimProgress({ stage: "Confirming receipt...", pct: 80, active: true });
