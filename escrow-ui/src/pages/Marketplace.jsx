@@ -1970,7 +1970,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         {canBuy && !isP2P && (
           <div style={{ ...M.infoBanner, borderColor: "rgba(16,185,129,0.2)", background: "rgba(16,185,129,0.04)", marginBottom: 14 }}>
             <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
-		You'll lock <strong style={{ color: "#10b981" }}>₿ {fmtSats(l.priceMsats + (l.shippingCostSats ? l.shippingCostSats * 1000 : 0))}</strong> as payment.
+              {isLending(l.category) ? <span>The lender will lock <strong style={{ color: "#10b981" }}>{"₿"} {fmtSats(l.priceMsats)}</strong> for you to borrow.</span> : <span>You'll lock <strong style={{ color: "#10b981" }}>{"₿"} {fmtSats(l.priceMsats + (l.shippingCostSats ? l.shippingCostSats * 1000 : 0))}</strong> as payment.</span>}
             </div>
           </div>
         )}
@@ -2678,6 +2678,7 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
               ...(o.needsRating ? { borderColor: "rgba(245,158,11,0.3)", boxShadow: "0 0 12px rgba(245,158,11,0.08)" } : {}),
               /* opacity removed for cleaner look */
               ...(o.status === "expired" || o.status === "cancelled" ? { opacity: 0.35 } : {}),
+              ...(o.isRepayment && (o.status === "active" || o.status === "pending") ? { borderColor: "rgba(245,158,11,0.5)", boxShadow: "0 0 16px rgba(245,158,11,0.15)", animation: "pulse 2s infinite" } : {}),
             }} onClick={() => onOpenOrder(o)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={M.cardTitle}>{o.listingTitle || "(deleted)"}</span>
@@ -2691,6 +2692,9 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
                     }}>
                       ⭐ Rate
                     </span>
+                  )}
+                  {o.isRepayment && (o.status === "active" || o.status === "pending") && (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 8px", borderRadius: 99, fontSize: 10, fontWeight: 700, color: "#f59e0b", background: "rgba(245,158,11,0.12)", animation: "pulse 2s infinite" }}>💰 Repay</span>
                   )}
                   <OrderBadge status={o.status} />
                 </div>
