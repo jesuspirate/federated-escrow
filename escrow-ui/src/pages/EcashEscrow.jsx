@@ -1560,6 +1560,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const status = e.status;
   const [showBurst, setShowBurst] = useState(false);
   const [locking, setLocking] = useState(false);
+  const [lockProgress, setLockProgress] = useState({ stage: "", pct: 0, active: false });
+  const [claimProgress, setClaimProgress] = useState({ stage: "", pct: 0, active: false });
   const [fedMismatch, setFedMismatch] = useState(null);
   const prevStatus = useRef(status);
 
@@ -1589,6 +1591,11 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
   const [lockInvoice, setLockInvoice] = useState(null); // { invoice, bolt11 }
   const [lockStep, setLockStep] = useState("idle"); // idle | fetching | ready | paying | done
   const [claimRetry, setClaimRetry] = useState(() => status === "CLAIMED"); // auto-detect if escrow is already claimed (user rejected invoice on prior attempt)
+
+  // Haptic pulse — continuous vibration during lock/claim
+  const hapticInterval = useRef(null);
+  const startHaptic = () => { try { navigator.vibrate?.([40, 20, 40]); } catch {} hapticInterval.current = setInterval(() => { try { navigator.vibrate?.([30, 40, 30]); } catch {} }, 300); };
+  const stopHaptic = () => { if (hapticInterval.current) { clearInterval(hapticInterval.current); hapticInterval.current = null; } try { navigator.vibrate?.(0); } catch {} };
   const [pendingNotes, setPendingNotes] = useState(null);
   const [claimInProgress, setClaimInProgress] = useState(false);
   const [payoutInfo, setPayoutInfo] = useState(null); // { feeMsats, winnerMsats, feeBps }
@@ -1652,6 +1659,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       return;
     }
     setLocking(true);
+      startHaptic();
+      setLockProgress({ stage: "Verifying federation...", pct: 10, active: true });
     try {
       // Federation check before generating e-cash
       try {
@@ -1671,6 +1680,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       } catch {}
       // Pre-fetch session token BEFORE generateEcash to avoid auth prompt during lock
       await getSessionToken_escrow();
+      setLockProgress({ stage: "Generating e-cash...", pct: 30, active: true });
       const amountSats = Math.floor(e.amountMsats / 1000);
       // Call generateEcash
       let notes;
@@ -1678,6 +1688,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         notes = await window.fediInternal.generateEcash({ amount: amountSats });
       } catch (genErr) {
         showToast("E-cash cancelled or failed. Tap to try again.", "error");
+        stopHaptic(); setLockProgress({ stage: "", pct: 0, active: false });
         setLocking(false);
         return;
       }
@@ -1685,10 +1696,12 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       if (!notes || typeof notes !== "string" || notes.length < 20) {
         showToast("No e-cash notes generated. Tap to try again.", "error");
         setLocking(false);
+        stopHaptic(); setLockProgress({ stage: "", pct: 0, active: false });
         return;
       }
 
 
+      setLockProgress({ stage: "Verifying notes...", pct: 60, active: true });
       // POST-GENERATE federation check: compare notes prefix against seller's stored prefix
       const expectedPrefix = e.sellerFedPrefix || e.seller_fed_prefix;
       const _isSandbox = !window.fediInternal || isDevMode();
@@ -1704,6 +1717,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           });
           setLocking(false);
           return;
+          stopHaptic(); setLockProgress({ stage: "", pct: 0, active: false });
         }
       }
       // Clear any previous mismatch on successful prefix match
@@ -1715,6 +1729,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       }
 
       showToast("Locking e-cash in escrow...");
+      setLockProgress({ stage: "Locking in escrow...", pct: 80, active: true });
       // Use direct fetch with Bearer token — never trigger NIP-98 during lock
       const lockHeaders = { "Content-Type": "application/json" };
       let lockToken = window.__smToken;
@@ -1734,9 +1749,15 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       if (lock.error) throw new Error(lock.error);
 
       showToast("E-cash locked! Instant. Pure Fedimint.");
+      setLockProgress({ stage: "✅ Locked!", pct: 100, active: true });
+      stopHaptic();
+      try { navigator.vibrate?.([100, 50, 100, 50, 200]); } catch {} // success burst
+      setTimeout(() => setLockProgress({ stage: "", pct: 0, active: false }), 2000);
       try { onRefresh(); } catch {}
     } catch (err) {
       showToast(err.message || "E-cash lock failed", "error");
+      stopHaptic();
+      setLockProgress({ stage: "", pct: 0, active: false });
     }
     setLocking(false);
   };
@@ -1884,6 +1905,8 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
   const handleClaim = async () => {
     setClaimInProgress(true);
+    startHaptic();
+    setClaimProgress({ stage: "Preparing claim...", pct: 10, active: true });
     setLoading(true);
     try {
       let amountSats = Math.floor((e.amountMsats || 0) / 1000);
@@ -1911,9 +1934,11 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
               }
             } catch {}
             showToast("Redeeming " + amountSats.toLocaleString() + " sats...");
+            setClaimProgress({ stage: "Redeeming e-cash...", pct: 50, active: true });
             const redeemResult = await window.fediInternal.receiveEcash(pendingNotes);
             // Confirm successful receipt
             await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
+            setClaimProgress({ stage: "Confirming receipt...", pct: 80, active: true });
             setPendingNotes(null);
             const receivedSats = payoutInfo?.winnerMsats ? Math.floor(payoutInfo.winnerMsats / 1000) : amountSats;
             const feeSats = payoutInfo?.feeMsats ? Math.floor(payoutInfo.feeMsats / 1000) : 0;
@@ -1922,6 +1947,10 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             } else {
               showToast("E-cash received! " + receivedSats.toLocaleString() + " sats in your wallet!");
             }
+            setClaimProgress({ stage: "✅ Claimed!", pct: 100, active: true });
+            stopHaptic();
+            try { navigator.vibrate?.([100, 50, 100, 50, 200]); } catch {}
+            setTimeout(() => setClaimProgress({ stage: "", pct: 0, active: false }), 2000);
             // Stay on escrow view — show completion, let user navigate via back button
             onRefresh();
           } catch (redeemErr) {
@@ -1978,11 +2007,16 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           showToast("Receiving " + receivedAmt.toLocaleString() + " sats...");
           await window.fediInternal.receiveEcash(ecashData.notes);
           await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
+          setClaimProgress({ stage: "Confirming receipt...", pct: 80, active: true });
           setPendingNotes(null);
           if (feeSats > 0) {
             showToast(receivedAmt.toLocaleString() + " sats received! (" + feeSats + " sats platform fee)");
           } else {
             showToast("E-cash received! " + receivedAmt.toLocaleString() + " sats in your wallet!");
+          setClaimProgress({ stage: "✅ Claimed!", pct: 100, active: true });
+          stopHaptic();
+          try { navigator.vibrate?.([100, 50, 100, 50, 200]); } catch {}
+          setTimeout(() => setClaimProgress({ stage: "", pct: 0, active: false }), 2000);
           }
           onRefresh();
         } catch (autoRedeemErr) {
@@ -1990,6 +2024,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           console.warn("[claim] auto-redeem failed:", autoRedeemErr);
           showToast("Tap the redeem button to complete.", "error");
         }
+        stopHaptic(); setClaimProgress({ stage: "", pct: 0, active: false });
         setClaimInProgress(false);
         setLoading(false);
         return;
@@ -2015,6 +2050,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       /* LIGHTNING PAYOUT CODE REMOVED — see git history for reference */
     } catch (err) { showToast(err.message, "error"); }
     setClaimInProgress(false);
+    stopHaptic(); setClaimProgress({ stage: "", pct: 0, active: false });
     setLoading(false);
   };
 
@@ -2235,6 +2271,17 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             </div>
           </div>
         )}
+        {claimProgress.active && (
+          <div style={{ marginBottom: 12, padding: "12px 16px", borderRadius: 12, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 12 }}>
+              <span style={{ color: "#10b981", fontWeight: 600 }}>{claimProgress.stage}</span>
+              <span style={{ color: "#64748b" }}>{claimProgress.pct}%</span>
+            </div>
+            <div style={{ height: 6, borderRadius: 3, background: "#1e293b", overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: 3, background: "linear-gradient(90deg, #10b981, #059669)", width: claimProgress.pct + "%", transition: "width 0.5s ease" }} />
+            </div>
+          </div>
+        )}
         {(canClaim || canReclaimExpired) && !claimRetry && (
           <button className="claim-btn" style={{ ...S.actionBtn, background: "linear-gradient(135deg, #10b981, #059669)", boxShadow: "0 4px 24px rgba(16,185,129,0.3)", margin: "4px 0 12px", animation: "pulseGreenBig 2s ease infinite", fontSize: 16, padding: "16px 20px" }} onClick={() => { try { navigator.vibrate?.([50, 30, 50]); } catch {} handleClaim(); }} disabled={loading}>
             {loading ? t("claiming") : pendingNotes ? (payoutInfo?.feeMsats > 0 ? "🔐 Redeem " + Math.floor((payoutInfo?.winnerMsats || e.amountMsats) / 1000).toLocaleString() + " sats" : "🔐 Redeem E-cash Now") : "⚡ Receive " + fmtSats(e.amountMsats) + " sats"}
@@ -2263,6 +2310,17 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             <button onClick={() => setFedMismatch(null)} style={{ background: "transparent", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 8, padding: "6px 14px", color: "#f59e0b", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
               Dismiss
             </button>
+          </div>
+        )}
+        {lockProgress.active && (
+          <div style={{ marginBottom: 12, padding: "12px 16px", borderRadius: 12, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 12 }}>
+              <span style={{ color: "#f59e0b", fontWeight: 600 }}>{lockProgress.stage}</span>
+              <span style={{ color: "#64748b" }}>{lockProgress.pct}%</span>
+            </div>
+            <div style={{ height: 6, borderRadius: 3, background: "#1e293b", overflow: "hidden" }}>
+              <div style={{ height: "100%", borderRadius: 3, background: "linear-gradient(90deg, #f59e0b, #d97706)", width: lockProgress.pct + "%", transition: "width 0.5s ease" }} />
+            </div>
           </div>
         )}
         {canLock && (
