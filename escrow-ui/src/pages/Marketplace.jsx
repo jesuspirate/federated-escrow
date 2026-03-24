@@ -811,7 +811,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           onOpen={openListing}
           onCreate={() => setView("create")}
           onOrders={openOrders}
-          activeOrderCount={orders.length > 0 ? orders.filter(o => (o.status === "pending" || o.status === "active") && !o.isRepayment && (subdomain === "lending" ? (o.escrowDescription || "").startsWith("Lending:") : subdomain === "p2p" ? o.tradeType === "sats-for-fiat" : o.tradeType !== "sats-for-fiat" && o.tradeType !== "lending" && !(o.escrowDescription || "").startsWith("Lending:"))).length : cachedOrderCount}
+          activeOrderCount={orders.length > 0 ? orders.filter(o => (o.status === "pending" || o.status === "active") && !o.isRepayment).length : cachedOrderCount}
           onRefresh={() => loadListings(searchQuery)}
           onSwitchToEscrow={onSwitchToEscrow}
           onProfile={openProfile}
@@ -3258,11 +3258,11 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
   const status = detail?.order?.status || o.status;
   // Only show rating prompt AFTER detail loads AND confirms no rating exists
   const detailLoaded = detail != null;
-  const needsRating = detailLoaded && status === "completed" && !rated && (!isLoan || isRepayment);
   const otherPubkey = isBuyer ? o.sellerPubkey : o.buyerPubkey;
   const isP2P = detail?.tradeType === "sats-for-fiat" || isSatsForFiat(detail?.listing?.category);
   const isLoan = detail?.tradeType === "lending" || isLending(detail?.listing?.category) || (escrow?.description || "").startsWith("Lending:") || (escrow?.description || "").startsWith("Loan Repayment");
   const isRepayment = (escrow?.description || "").startsWith("Loan Repayment") || (detail?.listing?.category === "lending" && escrow?.loanParentId);
+  const needsRating = detailLoaded && status === "completed" && !rated && (!isLoan || isRepayment);
   const isLender = isLoan && o.sellerPubkey === pubkey;
   const isBorrower = isLoan && o.buyerPubkey === pubkey;
   const otherRole = isLoan ? (isBuyer ? "Lender" : "Borrower") : isBuyer ? t("seller") : t("buyer");
