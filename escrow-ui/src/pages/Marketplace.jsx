@@ -2609,13 +2609,10 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
   const sorted = [...orders].filter(o => {
     // Status filter
     // Hide repayment orders from non-lending subdomains
-    if (subdomain !== "lending" && o.isRepayment) return false;
-    if (orderFilter === "repayments") return o.isRepayment;
-    if (orderFilter === "active") return (o.status === "active" || o.status === "pending" || o.isLoanActive) && !o.isRepayment;
-    if (orderFilter === "completed") return o.status === "completed" && !o.isLoanActive && !o.isRepayment;
+    if (orderFilter === "active") return (o.status === "active" || o.status === "pending" || o.isLoanActive);
+    if (orderFilter === "completed") return o.status === "completed" && !o.isLoanActive;
     if (orderFilter === "cancelled") return o.status === "cancelled" || o.status === "expired";
-    // "all" — but still hide repayments from non-lending
-    if (subdomain !== "lending") return !o.isRepayment;
+    return true;
     return true;
   }).filter(o => {
     if (!orderSearch.trim()) return true;
@@ -2649,10 +2646,9 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
       </div>
       <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto" }}>
         {[
-          { key: "all", label: "All", count: subdomain === "lending" ? orders.length : orders.filter(o => !o.isRepayment).length },
-          { key: "active", label: subdomain === "lending" ? "In Progress" : "Active", count: orders.filter(o => (o.status === "active" || o.status === "pending" || (o.status === "completed" && o.isLoanActive)) && !(subdomain !== "lending" && o.isRepayment) && !o.isRepayment).length },
-          ...(subdomain === "lending" ? [{ key: "repayments", label: "🔴 Repayments", count: orders.filter(o => o.isRepayment).length }] : []),
-          { key: "completed", label: "Done", count: orders.filter(o => o.status === "completed" && !o.isLoanActive && !o.isRepayment).length },
+          { key: "all", label: "All", count: orders.length },
+          { key: "active", label: subdomain === "lending" ? "In Progress" : "Active", count: orders.filter(o => (o.status === "active" || o.status === "pending" || (o.status === "completed" && o.isLoanActive)) ).length },
+          { key: "completed", label: "Done", count: orders.filter(o => o.status === "completed" && !o.isLoanActive).length },
           ...(subdomain !== "lending" ? [{ key: "cancelled", label: "Closed", count: orders.filter(o => (o.status === "cancelled" || o.status === "expired")).length }] : []),
         ].map(f => (
           <button key={f.key} onClick={() => setOrderFilter(f.key)} style={{
@@ -2684,7 +2680,7 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
               ...(o.status === "expired" || o.status === "cancelled" ? { opacity: 0.35 } : {}),
             }} onClick={() => onOpenOrder(o)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={M.cardTitle}>{o.isLoanActive ? "🔴 " : ""}{o.listingTitle || "(deleted)"}</span>
+                <span style={M.cardTitle}>{o.listingTitle || "(deleted)"}</span>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   {o.needsRating && (
                     <span style={{
@@ -2709,11 +2705,6 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
               <div style={{ fontSize: 11, fontFamily: "monospace", color: "#334155", marginTop: 4 }}>
                 {o.id} → {o.escrowId}
               </div>
-              {o.isLoanActive && o.sellerPubkey === pubkey && !o.isRepayment && (
-                <div style={{ marginTop: 6, padding: "6px 12px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)", fontSize: 11, fontWeight: 700, color: "#ef4444", textAlign: "center", animation: "pulse 2s infinite" }}>
-                  ⚠️ Create repayment escrow — borrower is waiting
-                </div>
-              )}
             </button>
           ))}
         </div>
