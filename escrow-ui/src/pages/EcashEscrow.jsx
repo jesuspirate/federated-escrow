@@ -886,8 +886,9 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
       {view === "create" && <CreateView pubkey={pubkey} locale={locale} onBack={() => setView("list")} onCreated={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "join" && <JoinView pubkey={pubkey} onBack={() => setView("list")} onJoined={(id) => { loadEscrows(); openDetail(id); }} showToast={showToast} setLoading={setLoading} loading={loading} />}
       {view === "detail" && selected && <DetailView escrow={selected} pubkey={pubkey} onBack={() => {
-        if (cameFromMarketplace) {
+        if (cameFromMarketplace || subdomain !== "escrow") {
           setCameFromMarketplace(false);
+          if (onSwitchToMarketplaceOrders) { onSwitchToMarketplaceOrders("__ORDERS__"); return; }
         }
         setSelected(null); setView("list"); loadEscrows();
       }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} onSwitchToMarketplace={onSwitchToMarketplace} onSwitchToMarketplaceOrders={onSwitchToMarketplaceOrders} cameFromMarketplace={cameFromMarketplace} subdomain={subdomain} />}

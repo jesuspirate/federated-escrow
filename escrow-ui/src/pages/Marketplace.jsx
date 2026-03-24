@@ -2602,7 +2602,7 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
   const [orderSearch, setOrderSearch] = useState("");
   const activeCount = orders.filter(o => o.status === "active" || o.status === "pending").length;
   const needsRatingCount = orders.filter(o => o.needsRating).length;
-  const defaultFilter = initialFilter || (activeCount > 0 ? "active" : needsRatingCount > 0 ? "all" : "active");
+  const defaultFilter = initialFilter || (activeCount > 0 ? "active" : "all");
   const [orderFilter, setOrderFilter] = useState(defaultFilter);
   useEffect(() => { if (initialFilter) { setOrderFilter(initialFilter); if (onFilterConsumed) onFilterConsumed(); } }, [initialFilter]);
   // Sort: needs-rating first, then by date
