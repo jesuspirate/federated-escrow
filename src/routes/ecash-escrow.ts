@@ -76,6 +76,7 @@ function isArbiterAllowed(pubkey: string): boolean {
 import { Router, Request, Response, NextFunction } from "express";
 import { verifyEvent } from "nostr-tools/pure";
 import * as DB from "../db";
+import db from "../db";
 import * as Notify from "../notifications";
 import * as FM from "../fedimint";
 import { matrixBot } from "./matrix-bot";
@@ -1093,7 +1094,9 @@ router.post("/:id/confirm-ecash-received", (req: AuthenticatedRequest, res: Resp
     // ── Auto-create repayment escrow for lending trades ──
     let autoRepaymentId = null;
     if ((row.description || "").startsWith("Lending:") && !row.loan_repayment_id) {
+      console.log("[lending] Auto-repayment check:", row.id, "desc starts with Lending:", (row.description || "").startsWith("Lending:"), "loan_repayment_id:", row.loan_repayment_id);
       try {
+        console.log("[lending] Auto-repayment: checking order for", row.id, "desc:", row.description?.substring(0,30), "repayId:", row.loan_repayment_id);
         const order = db.prepare("SELECT * FROM orders WHERE escrow_id = ?").get(row.id) as any;
         const listing = order ? db.prepare("SELECT * FROM listings WHERE id = ?").get(order.listing_id) as any : null;
         if (order && listing) {

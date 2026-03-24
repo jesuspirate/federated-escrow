@@ -3398,7 +3398,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             {status === "pending"
               ? (isP2P
                   ? (isBuyer ? (isRepayment ? "💰 Lock Repayment" : isLoan ? "✓ Accept Loan" : "View Trade") : (isRepayment ? "🔍 View Repayment" : isLoan ? "🤝 Fund Loan" : "🔐 Lock E-cash"))
-                  : (isRepayment ? (isBuyer ? "💰 Lock Repayment" : "🔍 View Repayment") : (isBuyer ? "🔐 Lock Payment" : "View Trade")))
+                  : (isRepayment ? (isBuyer ? "💰 Lock Repayment" : "🔍 View Repayment") : isLoan ? (isBuyer ? "✓ Accept Loan" : "🤝 Fund Loan") : (isBuyer ? "🔐 Lock Payment" : "View Trade")))
               : isRepayment ? "💰 Open Repayment" : isLoan ? "🤝 Open Loan" : "⚡ Open Trade"
             }
           </button>
@@ -3410,7 +3410,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             {status === "pending" && (
               isP2P
                 ? (isBuyer ? "Waiting for seller to lock e-cash…" : ("🔐 Lock your e-cash to start the trade. Make sure you have ₿ " + fmtSats(o.amountMsats) + " sats in your federation wallet."))
-                : (isRepayment ? (isBuyer ? "Lock your sats to repay the loan." : "Waiting for borrower to lock repayment sats…") : (isBuyer ? "Lock your e-cash as payment." : "Waiting for buyer to lock payment…"))
+                : (isRepayment ? (isBuyer ? "Lock your sats to repay the loan." : "Waiting for borrower to lock repayment sats…") : isLoan ? (isBuyer ? "Waiting for lender to fund the loan…" : "🤝 Lock your sats to fund this loan.") : (isBuyer ? "Lock your e-cash as payment." : "Waiting for buyer to lock payment…"))
             )}
             {status === "active" && "Trade in progress — open to vote and confirm."}
           </div>
