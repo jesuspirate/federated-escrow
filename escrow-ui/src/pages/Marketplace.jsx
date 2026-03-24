@@ -1936,7 +1936,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
               ? (isP2P ? "Starting trade…" : t("mkBuying"))
               : isP2P
                 ? (hasRange ? ("Start Trade — ₿ " + (() => { const b = parseInt(buyAmount) || 0; const rm = (l.terms || "").match(/Rate:\s*(\d+)/); const rp = rm ? parseFloat(rm[1]) : 0; return rp > 0 ? (b + Math.ceil(b * rp / 100)).toLocaleString() : (buyAmount || "?"); })() + " sats") : ("Start Trade — ₿ " + fmtSats(l.priceMsats) + " sats"))
-                : ("⚡ Buy for ₿ " + fmtSats(l.priceMsats + (l.shippingCostSats ? l.shippingCostSats * 1000 : 0)))
+                : isLending(l.category) ? ("🤝 Accept Loan — ₿ " + fmtSats(l.priceMsats)) : ("⚡ Buy for ₿ " + fmtSats(l.priceMsats + (l.shippingCostSats ? l.shippingCostSats * 1000 : 0)))
             }
           </button>
         )}
