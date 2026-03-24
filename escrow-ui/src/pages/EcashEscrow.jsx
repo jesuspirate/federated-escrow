@@ -1779,7 +1779,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
   // ── Subdomain-aware labels ──
   const labels = (() => {
-    const sd = subdomain || "marketplace";
+    const sd = e.description?.startsWith("P2P Trade:") ? "p2p" : e.description?.startsWith("Marketplace:") ? "market" : e.description?.startsWith("Loan Repayment") ? "lending" : e.description?.startsWith("Lending:") ? "lending" : (subdomain || "marketplace");
     const lockRole = e.lock_role || "seller";
     const isLocker = role === lockRole;
     if (sd === "p2p") return {
