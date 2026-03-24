@@ -402,7 +402,9 @@ function formatOrder(row: OrderRow, opts?: { pubkey?: string; listingTitle?: str
   if (opts?.pubkey && row.status === "completed") {
     const myRating = stmts.getRatingByOrderAndRater.get(row.id, opts.pubkey) as RatingRow | undefined;
     base.myRating = myRating ? { score: myRating.score, comment: myRating.comment, createdAt: myRating.created_at } : null;
-    base.needsRating = !myRating;
+    const esc = DB.getEscrow(row.escrow_id);
+    const isLendingDisbursement = esc && (esc.description || "").startsWith("Lending:") && !esc.loan_parent_id;
+    base.needsRating = !myRating && !isLendingDisbursement;
   }
 
   return base;
