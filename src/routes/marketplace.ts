@@ -451,7 +451,9 @@ function syncOrderWithEscrow(order: OrderRow): OrderRow {
 
     // If escrow expired before lock (no sats at risk), restore listing quantity
     if (expectedStatus === "expired" && !escrow.locked_at) {
+      const isRepOrder = (escrow.description || "").startsWith("Loan Repayment");
       const listing = stmts.getById.get(order.listing_id) as ListingRow | undefined;
+      if (listing && !isRepOrder && (listing.status === "sold" || listing.quantity <= 0)) {
       if (listing && (listing.status === "sold" || listing.quantity <= 0)) {
         db.prepare(`UPDATE listings SET quantity = quantity + 1, status = 'active', updated_at = datetime('now') WHERE id = ?`).run(order.listing_id);
         console.log(`[marketplace] Listing ${order.listing_id} quantity restored (expired before lock)`);
@@ -1168,8 +1170,11 @@ router.post("/:id/cancel", ...requireAuth, (req: AuthenticatedRequest, res: Resp
     stmts.updateOrderStatus.run("cancelled", order.id);
 
     // Restore listing quantity
+    // Restore listing quantity (skip for repayment orders)
+    const escrowForCancel = DB.getEscrow(order.escrow_id);
+    const isRepaymentOrder = escrowForCancel && (escrowForCancel.description || "").startsWith("Loan Repayment");
     const listing = stmts.getById.get(order.listing_id) as ListingRow | undefined;
-    if (listing) {
+    if (listing && !isRepaymentOrder) {
       db.prepare(`UPDATE listings SET quantity = quantity + 1, updated_at = datetime('now') WHERE id = ?`).run(order.listing_id);
       // If listing was marked sold, reactivate it
       if (listing.status === "sold") {
