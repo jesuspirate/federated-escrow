@@ -1954,7 +1954,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             try { navigator.vibrate?.([100, 50, 100, 50, 200]); } catch {}
             setTimeout(() => setClaimProgress({ stage: "", pct: 0, active: false }), 2000);
             // Stay on escrow view — show completion, let user navigate via back button
-            onRefresh();
+            setTimeout(() => { setClaimProgress({ stage: "", pct: 0, active: false }); onRefresh(); }, 1500);
           } catch (redeemErr) {
             const errMsg = String(redeemErr.message || redeemErr || "");
             console.warn("[claim] receiveEcash error:", errMsg);
@@ -2024,7 +2024,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           try { navigator.vibrate?.([100, 50, 100, 50, 200]); } catch {}
           setTimeout(() => setClaimProgress({ stage: "", pct: 0, active: false }), 2000);
           }
-          onRefresh();
+          setTimeout(() => { setClaimProgress({ stage: "", pct: 0, active: false }); onRefresh(); }, 1500);
         } catch (autoRedeemErr) {
           // Auto-redeem failed — fall back to manual tap (notes already in state)
           console.warn("[claim] auto-redeem failed:", autoRedeemErr);
@@ -2039,14 +2039,20 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       // ── DEV/SANDBOX MODE: Skip receiveEcash, just confirm on server ──
       if (isDevMode()) {
         try {
+          setClaimProgress({ stage: "Claiming escrow...", pct: 30, active: true });
           const claim = await api("/" + e.id + "/claim", { method: "POST" });
           if (claim.error && !String(claim.error).includes("CLAIMED")) throw new Error(claim.error);
         } catch (claimErr) {
           if (!String(claimErr.message || "").includes("CLAIMED") && !String(claimErr.message || "").includes("APPROVED")) throw claimErr;
         }
-        await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
+        setClaimProgress({ stage: "Confirming receipt...", pct: 70, active: true });
+        const confirmRes = await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
+        if (confirmRes?.autoRepaymentId) setAutoRepaymentId(confirmRes.autoRepaymentId);
+        setClaimProgress({ stage: "✅ Claimed!", pct: 100, active: true });
+        stopHaptic();
+        try { navigator.vibrate?.([100, 50, 100, 50, 200]); } catch {}
         showToast("Sats claimed! (sandbox mode)");
-        onRefresh();
+        setTimeout(() => { setClaimProgress({ stage: "", pct: 0, active: false }); onRefresh(); }, 1500);
         setLoading(false);
         return;
       }
@@ -2119,7 +2125,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
           <div style={{ margin: "0 0 16px", padding: "16px 20px", borderRadius: 16, background: autoRepaymentId ? "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04))" : "rgba(16,185,129,0.08)", border: autoRepaymentId ? "2px solid rgba(245,158,11,0.4)" : "1px solid rgba(16,185,129,0.2)", textAlign: "center" }}>
             <div style={{ fontSize: 28, marginBottom: 6 }}>{autoRepaymentId ? "✅💰" : "🎉"}</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: autoRepaymentId ? "#f59e0b" : "#10b981", marginBottom: 6 }}>
-              {autoRepaymentId ? "Loan Disbursed — Repayment Created" : isLending ? "Loan Complete!" : "Trade complete!"}
+              {autoRepaymentId ? "Loan Disbursed — Repayment Created" : isLending ? "✅ Loan Disbursed Successfully" : "Trade complete!"}
             </div>
             {autoRepaymentId && (
               <div style={{ fontSize: 12, color: "#cbd5e1", lineHeight: 1.6, marginBottom: 12 }}>
@@ -2132,7 +2138,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
               </button>
             )}
             <button onClick={onBack} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", borderRadius: 12, border: "none", cursor: "pointer", background: autoRepaymentId ? "#1e293b" : "linear-gradient(135deg, #10b981, #059669)", color: autoRepaymentId ? "#94a3b8" : "#fff", fontSize: 14, fontWeight: 600 }}>
-              {autoRepaymentId ? "← Back to Orders" : "⭐ Back to Orders — Rate Now"}
+              {autoRepaymentId || isLending ? "← Back to Orders" : "⭐ Back to Orders — Rate Now"}
             </button>
           </div>
         )}
