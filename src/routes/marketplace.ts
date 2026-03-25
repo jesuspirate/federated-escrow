@@ -1279,7 +1279,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
 
     // ── Lending level enforcement ──────────────────────────────────────
     if (isLenderTrade(listing.category)) {
-      const borrowerLevel = getBorrowerLevel(pk);
+      const borrowerLevel = getBorrowerLevel(buyerPubkey);
       const loanSats = Math.floor(listing.price_msats / 1000);
       if (loanSats > borrowerLevel.maxSats) {
         return res.status(403).json({
