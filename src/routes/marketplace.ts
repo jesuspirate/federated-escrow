@@ -236,7 +236,7 @@ const stmts = {
   // Listings
   insert: db.prepare(`
     INSERT INTO listings (id, seller_pubkey, title, description, price_msats, currency_display, category, condition, images, terms, community_link, status, quantity, min_price_msats, max_price_msats, seller_fed_domain, seller_fed_prefix, shipping_cost_msats, federation_only)
-    VALUES (@id, @seller_pubkey, @title, @description, @price_msats, @currency_display, @category, @condition, @images, @terms, @community_link, 'active', @quantity, @min_price_msats, @max_price_msats, @seller_fed_domain, @seller_fed_prefix, @shipping_cost_msats, federation_only)
+    VALUES (@id, @seller_pubkey, @title, @description, @price_msats, @currency_display, @category, @condition, @images, @terms, @community_link, 'active', @quantity, @min_price_msats, @max_price_msats, @seller_fed_domain, @seller_fed_prefix, @shipping_cost_msats, @federation_only)
   `),
   getById: db.prepare(`SELECT * FROM listings WHERE id = ?`),
   listActive: db.prepare(`SELECT * FROM listings WHERE status = ? ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END, updated_at DESC LIMIT ? OFFSET ?`),
@@ -603,6 +603,7 @@ router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
       seller_fed_domain: sellerFedDomain?.trim() || null,
       seller_fed_prefix: sellerFedPrefix?.trim() || null,
       shipping_cost_msats: shippingCostSats ? Math.floor(Number(shippingCostSats) * 1000) : 0,
+      federation_only: req.body.federationOnly ? 1 : 0,
     });
 
     const row = stmts.getById.get(id) as ListingRow;

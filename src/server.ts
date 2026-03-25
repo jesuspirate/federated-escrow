@@ -2,11 +2,11 @@
 import express from "express";
 import cors from "cors";
 import path from "path";
+import db from "./db";
 import ecashEscrowRoutes from "./routes/ecash-escrow";
 import marketplaceRoutes from "./routes/marketplace";
 import chapsmartRoutes from "./routes/chapsmart";
 import tradeChatRoutes from "./routes/trade-chat";
-import db from "./db";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
