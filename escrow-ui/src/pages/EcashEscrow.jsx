@@ -2052,8 +2052,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
         stopHaptic();
         try { navigator.vibrate?.([100, 50, 100, 50, 200]); } catch {}
         showToast("Sats claimed! (sandbox mode)");
-        setTimeout(() => { setClaimProgress({ stage: "", pct: 0, active: false }); onRefresh(); }, 1500);
+        setTimeout(() => { setClaimProgress({ stage: "", pct: 0, active: false }); setClaimInProgress(false); onRefresh(); }, 1500);
         setLoading(false);
+        setClaimInProgress(false);
         return;
       }
       showToast("E-cash not available in this environment.", "error");
