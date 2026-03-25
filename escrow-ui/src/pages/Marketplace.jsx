@@ -2656,7 +2656,7 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
   const sorted = [...orders].filter(o => {
     // Status filter
     // Hide repayment orders from non-lending subdomains
-    if (orderFilter === "active") return (o.status === "active" || o.status === "pending" || o.isLoanActive);
+    if (orderFilter === "active") return (o.status === "active" || o.status === "pending" );
     if (orderFilter === "completed") return o.status === "completed" && !o.isLoanActive;
     if (orderFilter === "cancelled") return o.status === "cancelled" || o.status === "expired";
     return true;
@@ -2694,7 +2694,7 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
       <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto" }}>
         {[
           { key: "all", label: "All", count: orders.length },
-          { key: "active", label: subdomain === "lending" ? "In Progress" : "Active", count: orders.filter(o => (o.status === "active" || o.status === "pending" || (o.status === "completed" && o.isLoanActive)) ).length },
+          { key: "active", label: subdomain === "lending" ? "In Progress" : "Active", count: orders.filter(o => (o.status === "active" || o.status === "pending") ).length },
           { key: "completed", label: "Done", count: orders.filter(o => o.status === "completed" && !o.isLoanActive).length },
           ...(subdomain !== "lending" ? [{ key: "cancelled", label: "Closed", count: orders.filter(o => (o.status === "cancelled" || o.status === "expired")).length }] : []),
         ].map(f => (
