@@ -306,6 +306,31 @@ function isSatsForFiat(category: string | null): boolean {
   return category?.toLowerCase().trim() === SATS_FOR_FIAT_CATEGORY;
 }
 
+
+// ── Lending Levels — 5-tier credit system ──────────────────────────────
+const LENDING_LEVELS = [
+  { level: 1, name: "Newcomer", maxSats: 5000, minScore: 0 },
+  { level: 2, name: "Member", maxSats: 25000, minScore: 15 },
+  { level: 3, name: "Trusted", maxSats: 100000, minScore: 50 },
+  { level: 4, name: "Senior", maxSats: 500000, minScore: 120 },
+  { level: 5, name: "Elder", maxSats: 2000000, minScore: 300 },
+];
+function getBorrowerLevel(pubkey: string): { level: number; name: string; maxSats: number; trustScore: number } {
+  const completedRepayments = db.prepare("SELECT id, loan_due_at, updated_at FROM escrows WHERE buyer_pubkey = ? AND loan_parent_id IS NOT NULL AND (status = 'COMPLETED' OR status = 'CLAIMED')").all(pubkey) as any[];
+  const now = Date.now();
+  let trustScore = 0;
+  (completedRepayments || []).forEach((r: any) => {
+    const dueDate = new Date(r.loan_due_at).getTime();
+    const completedDate = new Date(r.updated_at).getTime();
+    const onTime = completedDate <= dueDate;
+    const ageMs = now - completedDate;
+    const recency = Math.max(0, 1 - ageMs / (365 * 86400000));
+    trustScore += onTime ? (10 * recency + 5) : (2 * recency);
+  });
+  trustScore = Math.round(trustScore);
+  const tier = [...LENDING_LEVELS].reverse().find(l => trustScore >= l.minScore) || LENDING_LEVELS[0];
+  return { level: tier.level, name: tier.name, maxSats: tier.maxSats, trustScore };
+}
 function isLenderTrade(category: string | null): boolean {
   return category?.toLowerCase().trim() === "lending";
 }
@@ -814,6 +839,7 @@ router.get("/profile/:pubkey", (req: AuthenticatedRequest, res: Response) => {
           overdueLoans: overdueLoans?.c || 0,
           defaulted,
           trustScore,
+          lendingLevel: getBorrowerLevel(pk),
         };
       })(),
     });
@@ -821,6 +847,14 @@ router.get("/profile/:pubkey", (req: AuthenticatedRequest, res: Response) => {
     console.error("[marketplace] GET /profile/:pubkey error:", err);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ── GET /lending-level/:pubkey — Borrower lending level ──────────────────
+router.get("/lending-level/:pubkey", (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const level = getBorrowerLevel(req.params.pubkey);
+    res.json({ ...level, levels: LENDING_LEVELS });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
 // ── POST /profile/:pubkey/rate — Rate a seller after completed trade ──
@@ -1242,6 +1276,20 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
       return res.status(400).json({ error: "Could not extract federation ID from listing's community link" });
 
     // ── Pick arbiter ──────────────────────────────────────────────────
+
+    // ── Lending level enforcement ──────────────────────────────────────
+    if (isLenderTrade(listing.category)) {
+      const borrowerLevel = getBorrowerLevel(pk);
+      const loanSats = Math.floor(listing.price_msats / 1000);
+      if (loanSats > borrowerLevel.maxSats) {
+        return res.status(403).json({
+          error: `This loan requires Level ${LENDING_LEVELS.find(l => l.maxSats >= loanSats)?.level || 5} (${LENDING_LEVELS.find(l => l.maxSats >= loanSats)?.name || "Elder"}). You are Level ${borrowerLevel.level} (${borrowerLevel.name}) with max ${borrowerLevel.maxSats.toLocaleString()} sats. Build your trust score by repaying smaller loans on time.`,
+          borrowerLevel: borrowerLevel.level,
+          borrowerMaxSats: borrowerLevel.maxSats,
+          requiredLevel: LENDING_LEVELS.find(l => l.maxSats >= loanSats)?.level || 5,
+        });
+      }
+    }
 
     // Sandbox isolation: use sandbox arbiter for sandbox trades
     const SANDBOX_ARBS = new Set(["aa".repeat(32), "bb".repeat(32), "cc".repeat(32)]);

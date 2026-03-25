@@ -1250,6 +1250,18 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   const [activeCategory, setActiveCategory] = useState("all");
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
   const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
+
+  // Borrower lending level — filter listings above their level
+  const [browseLevel, setBrowseLevel] = useState(null);
+  useEffect(() => {
+    if (subdomain !== "lending") return;
+    (async () => {
+      try {
+        const data = await mapi("/lending-level/" + pubkey);
+        if (!data.error) setBrowseLevel(data);
+      } catch {}
+    })();
+  }, [pubkey, subdomain]);
   // Federation prefix → friendly name mapping
   const FED_NAMES = {
     "AwEEiItw7A": { name: "Bitcoin Life", emoji: "🏛️", color: "#a78bfa" },
@@ -1295,6 +1307,10 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       || (l.description || "").toLowerCase().includes(q)
       || (l.category || "").toLowerCase().includes(q)
       || (l.id || "").toLowerCase().includes(q);
+  }).filter(l => {
+    // Hide lending listings above borrower level (own listings always visible)
+    if (!browseLevel || !isLending(l.category) || l.sellerPubkey === pubkey) return true;
+    return Math.floor(l.priceMsats / 1000) <= browseLevel.maxSats;
   }).slice().sort((a, b) => {
     // Urgent (1 left) first, then available, then sold out
     const rank = (l) => {
@@ -1760,6 +1776,18 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
   const hasRange = l.minPriceSats && l.maxPriceSats && l.minPriceSats !== l.maxPriceSats;
   const [buyAmount, setBuyAmount] = useState(hasRange ? "" : "");
 
+
+  // Lending level for borrower
+  const [myLendingLevel, setMyLendingLevel] = useState(null);
+  useEffect(() => {
+    if (!isLending(l.category) || isSeller) return;
+    (async () => {
+      try {
+        const data = await mapi("/lending-level/" + pubkey);
+        if (!data.error) setMyLendingLevel(data);
+      } catch {}
+    })();
+  }, [l.id, pubkey]);
   const handleBuy = async () => {
     // Federation probe: verify buyer is on same federation as seller
     const sellerPrefix = l.sellerFedPrefix;
@@ -1931,7 +1959,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         )}
 
         {canBuy && (
-          <button style={{ ...M.actionBtn, background: isP2P ? "linear-gradient(135deg, #f59e0b, #d97706)" : "linear-gradient(135deg, #10b981, #059669)", boxShadow: isP2P ? "0 4px 24px rgba(245,158,11,0.3)" : "0 4px 24px rgba(16,185,129,0.3)", color: isP2P ? "#0c0f17" : "#fff", marginBottom: 16 }} onClick={() => { if (hasRange && (!buyAmount || parseInt(buyAmount) < l.minPriceSats || parseInt(buyAmount) > l.maxPriceSats)) { showToast("Pick an amount between " + l.minPriceSats.toLocaleString() + " and " + l.maxPriceSats.toLocaleString() + " sats", "error"); return; } handleBuy(); }} disabled={loading}>
+          <button style={{ ...M.actionBtn, background: isP2P ? "linear-gradient(135deg, #f59e0b, #d97706)" : "linear-gradient(135deg, #10b981, #059669)", boxShadow: isP2P ? "0 4px 24px rgba(245,158,11,0.3)" : "0 4px 24px rgba(16,185,129,0.3)", color: isP2P ? "#0c0f17" : "#fff", marginBottom: 16 }} onClick={() => { if (hasRange && (!buyAmount || parseInt(buyAmount) < l.minPriceSats || parseInt(buyAmount) > l.maxPriceSats)) { showToast("Pick an amount between " + l.minPriceSats.toLocaleString() + " and " + l.maxPriceSats.toLocaleString() + " sats", "error"); return; } handleBuy(); }} disabled={loading || (isLending(l.category) && myLendingLevel && Math.floor(l.priceMsats / 1000) > myLendingLevel.maxSats)}>
             {loading
               ? (isP2P ? "Starting trade…" : t("mkBuying"))
               : isP2P
@@ -1965,6 +1993,25 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
             <span style={{ fontSize: 14 }}>{"🏛️"}</span>
             <span style={{ fontSize: 12, fontWeight: 600, color: "#a78bfa" }}>Federation: {getFedName(l.sellerFedPrefix, l.sellerFedDomain)}</span>
             <span style={{ fontSize: 10, color: "#64748b", marginLeft: "auto" }}>Must match yours</span>
+          </div>
+        )}
+        {isLending(l.category) && myLendingLevel && (
+          <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <span style={{ fontSize: 12, color: "#a78bfa", fontWeight: 700 }}>Your Lending Level</span>
+                <div style={{ fontSize: 16, fontWeight: 800, color: "#f8fafc", marginTop: 2 }}>Level {myLendingLevel.level} — {myLendingLevel.name}</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 11, color: "#64748b" }}>Max loan</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#a78bfa" }}>₿ {myLendingLevel.maxSats.toLocaleString()}</div>
+              </div>
+            </div>
+            {Math.floor(l.priceMsats / 1000) > myLendingLevel.maxSats && (
+              <div style={{ marginTop: 8, padding: "6px 10px", borderRadius: 8, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", fontSize: 11, color: "#ef4444", fontWeight: 600 }}>
+                ⚠️ This loan exceeds your Level {myLendingLevel.level} limit. Repay smaller loans on time to level up.
+              </div>
+            )}
           </div>
         )}
         {canBuy && !isP2P && (
