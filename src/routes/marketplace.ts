@@ -454,10 +454,9 @@ function syncOrderWithEscrow(order: OrderRow): OrderRow {
       const isRepOrder = (escrow.description || "").startsWith("Loan Repayment");
       const listing = stmts.getById.get(order.listing_id) as ListingRow | undefined;
       if (listing && !isRepOrder && (listing.status === "sold" || listing.quantity <= 0)) {
-      if (listing && (listing.status === "sold" || listing.quantity <= 0)) {
         db.prepare(`UPDATE listings SET quantity = quantity + 1, status = 'active', updated_at = datetime('now') WHERE id = ?`).run(order.listing_id);
         console.log(`[marketplace] Listing ${order.listing_id} quantity restored (expired before lock)`);
-      } else if (listing) {
+      } else if (listing && !isRepOrder) {
         db.prepare(`UPDATE listings SET quantity = quantity + 1, updated_at = datetime('now') WHERE id = ?`).run(order.listing_id);
       }
     }
