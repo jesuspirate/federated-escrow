@@ -213,6 +213,10 @@ export interface VoteRow {
     console.log("[db] Migration 7: loan tracking fields on escrows");
   }
 
+  // Migration 8: federation_only on listings
+  try { db.exec("ALTER TABLE listings ADD COLUMN federation_only INTEGER DEFAULT 0"); } catch {}
+  console.log("[db] Migration 8: federation_only on listings");
+
 // ── Prepared Statements ───────────────────────────────────────────────────
 
 const stmts = {

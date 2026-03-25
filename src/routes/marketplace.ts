@@ -235,8 +235,8 @@ function pickArbiter(excludePubkeys: string[]): string | null {
 const stmts = {
   // Listings
   insert: db.prepare(`
-    INSERT INTO listings (id, seller_pubkey, title, description, price_msats, currency_display, category, condition, images, terms, community_link, status, quantity, min_price_msats, max_price_msats, seller_fed_domain, seller_fed_prefix, shipping_cost_msats)
-    VALUES (@id, @seller_pubkey, @title, @description, @price_msats, @currency_display, @category, @condition, @images, @terms, @community_link, 'active', @quantity, @min_price_msats, @max_price_msats, @seller_fed_domain, @seller_fed_prefix, @shipping_cost_msats)
+    INSERT INTO listings (id, seller_pubkey, title, description, price_msats, currency_display, category, condition, images, terms, community_link, status, quantity, min_price_msats, max_price_msats, seller_fed_domain, seller_fed_prefix, shipping_cost_msats, federation_only)
+    VALUES (@id, @seller_pubkey, @title, @description, @price_msats, @currency_display, @category, @condition, @images, @terms, @community_link, 'active', @quantity, @min_price_msats, @max_price_msats, @seller_fed_domain, @seller_fed_prefix, @shipping_cost_msats, federation_only)
   `),
   getById: db.prepare(`SELECT * FROM listings WHERE id = ?`),
   listActive: db.prepare(`SELECT * FROM listings WHERE status = ? ORDER BY CASE WHEN quantity > 0 THEN 0 ELSE 1 END, updated_at DESC LIMIT ? OFFSET ?`),
@@ -400,6 +400,7 @@ function formatListing(row: ListingRow) {
     maxPriceSats: row.max_price_msats ? Math.floor(row.max_price_msats / 1000) : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    federationOnly: !!(row as any).federation_only,
   };
 }
 

@@ -818,6 +818,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           locale={locale} onSwitchLocale={switchLocale}
           onChapSmart={() => setView("chapsmart")}
           subdomain={subdomain}
+          myFederation={myFederation}
         />
       )}
       {view === "edit" && editingListing && (
@@ -1245,7 +1246,7 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
 // BROWSE VIEW — Community homepage with hero + categories
 // ═══════════════════════════════════════════════════════════════════════
 
-function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale, onChapSmart, subdomain }) {
+function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale, onChapSmart, subdomain, myFederation }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
@@ -1311,6 +1312,11 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
     // Hide lending listings above borrower level (own listings always visible)
     if (!browseLevel || !isLending(l.category) || l.sellerPubkey === pubkey) return true;
     return Math.floor(l.priceMsats / 1000) <= browseLevel.maxSats;
+  }).filter(l => {
+    // Hide federation-only listings from users on different federations
+    if (!l.federationOnly || l.sellerPubkey === pubkey) return true;
+    if (!myFederation) return false; // no federation detected, hide restricted listings
+    return l.sellerFedDomain === myFederation || l.sellerFedPrefix === myFederation;
   }).slice().sort((a, b) => {
     // Urgent (1 left) first, then available, then sold out
     const rank = (l) => {
@@ -1521,6 +1527,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                     ...(isSatsForFiat(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : isLending(l.category) ? { background: "rgba(16,185,129,0.15)", color: "#10b981", fontWeight: 700 } : {}),
                   }}>{isSatsForFiat(l.category) ? "₿ P2P Trade" : isLending(l.category) ? "🤝 Lending" : l.category}</span>}
                   {(() => { const fi = getFedInfo(l.sellerFedPrefix, l.sellerFedDomain); return fi ? <span style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: fi.color + "18", color: fi.color, border: "1px solid " + fi.color + "30", display: "inline-flex", alignItems: "center", gap: 3 }}>{fi.emoji} {fi.name}</span> : null; })()}
+                  {l.federationOnly && <span style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)", display: "inline-flex", alignItems: "center", gap: 3 }}>🔒 Members</span>}
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, ...(l.status === "paused" ? { color: "#64748b" } : l.quantity > 1 ? { color: "#10b981" } : l.quantity === 1 ? { color: "#f59e0b", animation: "pulse 2s ease infinite" } : { color: "#ef4444" }) }}>
                   {l.status === "paused" ? "⏸ Paused" : l.quantity > 1 ? `🟢 ${t("mkQtyAvailable", { qty: l.quantity })}` : l.quantity === 1 ? `🔥 ${t("mkQtyOneLeft")}` : `❌ ${t("mkQtySoldOut")}`}
@@ -2147,6 +2154,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
   const [imgUploading, setImgUploading] = useState(false);
   const [websiteUrl, setWebsiteUrl] = useState("");
   const [shippingCost, setShippingCost] = useState("");
+  const [federationOnly, setFederationOnly] = useState(false);
   const listingFileRef = useRef(null);
 
   const uploadListingImage = async (file) => {
@@ -2303,6 +2311,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
           quantity: parseInt(quantity) || 1,
           images: listingImages.length > 0 ? listingImages : undefined,
           shippingCostSats: shippingCost ? parseInt(shippingCost) : undefined,
+          federationOnly: federationOnly,
         }),
       });
       if (res.error) throw new Error(res.error);
@@ -2634,6 +2643,17 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       <div style={M.formGroup}><label style={M.label}>{t("tradeTerms")}</label><textarea style={{ ...M.input, minHeight: 60, resize: "vertical" }} placeholder={isP2P ? "Payment window, confirmation steps..." : t("mkFieldTermsHint")} value={terms} onChange={e => setTerms(e.target.value)} /></div>
 
 
+
+      {/* ── Federation-only toggle ── */}
+      <div style={{ padding: "12px 14px", borderRadius: 10, background: "rgba(139,92,246,0.06)", border: "1px solid rgba(139,92,246,0.15)", marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#a78bfa" }}>🏛️ Federation Only</div>
+          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Only visible to users in your federation</div>
+        </div>
+        <button onClick={() => setFederationOnly(!federationOnly)} style={{ width: 44, height: 24, borderRadius: 12, border: "none", cursor: "pointer", background: federationOnly ? "#a78bfa" : "#334155", position: "relative", transition: "background 0.2s" }}>
+          <div style={{ width: 18, height: 18, borderRadius: 9, background: "#fff", position: "absolute", top: 3, left: federationOnly ? 23 : 3, transition: "left 0.2s" }} />
+        </button>
+      </div>
       <button style={{ ...M.primaryBtn, width: "100%", marginTop: 8, padding: "14px 0" }} onClick={handleCreate} disabled={loading}>
         {loading ? t("creating") : t("mkCreateListing")}
       </button>
