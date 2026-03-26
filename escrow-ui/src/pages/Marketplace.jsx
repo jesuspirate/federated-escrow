@@ -1558,7 +1558,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
           {!isDevMode() && subdomain === "marketplace" && <button onClick={() => onSwitchToEscrow()} style={{ fontSize: 9, color: "#334155", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "none" }}>⚖️ Advanced</button>}
           <span style={{ color: "#1e293b" }}>·</span>
           <span style={{ color: "#1e293b" }}>·</span>
-          <button onClick={() => onArbiters()} style={{ fontSize: 9, color: "#7c3aed", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}>⚖️ Arbiters</button>
+          <button onClick={() => onArbiters()} style={{ fontSize: 9, color: "#f59e0b", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 700 }}>⚖️ Arbiters</button>
           <a href="https://github.com/jesuspirate/federated-escrow" target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#6d28d9", textDecoration: "none", fontWeight: 600 }}>GitHub ↗</a>
         </div>
       </div>
