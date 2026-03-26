@@ -1007,7 +1007,7 @@ router.get("/:id/ecash-payout", async (req: AuthenticatedRequest, res: Response)
       return res.status(400).json({ error: "Escrow not yet resolved" });
 
     // Check if this was an e-cash lock
-    if (row.lock_mode !== "ecash")
+    if (row.lock_mode !== "ecash" && row.lock_mode !== "ecash-nip44")
       return res.json({ mode: "lightning", message: "This escrow uses Lightning payout, not e-cash." });
 
     const pk = req.pubkey!;
