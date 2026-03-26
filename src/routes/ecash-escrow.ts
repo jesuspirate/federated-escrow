@@ -811,7 +811,8 @@ router.get("/:id/my-share", (req: AuthenticatedRequest, res: Response) => {
     const isNip44 = row.lock_mode === "ecash-nip44";
     const lockRole = row.lock_role || "seller";
     const lockerPubkey = lockRole === "seller" ? row.seller_pubkey : row.buyer_pubkey;
-    res.json({ share, role, escrowId: row.id, nip44: isNip44, lockerPubkey });
+    const isLocker = role === lockRole;
+    res.json({ share, role, escrowId: row.id, nip44: isNip44 && !isLocker, lockerPubkey });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

@@ -1746,18 +1746,19 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
       setLockProgress({ stage: "Encrypting shares...", pct: 80, active: true });
 
-      // NIP-44 encrypt each share to the respective participant's pubkey
-      // Only that participant can decrypt their share — server is blind
-      const encSellerShare = await window.nostr.nip44.encrypt(
-        sellerPk, uint8ToBase64(shares[0])
-      );
-      const encBuyerShare = await window.nostr.nip44.encrypt(
-        buyerPk, uint8ToBase64(shares[1])
-      );
-      // Arbiter share: encrypt to arbiter if present, otherwise store raw
-      const encArbiterShare = arbiterPk
-        ? await window.nostr.nip44.encrypt(arbiterPk, uint8ToBase64(shares[2]))
-        : uint8ToBase64(shares[2]);
+      // NIP-44 encrypt each share to the respective participant — skip self (locker)
+      const myPk = pubkey;
+      const share0b64 = uint8ToBase64(shares[0]);
+      const share1b64 = uint8ToBase64(shares[1]);
+      const share2b64 = uint8ToBase64(shares[2]);
+
+      const encSellerShare = sellerPk === myPk ? share0b64
+        : await window.nostr.nip44.encrypt(sellerPk, share0b64);
+      const encBuyerShare = buyerPk === myPk ? share1b64
+        : await window.nostr.nip44.encrypt(buyerPk, share1b64);
+      const encArbiterShare = !arbiterPk ? share2b64
+        : arbiterPk === myPk ? share2b64
+        : await window.nostr.nip44.encrypt(arbiterPk, share2b64);
 
       showToast("Locking in escrow...");
       setLockProgress({ stage: "Locking in escrow...", pct: 90, active: true });
