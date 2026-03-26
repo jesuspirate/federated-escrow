@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
+import { split } from "shamir-secret-sharing";
 // Fedimint WASM SDK for e-cash escrow
 let _wasmWallet = null;
 let _wasmReady = false;
@@ -1728,9 +1729,38 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       if (false) {
         return;
       }
+      showToast("Splitting e-cash with Shamir...");
+      setLockProgress({ stage: "Shamir splitting...", pct: 75, active: true });
 
-      showToast("Locking e-cash in escrow...");
-      setLockProgress({ stage: "Locking in escrow...", pct: 80, active: true });
+      // ── CLIENT-SIDE SHAMIR + NIP-44 ──
+      // Split notes into 3 shares (2-of-3 threshold)
+      const secret = new TextEncoder().encode(notes);
+      const shares = await split(secret, 3, 2);
+
+      // Get participant pubkeys from escrow
+      const sellerPk = e.participants?.seller;
+      const buyerPk = e.participants?.buyer;
+      const arbiterPk = e.participants?.arbiter;
+      if (!sellerPk || !buyerPk) throw new Error("Missing participant pubkeys for Shamir encryption");
+
+      setLockProgress({ stage: "Encrypting shares...", pct: 80, active: true });
+
+      // NIP-44 encrypt each share to the respective participant's pubkey
+      // Only that participant can decrypt their share — server is blind
+      const encSellerShare = await window.nostr.nip44.encrypt(
+        sellerPk, Buffer.from(shares[0]).toString("base64")
+      );
+      const encBuyerShare = await window.nostr.nip44.encrypt(
+        buyerPk, Buffer.from(shares[1]).toString("base64")
+      );
+      // Arbiter share: encrypt to arbiter if present, otherwise store raw
+      const encArbiterShare = arbiterPk
+        ? await window.nostr.nip44.encrypt(arbiterPk, Buffer.from(shares[2]).toString("base64"))
+        : Buffer.from(shares[2]).toString("base64");
+
+      showToast("Locking in escrow...");
+      setLockProgress({ stage: "Locking in escrow...", pct: 90, active: true });
+
       // Use direct fetch with Bearer token — never trigger NIP-98 during lock
       const lockHeaders = { "Content-Type": "application/json" };
       let lockToken = window.__smToken;
@@ -1743,7 +1773,15 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       } catch {}
       const lockRes = await fetch(location.origin + API + "/" + e.id + "/lock-ecash", {
         method: "POST", headers: lockHeaders,
-        body: JSON.stringify({ notes, lockerFederation: myFedDomain }),
+        body: JSON.stringify({
+          encryptedShares: {
+            seller: encSellerShare,
+            buyer: encBuyerShare,
+            arbiter: encArbiterShare,
+          },
+          lockerFederation: myFedDomain,
+          shamirNip44: true,
+        }),
       });
       const lock = await lockRes.json();
 
@@ -1868,7 +1906,20 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     (async () => {
       try {
         const data = await api("/" + e.id + "/my-share");
-        if (data.share) setMyShare(data.share);
+        if (data.share) {
+          // NIP-44 encrypted shares need client-side decryption
+          if (data.nip44 && window.nostr?.nip44) {
+            try {
+              const decrypted = await window.nostr.nip44.decrypt(data.lockerPubkey, data.share);
+              setMyShare(decrypted);
+            } catch (decErr) {
+              console.warn("[shamir] NIP-44 decrypt failed:", decErr.message);
+              setMyShare(data.share); // fallback to raw share
+            }
+          } else {
+            setMyShare(data.share);
+          }
+        }
       } catch {}
     })();
   }, [e?.id, e?.status]); // null | "release" | "refund"

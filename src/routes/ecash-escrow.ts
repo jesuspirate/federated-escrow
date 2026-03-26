@@ -653,33 +653,44 @@ router.post("/:id/lock-ecash", async (req: AuthenticatedRequest, res: Response) 
       return res.status(400).json({ error: `Cannot lock in ${row.status} state` });
     }
 
-    const { notes, lockerFederation } = req.body;
-    if (!notes || typeof notes !== "string" || notes.length < 20)
-      return res.status(400).json({ error: "Invalid e-cash notes" });
-    
+    const { notes, encryptedShares, lockerFederation, shamirNip44 } = req.body;
+
     // Store the locker's actual federation if provided
     if (lockerFederation && typeof lockerFederation === "string") {
       DB.updateFederationId(row.id, lockerFederation);
       console.log("[lock-ecash] Updated federation_id to", lockerFederation, "for", row.id);
     }
 
-    // ── SHAMIR: Split notes into 2-of-3 shares ──
     const shippingExpiry = /shipping|physical|ship/i.test(row.description || "") ? DB.EXPIRY_SHIPPING_MS : undefined;
-    const shares = await splitNotes(notes);
 
-    // Encrypt each share to each participant's Nostr pubkey using NIP-44 on server
-    // For now, store shares as base64 — client will retrieve and hold their share
-    // Server stores encrypted shares only, never the full notes
-    DB.lockNotesWithShamir(
-      row.id,
-      shares.seller_share,
-      shares.buyer_share,
-      shares.arbiter_share,
-      "ecash",
-      shippingExpiry
-    );
-    console.log("  🔑 Shamir: notes split into 3 shares (2-of-3 threshold) for", row.id);
-
+    if (shamirNip44 && encryptedShares) {
+      // ── NIP-44 MODE: Client split + encrypted shares — server is blind ──
+      if (!encryptedShares.seller || !encryptedShares.buyer)
+        return res.status(400).json({ error: "Missing encrypted Shamir shares" });
+      DB.lockNotesWithShamir(
+        row.id,
+        encryptedShares.seller,
+        encryptedShares.buyer,
+        encryptedShares.arbiter || "",
+        "ecash-nip44",
+        shippingExpiry
+      );
+      console.log("  🔐 Shamir+NIP44: 3 encrypted shares stored for", row.id, "(server is blind)");
+    } else {
+      // ── LEGACY/SANDBOX MODE: Server splits notes ──
+      if (!notes || typeof notes !== "string" || notes.length < 20)
+        return res.status(400).json({ error: "Invalid e-cash notes" });
+      const shares = await splitNotes(notes);
+      DB.lockNotesWithShamir(
+        row.id,
+        shares.seller_share,
+        shares.buyer_share,
+        shares.arbiter_share,
+        "ecash",
+        shippingExpiry
+      );
+      console.log("  🔑 Shamir: notes split into 3 shares (2-of-3 threshold) for", row.id);
+    }
     const updated = DB.getEscrow(row.id)!;
 
     // Notify parties
@@ -797,7 +808,10 @@ router.get("/:id/my-share", (req: AuthenticatedRequest, res: Response) => {
     const share = DB.getEncryptedShare(row.id, role);
     if (!share) return res.status(404).json({ error: "No share available — escrow may not be locked yet" });
     
-    res.json({ share, role, escrowId: row.id });
+    const isNip44 = row.lock_mode === "ecash-nip44";
+    const lockRole = row.lock_role || "seller";
+    const lockerPubkey = lockRole === "seller" ? row.seller_pubkey : row.buyer_pubkey;
+    res.json({ share, role, escrowId: row.id, nip44: isNip44, lockerPubkey });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
