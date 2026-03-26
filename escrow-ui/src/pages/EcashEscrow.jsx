@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 import { split } from "shamir-secret-sharing";
+function uint8ToBase64(u8) { let b = ""; for (let i = 0; i < u8.length; i++) b += String.fromCharCode(u8[i]); return btoa(b); }
 // Fedimint WASM SDK for e-cash escrow
 let _wasmWallet = null;
 let _wasmReady = false;
@@ -1748,15 +1749,15 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       // NIP-44 encrypt each share to the respective participant's pubkey
       // Only that participant can decrypt their share — server is blind
       const encSellerShare = await window.nostr.nip44.encrypt(
-        sellerPk, Buffer.from(shares[0]).toString("base64")
+        sellerPk, uint8ToBase64(shares[0])
       );
       const encBuyerShare = await window.nostr.nip44.encrypt(
-        buyerPk, Buffer.from(shares[1]).toString("base64")
+        buyerPk, uint8ToBase64(shares[1])
       );
       // Arbiter share: encrypt to arbiter if present, otherwise store raw
       const encArbiterShare = arbiterPk
-        ? await window.nostr.nip44.encrypt(arbiterPk, Buffer.from(shares[2]).toString("base64"))
-        : Buffer.from(shares[2]).toString("base64");
+        ? await window.nostr.nip44.encrypt(arbiterPk, uint8ToBase64(shares[2]))
+        : uint8ToBase64(shares[2]);
 
       showToast("Locking in escrow...");
       setLockProgress({ stage: "Locking in escrow...", pct: 90, active: true });
