@@ -199,6 +199,8 @@ function LandingPage() {
           { icon: "₿", title: "What is Bitcoin?", desc: "Sound money for the digital age", url: "https://bitcoin.org/en/getting-started", color: "#f7931a" },
           { icon: "🛡️", title: "What is Fedi?", desc: "The private Bitcoin wallet for communities", url: "https://www.fedi.xyz", color: "#a78bfa" },
           { icon: "🏛️", title: "Federated Custody", desc: "Multi-guardian Bitcoin security", url: "https://fedimint.org", color: "#10b981" },
+          { icon: "❓", title: "FAQ", desc: "How to use SatoshiMarket", url: "https://market.satoshimarket.app/#faq", color: "#3b82f6" },
+          { icon: "⚖️", title: "Become an Arbiter", desc: "Protect your community", url: "https://market.satoshimarket.app/#arbiters", color: "#f59e0b" },
         ].map(l => (
           <a key={l.title} href={l.url} target="_blank" rel="noopener noreferrer" style={{
             display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10,
@@ -241,6 +243,8 @@ function LandingPage() {
         <div style={{ display: "flex", gap: 16, justifyContent: "center", fontSize: 11 }}>
           <a href="https://github.com/jesuspirate/federated-escrow" target="_blank" rel="noopener noreferrer" style={{ color: "#f59e0b", textDecoration: "none" }}>GitHub ↗</a>
           <a href="https://sandbox.satoshimarket.app" style={{ color: "#475569", textDecoration: "none" }}>🧪 Sandbox</a>
+          <a href="https://market.satoshimarket.app/#faq" style={{ color: "#3b82f6", textDecoration: "none" }}>❓ FAQ</a>
+          <a href="https://market.satoshimarket.app/#arbiters" style={{ color: "#f59e0b", textDecoration: "none" }}>⚖️ Arbiters</a>
         </div>
         <div style={{ fontSize: 9, color: "#1e293b", marginTop: 8 }}>Non-custodial · Shamir 2-of-3 · Fedimint · Nostr</div>
       </div>
