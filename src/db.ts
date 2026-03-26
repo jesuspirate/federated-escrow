@@ -217,6 +217,24 @@ export interface VoteRow {
   try { db.exec("ALTER TABLE listings ADD COLUMN federation_only INTEGER DEFAULT 0"); } catch {}
   console.log("[db] Migration 8: federation_only on listings");
 
+  // Migration 9: arbiter_applications table
+  try {
+    db.exec(`CREATE TABLE IF NOT EXISTS arbiter_applications (
+      id TEXT PRIMARY KEY,
+      pubkey TEXT NOT NULL,
+      npub TEXT,
+      federation_domain TEXT,
+      federation_prefix TEXT,
+      fedi_profile TEXT,
+      display_name TEXT,
+      motivation TEXT,
+      status TEXT DEFAULT 'pending',
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    )`);
+  } catch {}
+  console.log("[db] Migration 9: arbiter_applications table");
+
 // ── Prepared Statements ───────────────────────────────────────────────────
 
 const stmts = {

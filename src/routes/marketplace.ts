@@ -1454,4 +1454,93 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
   }
 });
 
+
+// ── Arbiter Recruitment ───────────────────────────────────────────────────
+
+// POST /arbiters/apply — Submit arbiter application with Fedi profile
+router.post("/arbiters/apply", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const pk = req.pubkey!;
+    const { fediProfile, displayName, motivation } = req.body;
+    if (!fediProfile || typeof fediProfile !== "string" || fediProfile.trim().length < 10) {
+      return res.status(400).json({ error: "Please provide your Fedi profile link" });
+    }
+    if (!displayName || typeof displayName !== "string" || displayName.trim().length < 2) {
+      return res.status(400).json({ error: "Please provide a display name" });
+    }
+
+    // Extract federation domain from Fedi profile
+    // Formats: @npub...:domain.tld or fedi://member/npub:domain
+    let fedDomain = null;
+    const colonMatch = fediProfile.match(/:([a-zA-Z0-9._-]+\.[a-zA-Z]{2,})$/);
+    if (colonMatch) fedDomain = colonMatch[1];
+    if (!fedDomain) {
+      const domainMatch = fediProfile.match(/([a-zA-Z0-9._-]+\.[a-zA-Z]{2,})/);
+      if (domainMatch) fedDomain = domainMatch[1];
+    }
+
+    // Extract npub if present
+    let npub = null;
+    const npubMatch = fediProfile.match(/(npub1[a-z0-9]{58,})/i);
+    if (npubMatch) npub = npubMatch[1];
+
+    // Check for existing application
+    const existing = db.prepare("SELECT id, status FROM arbiter_applications WHERE pubkey = ?").get(pk) as any;
+    if (existing && existing.status === "approved") {
+      return res.json({ message: "You are already an approved arbiter!", status: "approved" });
+    }
+    if (existing && existing.status === "pending") {
+      return res.json({ message: "Your application is pending review.", status: "pending", id: existing.id });
+    }
+
+    const id = "arb_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    db.prepare(
+      "INSERT INTO arbiter_applications (id, pubkey, npub, federation_domain, fedi_profile, display_name, motivation, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')"
+    ).run(id, pk, npub, fedDomain, fediProfile.trim(), displayName.trim(), (motivation || "").trim());
+
+    console.log("[arbiter] New application:", id, "pubkey:", pk.substring(0, 8), "fed:", fedDomain, "name:", displayName);
+    res.json({ id, status: "pending", federationDomain: fedDomain, message: "Application submitted! A community leader will review it." });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /arbiters — List approved arbiters (public)
+router.get("/arbiters", (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const approved = db.prepare("SELECT id, pubkey, npub, federation_domain, display_name, created_at FROM arbiter_applications WHERE status = 'approved' ORDER BY created_at ASC").all() as any[];
+    const pending = db.prepare("SELECT COUNT(*) as c FROM arbiter_applications WHERE status = 'pending'").get() as any;
+    res.json({
+      arbiters: approved.map(a => ({
+        id: a.id,
+        pubkey: a.pubkey,
+        npub: a.npub,
+        federationDomain: a.federation_domain,
+        displayName: a.display_name,
+        since: a.created_at,
+      })),
+      pendingCount: pending?.c || 0,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /arbiters/my-status — Check own application status
+router.get("/arbiters/my-status", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const pk = req.pubkey!;
+    const app = db.prepare("SELECT * FROM arbiter_applications WHERE pubkey = ? ORDER BY created_at DESC LIMIT 1").get(pk) as any;
+    if (!app) return res.json({ status: "none" });
+    res.json({
+      id: app.id,
+      status: app.status,
+      federationDomain: app.federation_domain,
+      displayName: app.display_name,
+      appliedAt: app.created_at,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 export default router;
