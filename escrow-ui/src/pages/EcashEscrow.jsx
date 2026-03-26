@@ -1982,6 +1982,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
     try {
       let amountSats = Math.floor((e.amountMsats || 0) / 1000);
 
+      // Guard: dont re-claim if already completed
+      if (status === "COMPLETED") { showToast("Already claimed!"); setLoading(false); setClaimInProgress(false); return; }
+
       // ── E-CASH PAYOUT: Two-step flow to ensure receiveEcash runs from user tap ──
       if ((e.lockMode === "ecash" || e.lockMode === "ecash-nip44") && !isDevMode() && window.fediInternal && window.fediInternal.receiveEcash) {
 
@@ -2044,6 +2047,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             }
           }
           setLoading(false);
+          setClaimInProgress(false);
           return;
         }
 
