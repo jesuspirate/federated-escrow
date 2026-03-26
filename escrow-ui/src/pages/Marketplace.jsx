@@ -532,7 +532,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
   const [onboarded, setOnboarded] = useState(() => {
     try { return localStorage.getItem(MK_ONBOARDING_KEY) === "1"; } catch { return false; }
   });
-  const [view, setView] = useState("browse");
+  const [view, setView] = useState(() => { const h = window.location.hash.replace("#", ""); return ["faq", "arbiters"].includes(h) ? h : "browse"; });
   const [listings, setListings] = useState([]);
   const [fiatRates, setFiatRates] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -945,8 +945,12 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
     },
     {
       icon: "🔒",
-      title: "The Escrow Protects You",
-      desc: "When you buy, sats are locked in escrow. When you sell, you don't ship until payment is locked. If there's a dispute, the community arbiter resolves it.",
+      title: subdomain === "lending" ? "Your Sats Are Protected" : subdomain === "p2p" ? "Trade With Confidence" : "The Escrow Protects You",
+      desc: subdomain === "lending"
+        ? "When you borrow, the lender locks sats in escrow. When you lend, the borrower cannot run away. Automatic repayment tracking and trust-based lending levels keep everyone honest."
+        : subdomain === "p2p"
+        ? "When you trade, sats are locked in escrow until fiat payment is confirmed. Neither party can cheat. If there is a dispute, a community arbiter resolves it."
+        : "When you buy, sats are locked in escrow. When you sell, you do not ship until payment is locked. If there is a dispute, the community arbiter resolves it.",
     },
     {
       icon: "⚡",
