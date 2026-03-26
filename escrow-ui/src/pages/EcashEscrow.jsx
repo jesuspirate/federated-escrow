@@ -1752,14 +1752,31 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       const share1b64 = uint8ToBase64(shares[1]);
       const share2b64 = uint8ToBase64(shares[2]);
 
-      const encSellerShare = sellerPk === myPk ? share0b64
-        : await window.nostr.nip44.encrypt(sellerPk, share0b64);
-      const encBuyerShare = buyerPk === myPk ? share1b64
-        : await window.nostr.nip44.encrypt(buyerPk, share1b64);
-      const encArbiterShare = !arbiterPk ? share2b64
-        : arbiterPk === myPk ? share2b64
-        : await window.nostr.nip44.encrypt(arbiterPk, share2b64);
+      let encSellerShare, encBuyerShare, encArbiterShare;
+      let useNip44 = false;
+      if (window.nostr?.nip44?.encrypt) {
+        try {
+          await window.nostr.nip44.encrypt(sellerPk === myPk ? buyerPk : sellerPk, "test");
+          useNip44 = true;
+        } catch (nip44Err) {
+          console.warn("[shamir] NIP-44 not available:", nip44Err.message);
+        }
+      }
 
+      if (useNip44) {
+        encSellerShare = sellerPk === myPk ? share0b64
+          : await window.nostr.nip44.encrypt(sellerPk, share0b64);
+        encBuyerShare = buyerPk === myPk ? share1b64
+          : await window.nostr.nip44.encrypt(buyerPk, share1b64);
+        encArbiterShare = !arbiterPk ? share2b64
+          : arbiterPk === myPk ? share2b64
+          : await window.nostr.nip44.encrypt(arbiterPk, share2b64);
+      } else {
+        // Fallback: client-side split but no encryption (still better than server-side split)
+        encSellerShare = share0b64;
+        encBuyerShare = share1b64;
+        encArbiterShare = share2b64;
+      }
       showToast("Locking in escrow...");
       setLockProgress({ stage: "Locking in escrow...", pct: 90, active: true });
 
