@@ -514,6 +514,7 @@ function Toast({ msg, type, visible }) {
 
 export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscrow, initialEscrowId, onOpened }) {
   const [sessionReady, setSessionReady] = useState(isDevMode());
+  const [lightMode, setLightMode] = useState(() => { try { return localStorage.getItem("sm_lightmode") === "1"; } catch { return false; } });
   useEffect(() => {
     if (sessionReady) return;
     if (!pubkey) return;
@@ -775,9 +776,11 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
   if (!onboarded) return <MarketplaceOnboarding subdomain={subdomain} onComplete={() => setOnboarded(true)} />;
 
   return (
-    <div style={M.root}>
+    <div className={lightMode ? "sm-light" : ""} style={M.root}>
       <style>{`
         *, *::before, *::after { -webkit-tap-highlight-color: rgba(0,0,0,0) !important; -webkit-touch-callout: none; box-sizing: border-box; }
+        .sm-light { filter: invert(1) hue-rotate(180deg); }
+        .sm-light img, .sm-light svg, .sm-light video, .sm-light canvas { filter: invert(1) hue-rotate(180deg); }
         button, a, input, select, textarea, [role="button"], div[onclick], span[onclick] {
           -webkit-tap-highlight-color: rgba(0,0,0,0) !important;
           -webkit-touch-callout: none !important;
@@ -801,6 +804,11 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
+
+      {/* Light/Dark mode toggle */}
+      <button onClick={() => { const next = !lightMode; setLightMode(next); try { localStorage.setItem("sm_lightmode", next ? "1" : "0"); } catch {} }} style={{ position: "fixed", top: 12, right: 12, width: 32, height: 32, borderRadius: "50%", border: "1px solid #334155", background: lightMode ? "#f8fafc" : "#1e293b", color: lightMode ? "#1e293b" : "#f8fafc", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", zIndex: 999, boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
+        {lightMode ? "☀️" : "🌙"}
+      </button>
       <Toast {...toast} />
 
       {view === "browse" && (
