@@ -2853,6 +2853,7 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
               </div>
               <div style={{ fontSize: 11, fontFamily: "monospace", color: "#334155", marginTop: 4 }}>
                 {o.id} → {o.escrowId}
+                <span style={{ marginLeft: 6, padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: o.tradeType === "lending" ? "rgba(16,185,129,0.12)" : o.tradeType === "sats-for-fiat" ? "rgba(245,158,11,0.12)" : "rgba(139,92,246,0.12)", color: o.tradeType === "lending" ? "#10b981" : o.tradeType === "sats-for-fiat" ? "#f59e0b" : "#a78bfa" }}>{o.tradeType === "lending" ? "lending" : o.tradeType === "sats-for-fiat" ? "p2p" : "market"}</span>
               </div>
             </button>
           ))}
