@@ -1090,7 +1090,7 @@ router.post("/:id/confirm-ecash-received", (req: AuthenticatedRequest, res: Resp
   try {
     const row = DB.getEscrow(req.params.id);
     if (!row) return res.status(404).json({ error: "Escrow not found" });
-    if (row.lock_mode !== "ecash") return res.status(400).json({ error: "Not an e-cash escrow" });
+    if (row.lock_mode !== "ecash" && row.lock_mode !== "ecash-nip44") return res.status(400).json({ error: "Not an e-cash escrow" });
     if (row.status !== "CLAIMED") return res.status(400).json({ error: "Escrow status is " + row.status + ", expected CLAIMED" });
 
     const pk = req.pubkey!;
@@ -1178,7 +1178,7 @@ router.post("/:id/payout", async (req: AuthenticatedRequest, res: Response) => {
 	  });
 	}
     // E-cash escrows must use the e-cash payout path, not Lightning
-    if (row.lock_mode === "ecash" && !(req.body.type === "arbiter_fee")) {
+    if ((row.lock_mode === "ecash" || row.lock_mode === "ecash-nip44") && !(req.body.type === "arbiter_fee")) {
       return res.status(400).json({ error: "This is an e-cash escrow. Use the e-cash claim button — no Lightning invoice needed." });
     }
     if (inFlightPayouts.has(row.id)) {
