@@ -802,6 +802,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
         @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes vipReveal { 0% { filter: blur(8px); opacity: 0.5; transform: scale(0.95); } 100% { filter: blur(0); opacity: 1; transform: scale(1); } }
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
 
@@ -829,6 +830,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           myFederation={myFederation}
           onArbiters={() => setView("arbiters")}
           onFaq={() => setView("faq")}
+          showToast={showToast}
         />
       )}
       {view === "edit" && editingListing && (
@@ -1266,11 +1268,50 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
 // BROWSE VIEW — Community homepage with hero + categories
 // ═══════════════════════════════════════════════════════════════════════
 
-function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale, onChapSmart, subdomain, myFederation, onArbiters, onFaq }) {
+function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale, onChapSmart, subdomain, myFederation, onArbiters, onFaq, showToast }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
   const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
+
+  // Fed-VIP: track revealed federation-only listings
+  const [revealedVIP, setRevealedVIP] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem("sm_vip_revealed") || "{}"); } catch { return {}; }
+  });
+  const [probingVIP, setProbingVIP] = useState(null);
+
+  const probeAndReveal = async (listing) => {
+    if (revealedVIP[listing.id]) return onOpen(listing.id); // already revealed
+    setProbingVIP(listing.id);
+    try {
+      if (isDevMode()) {
+        // Sandbox: auto-reveal
+        const next = { ...revealedVIP, [listing.id]: true };
+        setRevealedVIP(next);
+        try { sessionStorage.setItem("sm_vip_revealed", JSON.stringify(next)); } catch {}
+        setProbingVIP(null);
+        return;
+      }
+      // 1-sat probe to detect federation
+      const _fedi = window.fedi || window.fediInternal; if (!_fedi?.generateEcash) throw new Error("Fedi wallet not available"); const probeNotes = await _fedi.generateEcash({ amount: 1 });
+      const notePrefix = (typeof probeNotes === "string" ? probeNotes : probeNotes?.notes || "").substring(0, 10);
+      // Auto-refund immediately
+      try { await (window.fedi || window.fediInternal).receiveEcash(typeof probeNotes === "string" ? probeNotes : probeNotes?.notes); } catch {}
+      // Check if federation matches
+      const sellerPrefix = listing.sellerFedPrefix || "";
+      const match = sellerPrefix && notePrefix === sellerPrefix;
+      if (match || !sellerPrefix) {
+        const next = { ...revealedVIP, [listing.id]: true };
+        setRevealedVIP(next);
+        try { sessionStorage.setItem("sm_vip_revealed", JSON.stringify(next)); } catch {}
+      } else {
+        const fi = getFedInfo(listing.sellerFedPrefix, listing.sellerFedDomain); showToast("This listing is for " + (fi?.name || "another federation") + " members only.", "error");
+      }
+    } catch (err) {
+      showToast("Federation probe failed: " + (err.message || "try again"), "error");
+    }
+    setProbingVIP(null);
+  };
 
   // Borrower lending level — filter listings above their level
   const [browseLevel, setBrowseLevel] = useState(null);
@@ -1332,11 +1373,6 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
     // Hide lending listings above borrower level (own listings always visible)
     if (!browseLevel || !isLending(l.category) || l.sellerPubkey === pubkey) return true;
     return Math.floor(l.priceMsats / 1000) <= browseLevel.maxSats;
-  }).filter(l => {
-    // Hide federation-only listings from users on different federations
-    if (!l.federationOnly || l.sellerPubkey === pubkey) return true;
-    if (!myFederation) return false; // no federation detected, hide restricted listings
-    return l.sellerFedDomain === myFederation || l.sellerFedPrefix === myFederation;
   }).slice().sort((a, b) => {
     // Urgent (1 left) first, then available, then sold out
     const rank = (l) => {
@@ -1512,8 +1548,25 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingBottom: 20 }}>
-          {filteredListings.map(l => (
-            <button key={l.id} style={{ ...M.listingCard, ...(l.status === "paused" ? { opacity: 0.55, borderColor: "#334155" } : l.quantity <= 0 ? { opacity: 0.45, borderColor: "#334155" } : {}) }} onClick={() => onOpen(l.id)}>
+          {filteredListings.map(l =>
+            l.federationOnly && !revealedVIP[l.id] && l.sellerPubkey !== pubkey ? (
+              <button key={l.id} style={{ ...M.listingCard, position: "relative", overflow: "hidden", minHeight: 80, maxHeight: 100, borderColor: "rgba(139,92,246,0.3)", background: "linear-gradient(145deg, rgba(139,92,246,0.06), rgba(139,92,246,0.02))" }} onClick={() => probeAndReveal(l)}>
+                <div style={{ filter: "blur(6px)", pointerEvents: "none" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={M.cardTitle}>{"●●●●●●"}</span>
+                    <span style={M.cardPrice}><span style={{ color: "#a78bfa" }}>₿</span> ●●●</span>
+                  </div>
+                  <p style={M.cardDesc}>{"●●●●●● ●●●●● ●●●●●●●● ●●●●"}</p>
+                </div>
+                <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "rgba(15,20,32,0.6)", backdropFilter: "blur(2px)", borderRadius: 12 }}>
+                  <div style={{ fontSize: 20, marginBottom: 6 }}>{probingVIP === l.id ? "⏳" : "🔒"}</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#a78bfa", marginBottom: 2 }}>Federation VIP</div>
+                  <div style={{ fontSize: 9, color: "#94a3b8" }}>{probingVIP === l.id ? "Verifying membership..." : "Tap to verify membership"}</div>
+                  {(() => { const fi = getFedInfo(l.sellerFedPrefix, l.sellerFedDomain); return fi ? <div style={{ marginTop: 6, padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: fi.color + "18", color: fi.color }}>{fi.emoji} {fi.name}</div> : null; })()}
+                </div>
+              </button>
+            ) : (
+            <button key={l.id} style={{ ...M.listingCard, ...(l.status === "paused" ? { opacity: 0.55, borderColor: "#334155" } : l.quantity <= 0 ? { opacity: 0.45, borderColor: "#334155" } : {}), ...(l.federationOnly && revealedVIP[l.id] ? { borderColor: "rgba(139,92,246,0.4)", boxShadow: "0 0 12px rgba(139,92,246,0.1)", animation: "vipReveal 0.5s ease-out" } : {}) }} onClick={() => l.federationOnly && revealedVIP[l.id] ? onOpen(l.id) : onOpen(l.id)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={M.cardTitle}>{l.title}</span>
 		<span style={M.cardPrice}>
@@ -1554,7 +1607,8 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                 </span>
               </div>
             </button>
-          ))}
+            )
+          )}
         </div>
       )}
 
