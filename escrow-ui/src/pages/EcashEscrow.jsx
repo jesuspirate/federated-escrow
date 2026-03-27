@@ -2093,12 +2093,11 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             showToast(receivedAmt.toLocaleString() + " sats received! (" + feeSats + " sats platform fee)");
           } else {
             showToast("E-cash received! " + receivedAmt.toLocaleString() + " sats in your wallet!");
+          }
           setClaimProgress({ stage: "✅ Claimed!", pct: 100, active: true });
           stopHaptic();
           try { navigator.vibrate?.([100, 50, 100, 50, 200]); } catch {}
-          setTimeout(() => setClaimProgress({ stage: "", pct: 0, active: false }), 2000);
-          }
-          setTimeout(() => { setClaimProgress({ stage: "", pct: 0, active: false }); onRefresh(); }, 1500);
+          setTimeout(() => { setClaimProgress({ stage: "", pct: 0, active: false }); setClaimInProgress(false); setLoading(false); onRefresh(); }, 1500);
         } catch (autoRedeemErr) {
           // Auto-redeem failed — fall back to manual tap (notes already in state)
           console.warn("[claim] auto-redeem failed:", autoRedeemErr);
