@@ -2468,9 +2468,9 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
 
         </>}
 
-        {/* P2P + Bill Pay — available on all subdomains */}
+        {/* P2P + Bill Pay — context-aware */}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-          <button onClick={() => setCategory("sats-for-fiat")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: category === "sats-for-fiat" ? "1.5px solid #f59e0b" : "1px solid #334155", background: category === "sats-for-fiat" ? "rgba(245,158,11,0.15)" : "#111827", color: category === "sats-for-fiat" ? "#f59e0b" : "#94a3b8" }}>{"₿"} P2P Trade</button>
+          {subdomain !== "market" && <button onClick={() => setCategory("sats-for-fiat")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: category === "sats-for-fiat" ? "1.5px solid #f59e0b" : "1px solid #334155", background: category === "sats-for-fiat" ? "rgba(245,158,11,0.15)" : "#111827", color: category === "sats-for-fiat" ? "#f59e0b" : "#94a3b8" }}>{"₿"} P2P Trade</button>}
           <button onClick={() => setCategory("bill-pay")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: category === "bill-pay" ? "1.5px solid #f59e0b" : "1px solid #334155", background: category === "bill-pay" ? "rgba(245,158,11,0.15)" : "#111827", color: category === "bill-pay" ? "#f59e0b" : "#94a3b8" }}>{"🧾"} Bill Pay</button>
         </div>
         {/* Marketplace categories — hidden on p2p/lending subdomain */}
@@ -2596,25 +2596,6 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
             </div>
           </div>
           <div style={M.formGroup}>
-            <label style={M.label}>{t("mkPaymentMethod")}</label>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {["Bank Transfer", "M-Pesa", "Orange Money", "Cash", "PayPal", "Wise", "Zelle", "Revolut"].map(pm => (
-                <button key={pm} onClick={() => setPaymentMethod(pm)} style={{
-                  ...M.chipBtn, padding: "6px 12px", fontSize: 12,
-                  ...(paymentMethod === pm ? { ...M.chipBtnActive, borderColor: "#a78bfa", color: "#a78bfa", background: "rgba(139,92,246,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
-                }}>
-                  {pm}
-                </button>
-              ))}
-              <button onClick={() => setPaymentMethod("other")} style={{
-                ...M.chipBtn, padding: "6px 12px", fontSize: 12,
-                ...(paymentMethod === "other" ? M.chipBtnActive : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
-              }}>
-                {t("mkFiatOther")}
-              </button>
-            </div>
-          </div>
-          <div style={M.formGroup}>
             <label style={M.label}>{t("mkRatePremium")} (%)</label>
             <input style={M.input} placeholder="e.g., 3" type="number" value={ratePremium} onChange={e => setRatePremium(e.target.value)} />
             {ratePremium && (minPrice || price) && (() => {
@@ -2677,21 +2658,6 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
             </div>
             {!paymentMethod && <p style={{ ...M.hint, color: "#f59e0b" }}>Please select a repayment method</p>}
           </div>
-          {(paymentMethod === "Fiat" || paymentMethod === "Mixed") && (
-            <div style={M.formGroup}>
-              <label style={M.label}>{t("mkFiatCurrency")}</label>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {["USD", "EUR", "CFA", "KES", "TZS", "NGN", "BRL", "ARS"].map(cur => (
-                <button key={cur} onClick={() => setFiatCurrency(cur)} style={{
-                  ...M.chipBtn, padding: "6px 12px", fontSize: 12, fontWeight: 600,
-                  ...(fiatCurrency === cur ? { ...M.chipBtnActive, borderColor: "#10b981", color: "#10b981", background: "rgba(16,185,129,0.12)" } : { borderColor: "transparent", background: "#111827", color: "#94a3b8" }),
-                }}>
-                  {cur}
-                </button>
-              ))}
-            </div>
-          </div>
-          )}
         </div>
       )}
 
