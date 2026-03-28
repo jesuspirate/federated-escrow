@@ -1051,7 +1051,7 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
                 </div>
                 {e.status === "FUNDED" && e.yourRole === "seller" && (
                   <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(245,158,11,0.1)", fontSize: 11, fontWeight: 600, color: "#f59e0b", textAlign: "center" }}>
-                    {e.description?.startsWith("Lending:") ? "🤝 Lock sats to fund the loan" : e.description?.startsWith("Loan Repayment:") ? "💰 Awaiting borrower repayment" : "🔒 Lock your ₿ sats to start"}
+                    {e.description?.startsWith("Lending:") ? "🤝 Lock sats to fund the loan" : e.description?.startsWith("Loan Repayment:") ? "💰 Awaiting borrower repayment" : e.description?.startsWith("Bill Pay:") ? "🧾 Lock sats — someone will pay your bill" : "🔒 Lock your ₿ sats to start"}
                   </div>
                 )}
                 {e.status === "FUNDED" && e.yourRole !== "seller" && (
@@ -1859,7 +1859,7 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
 
   // ── Subdomain-aware labels ──
   const labels = (() => {
-    const sd = e.description?.startsWith("P2P Trade:") ? "p2p" : e.description?.startsWith("Marketplace:") ? "market" : e.description?.startsWith("Loan Repayment") ? "lending" : e.description?.startsWith("Lending:") ? "lending" : (subdomain || "marketplace");
+    const sd = e.description?.startsWith("Bill Pay:") ? "billpay" : e.description?.startsWith("P2P Trade:") ? "p2p" : e.description?.startsWith("Marketplace:") ? "market" : e.description?.startsWith("Loan Repayment") ? "lending" : e.description?.startsWith("Lending:") ? "lending" : (subdomain || "marketplace");
     const lockRole = e.lock_role || "seller";
     const isLocker = role === lockRole;
     if (sd === "p2p") return {
@@ -1871,6 +1871,15 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
       voteConfirmRelease: role === "buyer" ? "Confirm you sent the fiat payment?" : "Confirm you received the fiat?",
       voteConfirmRefund: "Open a dispute? The arbiter will review.",
     };
+ if (sd === "billpay") return {
+lockBtn: "🧾 Lock ₿ " + fmtSats(e.amountMsats) + " for bill",
+lockedStatus: isLocker ? "Sats locked — waiting for someone to pay your bill" : "Sats locked — pay the bill and show proof",
+releaseBtn: role === "buyer" ? "✓ Bill has been paid" : role === "seller" ? "✓ I confirm bill paid" : t("release"),
+refundBtn: "⚠ Dispute",
+claimBtn: "⚡ Receive ₿ " + fmtSats(e.amountMsats) + " sats",
+voteConfirmRelease: role === "buyer" ? "Confirm the bill was paid?" : "Confirm you verified the bill payment?",
+voteConfirmRefund: "Open a dispute? The arbiter will review.",
+};
     if (sd === "market") return {
       lockBtn: "🔐 Pay ₿ " + fmtSats(e.amountMsats),
       lockedStatus: isLocker ? "Payment locked — waiting for delivery" : "Payment secured — ship the item",

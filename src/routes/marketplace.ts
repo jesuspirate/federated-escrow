@@ -1453,7 +1453,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
       id: escrowId,
       amountMsats: listing.price_msats,
       communityLink: listing.community_link,
-      description: isP2PTrade ? `P2P Trade: ${listing.title}` : `Marketplace: ${listing.title}`,
+      description: listing.category === "bill-pay" ? `Bill Pay: ${listing.title}` : isP2PTrade ? `P2P Trade: ${listing.title}` : `Marketplace: ${listing.title}`,
       sellerPubkey: escrowSellerPubkey,
       buyerPubkey: escrowBuyerPubkey,
       arbiterPubkey: arbiterPubkey,
