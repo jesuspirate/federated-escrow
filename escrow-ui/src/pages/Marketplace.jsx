@@ -2467,6 +2467,12 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
         </div>
 
         </>}
+
+        {/* P2P + Bill Pay — available on all subdomains */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+          <button onClick={() => setCategory("sats-for-fiat")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: category === "sats-for-fiat" ? "1.5px solid #f59e0b" : "1px solid #334155", background: category === "sats-for-fiat" ? "rgba(245,158,11,0.15)" : "#111827", color: category === "sats-for-fiat" ? "#f59e0b" : "#94a3b8" }}>{"₿"} P2P Trade</button>
+          <button onClick={() => setCategory("bill-pay")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: category === "bill-pay" ? "1.5px solid #f59e0b" : "1px solid #334155", background: category === "bill-pay" ? "rgba(245,158,11,0.15)" : "#111827", color: category === "bill-pay" ? "#f59e0b" : "#94a3b8" }}>{"🧾"} Bill Pay</button>
+        </div>
         {/* Marketplace categories — hidden on p2p/lending subdomain */}
         {subdomain !== "p2p" && subdomain !== "lending" && <><div style={{ fontSize: 10, color: "#a78bfa", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>🛒 Marketplace</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
@@ -2499,12 +2505,6 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       </div>
       )}
 
-      {/* P2P + Bill Pay — available on all subdomains */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6, marginTop: 4 }}>
-        <button onClick={() => setCategory("sats-for-fiat")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: category === "sats-for-fiat" ? "1.5px solid #f59e0b" : "1px solid #334155", background: category === "sats-for-fiat" ? "rgba(245,158,11,0.15)" : "#111827", color: category === "sats-for-fiat" ? "#f59e0b" : "#94a3b8" }}>{"₿"} P2P Trade</button>
-        <button onClick={() => setCategory("bill-pay")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: category === "bill-pay" ? "1.5px solid #f59e0b" : "1px solid #334155", background: category === "bill-pay" ? "rgba(245,158,11,0.15)" : "#111827", color: category === "bill-pay" ? "#f59e0b" : "#94a3b8" }}>{"🧾"} Bill Pay</button>
-      </div>
-
       {/* ── P2P mode banner ── */}
       {isP2P && (
         <div style={{ ...M.infoBanner, borderColor: "rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.06)", marginBottom: 14, borderLeft: "3px solid #f59e0b" }}>
@@ -2514,6 +2514,19 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
           </div>
           <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
             {t("mkP2PNote")}
+          </div>
+        </div>
+      )}
+
+      {/* ── Bill Pay mode banner ── */}
+      {isBill && (
+        <div style={{ ...M.infoBanner, borderColor: "rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.06)", marginBottom: 14, borderLeft: "3px solid #f59e0b" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+            <span style={{ fontSize: 15 }}>{"🧾"}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b" }}>Bill Pay — Let your community pay your bills</span>
+          </div>
+          <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
+            Lock your sats in escrow. Someone from your community pays your bill with fiat, shows proof, and claims the sats. Secure, fast, community-powered.
           </div>
         </div>
       )}
@@ -2712,7 +2725,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       )}
 
       {/* ── Payment Methods (P2P + Bill Pay) ── */}
-      {(isP2P || isBill) && (
+      {(isP2P || isBill || isLoan) && (
         <div style={{ marginBottom: 16 }}>
           <label style={{ ...M.label, color: "#10b981" }}>{"💳"} Accepted Payment Methods</label>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
