@@ -292,10 +292,12 @@ function truncPk(hex) {
 
 // ── Trade Type Detection ────────────────────────────────────────────
 const SATS_FOR_FIAT = "sats-for-fiat";
+const BILL_PAY = "bill-pay";
+function isBillPay(category) { return category?.toLowerCase().trim() === BILL_PAY; }
 const LENDING = "lending";
 function isSatsForFiat(category) { return category?.toLowerCase().trim() === SATS_FOR_FIAT; }
 function isLending(category) { return category?.toLowerCase().trim() === LENDING; }
-function isSpecialCategory(category) { return isSatsForFiat(category) || isLending(category); }
+function isSpecialCategory(category) { return isSatsForFiat(category) || isLending(category) || isBillPay(category); }
 
 // ── Nostr Profile Lookup (client-side, no server relay needed) ────────
 
@@ -1112,6 +1114,7 @@ const CATEGORIES = [
   { key: "all", label: "Public", icon: "🌍" },
   { key: "mine", label: "Mine", icon: "🏠" },
   { key: "sats-for-fiat", label: "P2P", icon: "₿" },
+  { key: "bill-pay", label: "Bill Pay", icon: "🧾" },
   { key: "lending", label: "Lending", icon: "🤝" },
   { key: "electronics", label: "Electronics", icon: "📱" },
   { key: "services", label: "Services", icon: "🛠️" },
@@ -1357,6 +1360,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         if (l.sellerPubkey === pubkey) return false;
         if (activeCategory === "sats-for-fiat") return isSatsForFiat(l.category);
         if (activeCategory === "lending") return isLending(l.category);
+        if (activeCategory === "bill-pay") return isBillPay(l.category);
         if (isSpecialCategory(l.category)) return false;
         return l.category?.toLowerCase() === activeCategory;
       })
@@ -1597,8 +1601,8 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                   {l.condition && !isSatsForFiat(l.category) && !isLending(l.category) && l.status !== "paused" && <span style={M.conditionBadge}>{t(CONDITION_KEYS[l.condition] || l.condition)}</span>}
                   {l.category && !(subdomain === "p2p" && isSatsForFiat(l.category)) && !(subdomain === "lending" && isLending(l.category)) && <span style={{
                     ...M.categoryBadge,
-                    ...(isSatsForFiat(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : isLending(l.category) ? { background: "rgba(16,185,129,0.15)", color: "#10b981", fontWeight: 700 } : {}),
-                  }}>{isSatsForFiat(l.category) ? "₿ P2P Trade" : isLending(l.category) ? "🤝 Lending" : l.category}</span>}
+                    ...(isSatsForFiat(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : isLending(l.category) ? { background: "rgba(16,185,129,0.15)", color: "#10b981", fontWeight: 700 } : isBillPay(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : {}),
+                  }}>{isSatsForFiat(l.category) ? "₿ P2P Trade" : isLending(l.category) ? "🤝 Lending" : isBillPay(l.category) ? "🧾 Bill Pay" : l.category}</span>}
                   {(() => { const fi = getFedInfo(l.sellerFedPrefix, l.sellerFedDomain); return fi ? <span style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: fi.color + "18", color: fi.color, border: "1px solid " + fi.color + "30", display: "inline-flex", alignItems: "center", gap: 3 }}>{fi.emoji} {fi.name}</span> : null; })()}
                   {l.federationOnly && <span style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)", display: "inline-flex", alignItems: "center", gap: 3 }}>🔒 Members</span>}
                 </div>
@@ -2467,6 +2471,10 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
           })}
         </div>
         </>}
+        {/* Bill Pay — available on all subdomains */}
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6, marginTop: 4 }}>
+          <button onClick={() => setCategory("bill-pay")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: category === "bill-pay" ? "1.5px solid #f59e0b" : "1px solid #334155", background: category === "bill-pay" ? "rgba(245,158,11,0.15)" : "#111827", color: category === "bill-pay" ? "#f59e0b" : "#94a3b8" }}>{"🧾"} Bill Pay</button>
+        </div>
         {!isP2P && !isLoan && (
           <input style={M.input} placeholder="Or type a custom category..." value={isSpecialCategory(category) ? "" : category} onChange={e => setCategory(e.target.value)} />
         )}
@@ -2853,7 +2861,7 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
               </div>
               <div style={{ fontSize: 11, fontFamily: "monospace", color: "#334155", marginTop: 4 }}>
                 {o.id} → {o.escrowId}
-                <span style={{ marginLeft: 6, padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: o.tradeType === "lending" ? "rgba(16,185,129,0.12)" : o.tradeType === "sats-for-fiat" ? "rgba(245,158,11,0.12)" : "rgba(139,92,246,0.12)", color: o.tradeType === "lending" ? "#10b981" : o.tradeType === "sats-for-fiat" ? "#f59e0b" : "#a78bfa" }}>{o.tradeType === "lending" ? "lending" : o.tradeType === "sats-for-fiat" ? "p2p" : "market"}</span>
+                <span style={{ marginLeft: 6, padding: "1px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: o.listingCategory === "bill-pay" ? "rgba(245,158,11,0.15)" : o.tradeType === "lending" ? "rgba(16,185,129,0.12)" : o.tradeType === "sats-for-fiat" ? "rgba(245,158,11,0.12)" : "rgba(139,92,246,0.12)", color: o.listingCategory === "bill-pay" ? "#f59e0b" : o.tradeType === "lending" ? "#10b981" : o.tradeType === "sats-for-fiat" ? "#f59e0b" : "#a78bfa" }}>{o.listingCategory === "bill-pay" ? "🧾 bill pay" : o.tradeType === "lending" ? "lending" : o.tradeType === "sats-for-fiat" ? "p2p" : "market"}</span>
               </div>
             </button>
           ))}
