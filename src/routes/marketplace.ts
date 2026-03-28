@@ -401,6 +401,7 @@ function formatListing(row: ListingRow) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     federationOnly: !!(row as any).federation_only,
+    paymentMethods: (() => { try { return JSON.parse((row as any).payment_methods || "null"); } catch { return null; } })(),
   };
 }
 
@@ -555,7 +556,7 @@ const requireAuth = [extractPubkey, rateLimit];
 router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
   try {
     const pk = req.pubkey!;
-    const { title, description, priceMsats, currencyDisplay, category, condition, images, terms, communityLink, quantity, minPriceMsats, maxPriceMsats, sellerFedDomain, sellerFedPrefix, shippingCostSats } = req.body;
+    const { title, description, priceMsats, currencyDisplay, category, condition, images, terms, communityLink, quantity, minPriceMsats, maxPriceMsats, sellerFedDomain, sellerFedPrefix, shippingCostSats, paymentMethods } = req.body;
 
     if (!title || typeof title !== "string" || title.trim().length === 0)
       return res.status(400).json({ error: "title is required" });
@@ -604,6 +605,7 @@ router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
       seller_fed_prefix: sellerFedPrefix?.trim() || null,
       shipping_cost_msats: shippingCostSats ? Math.floor(Number(shippingCostSats) * 1000) : 0,
       federation_only: req.body.federationOnly ? 1 : 0,
+      payment_methods: paymentMethods ? JSON.stringify(paymentMethods) : null,
     });
 
     const row = stmts.getById.get(id) as ListingRow;

@@ -240,6 +240,10 @@ export interface VoteRow {
   try { db.exec("ALTER TABLE arbiter_applications ADD COLUMN community_room TEXT"); } catch {}
   try { db.exec("ALTER TABLE arbiter_applications ADD COLUMN fed_ecash_prefix TEXT"); } catch {}
   console.log("[db] Migration 10: community_room + fed_ecash_prefix on arbiter_applications");
+
+  // Migration 11: payment_methods on listings
+  try { db.exec("ALTER TABLE listings ADD COLUMN payment_methods TEXT"); } catch {}
+  console.log("[db] Migration 11: payment_methods on listings");
 // ── Prepared Statements ───────────────────────────────────────────────────
 
 const stmts = {

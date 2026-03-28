@@ -295,6 +295,23 @@ const SATS_FOR_FIAT = "sats-for-fiat";
 const BILL_PAY = "bill-pay";
 function isBillPay(category) { return category?.toLowerCase().trim() === BILL_PAY; }
 const LENDING = "lending";
+
+const PAYMENT_METHODS = [
+  { key: "mpesa", label: "M-Pesa", icon: "📱", region: "East Africa" },
+  { key: "airtel", label: "Airtel Money", icon: "📱", region: "East Africa" },
+  { key: "mtn", label: "MTN MoMo", icon: "📱", region: "West Africa" },
+  { key: "orange", label: "Orange Money", icon: "📱", region: "West Africa" },
+  { key: "wave", label: "Wave", icon: "🌊", region: "West Africa" },
+  { key: "opay", label: "OPay", icon: "💚", region: "West Africa" },
+  { key: "chipper", label: "Chipper Cash", icon: "💸", region: "Africa" },
+  { key: "cashapp", label: "Cash App", icon: "💵", region: "US" },
+  { key: "zelle", label: "Zelle", icon: "💸", region: "US" },
+  { key: "venmo", label: "Venmo", icon: "💙", region: "US" },
+  { key: "wise", label: "Wise", icon: "🌍", region: "Global" },
+  { key: "paypal", label: "PayPal", icon: "🅿️", region: "Global" },
+  { key: "bank", label: "Bank Transfer", icon: "🏦", region: "Global" },
+  { key: "cash", label: "Cash (in person)", icon: "💰", region: "Local" },
+];
 function isSatsForFiat(category) { return category?.toLowerCase().trim() === SATS_FOR_FIAT; }
 function isLending(category) { return category?.toLowerCase().trim() === LENDING; }
 function isSpecialCategory(category) { return isSatsForFiat(category) || isLending(category) || isBillPay(category); }
@@ -1605,6 +1622,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                   }}>{isSatsForFiat(l.category) ? "₿ P2P Trade" : isLending(l.category) ? "🤝 Lending" : isBillPay(l.category) ? "🧾 Bill Pay" : l.category}</span>}
                   {(() => { const fi = getFedInfo(l.sellerFedPrefix, l.sellerFedDomain); return fi ? <span style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: fi.color + "18", color: fi.color, border: "1px solid " + fi.color + "30", display: "inline-flex", alignItems: "center", gap: 3 }}>{fi.emoji} {fi.name}</span> : null; })()}
                   {l.federationOnly && <span style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)", display: "inline-flex", alignItems: "center", gap: 3 }}>🔒 Members</span>}
+                  {l.paymentMethods && l.paymentMethods.length > 0 && l.paymentMethods.slice(0, 3).map(pm => { const m = PAYMENT_METHODS.find(p => p.key === pm); return m ? <span key={pm} style={{ padding: "2px 6px", borderRadius: 5, fontSize: 9, fontWeight: 600, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>{m.icon} {m.label}</span> : null; })}
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, ...(l.status === "paused" ? { color: "#64748b" } : l.quantity > 1 ? { color: "#10b981" } : l.quantity === 1 ? { color: "#f59e0b", animation: "pulse 2s ease infinite" } : { color: "#ef4444" }) }}>
                   {l.status === "paused" ? "⏸ Paused" : l.quantity > 1 ? `🟢 ${t("mkQtyAvailable", { qty: l.quantity })}` : l.quantity === 1 ? `🔥 ${t("mkQtyOneLeft")}` : `❌ ${t("mkQtySoldOut")}`}
@@ -2231,6 +2249,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
   const [condition, setCondition] = useState("new");
   const [quantity, setQuantity] = useState("1");
   const [fiatCurrency, setFiatCurrency] = useState("");
+  const [paymentMethods, setPaymentMethods] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [listingImages, setListingImages] = useState([]);
   const [imgUploading, setImgUploading] = useState(false);
@@ -2302,6 +2321,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
 
   const isP2P = isSatsForFiat(category);
   const isLoan = isLending(category);
+  const isBill = isBillPay(category);
   const isShipping = category.toLowerCase().trim() === "shipping";
   const isSpecial = isP2P || isLoan;
 
@@ -2394,6 +2414,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
           images: listingImages.length > 0 ? listingImages : undefined,
           shippingCostSats: shippingCost ? parseInt(shippingCost) : undefined,
           federationOnly: federationOnly,
+          paymentMethods: paymentMethods.length > 0 ? paymentMethods : undefined,
         }),
       });
       if (res.error) throw new Error(res.error);
@@ -2668,7 +2689,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       )}
 
       {/* ── Non-P2P/Lending fields: Condition + Quantity ── */}
-      {!isP2P && !isLoan && (
+      {!isP2P && !isLoan && !isBill && (
         <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
           <div style={{ flex: 1 }}>
             <label style={M.label}>{t("mkCondition")}</label>
@@ -2684,6 +2705,24 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
             <label style={M.label}>{t("mkFieldQty")}</label>
             <input style={M.input} type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} />
           </div>
+        </div>
+      )}
+
+      {/* ── Payment Methods (P2P + Bill Pay) ── */}
+      {(isP2P || isBill) && (
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ ...M.label, color: "#10b981" }}>{"💳"} Accepted Payment Methods</label>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {PAYMENT_METHODS.map(pm => {
+              const active = paymentMethods.includes(pm.key);
+              return (
+                <button key={pm.key} onClick={() => setPaymentMethods(prev => active ? prev.filter(k => k !== pm.key) : [...prev, pm.key])} style={{ padding: "5px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: "pointer", border: active ? "1.5px solid #10b981" : "1px solid #334155", background: active ? "rgba(16,185,129,0.15)" : "#111827", color: active ? "#10b981" : "#94a3b8", transition: "all 0.15s" }}>
+                  {pm.icon} {pm.label}
+                </button>
+              );
+            })}
+          </div>
+          {paymentMethods.length > 0 && <div style={{ fontSize: 10, color: "#475569", marginTop: 4 }}>{paymentMethods.length} selected</div>}
         </div>
       )}
 
