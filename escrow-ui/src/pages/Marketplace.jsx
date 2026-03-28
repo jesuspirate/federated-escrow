@@ -2492,15 +2492,17 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
           })}
         </div>
         </>}
-        {/* Bill Pay — available on all subdomains */}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6, marginTop: 4 }}>
-          <button onClick={() => setCategory("bill-pay")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: category === "bill-pay" ? "1.5px solid #f59e0b" : "1px solid #334155", background: category === "bill-pay" ? "rgba(245,158,11,0.15)" : "#111827", color: category === "bill-pay" ? "#f59e0b" : "#94a3b8" }}>{"🧾"} Bill Pay</button>
-        </div>
-        {!isP2P && !isLoan && (
+        {!isP2P && !isLoan && !isBill && (
           <input style={M.input} placeholder="Or type a custom category..." value={isSpecialCategory(category) ? "" : category} onChange={e => setCategory(e.target.value)} />
         )}
       </div>
       )}
+
+      {/* Bill Pay — available on all subdomains */}
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6, marginTop: 4 }}>
+        <button onClick={() => setCategory("bill-pay")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: category === "bill-pay" ? "1.5px solid #f59e0b" : "1px solid #334155", background: category === "bill-pay" ? "rgba(245,158,11,0.15)" : "#111827", color: category === "bill-pay" ? "#f59e0b" : "#94a3b8" }}>{"🧾"} Bill Pay</button>
+      </div>
+
 
       {/* ── P2P mode banner ── */}
       {isP2P && (
