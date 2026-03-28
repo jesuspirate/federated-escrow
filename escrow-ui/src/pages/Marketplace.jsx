@@ -2440,6 +2440,9 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       {subdomain === "lending" && (
         <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", marginBottom: 14, fontSize: 13, fontWeight: 700, color: "#10b981", display: "flex", alignItems: "center", gap: 8 }}>🤝 Community Lending</div>
       )}
+      {subdomain === "market" && (
+        <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", marginBottom: 14, fontSize: 13, fontWeight: 700, color: "#a78bfa", display: "flex", alignItems: "center", gap: 8 }}>{"🛒"} Marketplace</div>
+      )}
       {subdomain !== "p2p" && subdomain !== "lending" && (
       <div style={M.formGroup}>
         <label style={M.label}>{t("mkCategory")}</label>
