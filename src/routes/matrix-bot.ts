@@ -208,6 +208,37 @@ const bot = {
 
     await postToRoom(roomId, m.expired(escrow.id, fmtSats(escrow.amountMsats)));
   },
+
+  // New listing created — broadcast to community rooms
+  async notifyNewListing(listing: { id: string; title: string; priceMsats: number; category: string; sellerFedPrefix?: string; sellerFedDomain?: string; federationOnly?: boolean }) {
+    if (!BOT_ENABLED) return;
+    const amount = fmtSats(listing.priceMsats);
+    const tag = listing.category === "lending" ? "🤝 Lending" : listing.category === "sats-for-fiat" ? "₿ P2P Trade" : "🛒 " + (listing.category || "Item");
+    const vip = listing.federationOnly ? " 🔒 Federation Only" : "";
+    const body = `📢 New listing: ${listing.title}\n${tag} — ₿ ${amount} sats${vip}\n🔗 ID: ${listing.id}`;
+
+    // Post to default rooms
+    for (const roomId of Object.keys(ROOM_LANG)) {
+      await postToRoom(roomId, body);
+    }
+
+    // Also post to arbiter community rooms matching this federation
+    try {
+      const db = (await import("../db")).default;
+      const arbiters = db.prepare("SELECT community_room FROM arbiter_applications WHERE status = 'approved' AND community_room IS NOT NULL AND fed_ecash_prefix = ?").all(listing.sellerFedPrefix || "") as any[];
+      for (const a of arbiters) {
+        if (a.community_room) {
+          // Extract Matrix room ID from fedi:community link if needed
+          const roomId = extractRoomId(a.community_room) || DEFAULT_ROOM;
+          if (roomId !== DEFAULT_ROOM && !ROOM_LANG[roomId]) {
+            await postToRoom(roomId, body);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("[matrix-bot] arbiter room lookup error:", err);
+    }
+  },
 };
 
 // ── Startup ───────────────────────────────────────────────────────────

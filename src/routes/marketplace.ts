@@ -607,6 +607,15 @@ router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
     });
 
     const row = stmts.getById.get(id) as ListingRow;
+
+    // Notify community rooms about new listing
+    try {
+      matrixBot.notifyNewListing({
+        id: row.id, title: row.title, priceMsats: row.price_msats,
+        category: row.category, sellerFedPrefix: row.seller_fed_prefix,
+        sellerFedDomain: row.seller_fed_domain, federationOnly: !!(row as any).federation_only,
+      });
+    } catch {}
     res.status(201).json(formatListing(row));
   } catch (err: any) {
     console.error("[marketplace] POST / error:", err);
