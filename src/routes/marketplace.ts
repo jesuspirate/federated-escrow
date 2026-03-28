@@ -1461,28 +1461,31 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
 router.post("/arbiters/apply", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
   try {
     const pk = req.pubkey!;
-    const { fediProfile, displayName, motivation } = req.body;
-    if (!fediProfile || typeof fediProfile !== "string" || fediProfile.trim().length < 10) {
-      return res.status(400).json({ error: "Please provide your Fedi profile link" });
-    }
+    const { fediProfile, displayName, motivation, communityRoom, fedEcashPrefix } = req.body;
     if (!displayName || typeof displayName !== "string" || displayName.trim().length < 2) {
       return res.status(400).json({ error: "Please provide a display name" });
     }
+    if (!communityRoom || typeof communityRoom !== "string" || !communityRoom.includes("fedi:community")) {
+      return res.status(400).json({ error: "Please provide your Fedi community room link" });
+    }
 
-    // Extract federation domain from Fedi profile
-    // Formats: @npub...:domain.tld or fedi://member/npub:domain
-    let fedDomain = null;
-    const colonMatch = fediProfile.match(/:([a-zA-Z0-9._-]+\.[a-zA-Z]{2,})$/);
-    if (colonMatch) fedDomain = colonMatch[1];
-    if (!fedDomain) {
-      const domainMatch = fediProfile.match(/([a-zA-Z0-9._-]+\.[a-zA-Z]{2,})/);
-      if (domainMatch) fedDomain = domainMatch[1];
+    // Extract matrix domain from Fedi profile (optional — NOT federation identity)
+    let matrixDomain = null;
+    if (fediProfile) {
+      const colonMatch = fediProfile.match(/:([a-zA-Z0-9._-]+\.[a-zA-Z]{2,})$/);
+      if (colonMatch) matrixDomain = colonMatch[1];
+      if (!matrixDomain) {
+        const domainMatch = fediProfile.match(/([a-zA-Z0-9._-]+\.[a-zA-Z]{2,})/);
+        if (domainMatch) matrixDomain = domainMatch[1];
+      }
     }
 
     // Extract npub if present
     let npub = null;
-    const npubMatch = fediProfile.match(/(npub1[a-z0-9]{58,})/i);
-    if (npubMatch) npub = npubMatch[1];
+    if (fediProfile) {
+      const npubMatch = fediProfile.match(/(npub1[a-z0-9]{58,})/i);
+      if (npubMatch) npub = npubMatch[1];
+    }
 
     // Check for existing application
     const existing = db.prepare("SELECT id, status FROM arbiter_applications WHERE pubkey = ?").get(pk) as any;
@@ -1495,11 +1498,11 @@ router.post("/arbiters/apply", ...requireAuth, (req: AuthenticatedRequest, res: 
 
     const id = "arb_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
     db.prepare(
-      "INSERT INTO arbiter_applications (id, pubkey, npub, federation_domain, fedi_profile, display_name, motivation, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')"
-    ).run(id, pk, npub, fedDomain, fediProfile.trim(), displayName.trim(), (motivation || "").trim());
+      "INSERT INTO arbiter_applications (id, pubkey, npub, federation_domain, fedi_profile, display_name, motivation, community_room, fed_ecash_prefix, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')"
+    ).run(id, pk, npub, matrixDomain, (fediProfile || "").trim(), displayName.trim(), (motivation || "").trim(), communityRoom.trim(), (fedEcashPrefix || "").trim());
 
-    console.log("[arbiter] New application:", id, "pubkey:", pk.substring(0, 8), "fed:", fedDomain, "name:", displayName);
-    res.json({ id, status: "pending", federationDomain: fedDomain, message: "Application submitted! A community leader will review it." });
+    console.log("[arbiter] New application:", id, "pubkey:", pk.substring(0, 8), "community:", communityRoom.substring(0, 30), "name:", displayName);
+    res.json({ id, status: "pending", communityRoom: communityRoom.trim(), message: "Application submitted! A community leader will review it." });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -1508,7 +1511,7 @@ router.post("/arbiters/apply", ...requireAuth, (req: AuthenticatedRequest, res: 
 // GET /arbiters — List approved arbiters (public)
 router.get("/arbiters", (req: AuthenticatedRequest, res: Response) => {
   try {
-    const approved = db.prepare("SELECT id, pubkey, npub, federation_domain, display_name, created_at FROM arbiter_applications WHERE status = 'approved' ORDER BY created_at ASC").all() as any[];
+    const approved = db.prepare("SELECT id, pubkey, npub, federation_domain, display_name, community_room, fed_ecash_prefix, created_at FROM arbiter_applications WHERE status = 'approved' ORDER BY created_at ASC").all() as any[];
     const pending = db.prepare("SELECT COUNT(*) as c FROM arbiter_applications WHERE status = 'pending'").get() as any;
     res.json({
       arbiters: approved.map(a => ({
@@ -1516,6 +1519,8 @@ router.get("/arbiters", (req: AuthenticatedRequest, res: Response) => {
         pubkey: a.pubkey,
         npub: a.npub,
         federationDomain: a.federation_domain,
+        communityRoom: a.community_room,
+        fedEcashPrefix: a.fed_ecash_prefix,
         displayName: a.display_name,
         since: a.created_at,
       })),

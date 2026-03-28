@@ -235,6 +235,11 @@ export interface VoteRow {
   } catch {}
   console.log("[db] Migration 9: arbiter_applications table");
 
+
+  // Migration 10: community_room + fed_ecash_prefix on arbiter_applications
+  try { db.exec("ALTER TABLE arbiter_applications ADD COLUMN community_room TEXT"); } catch {}
+  try { db.exec("ALTER TABLE arbiter_applications ADD COLUMN fed_ecash_prefix TEXT"); } catch {}
+  console.log("[db] Migration 10: community_room + fed_ecash_prefix on arbiter_applications");
 // ── Prepared Statements ───────────────────────────────────────────────────
 
 const stmts = {
