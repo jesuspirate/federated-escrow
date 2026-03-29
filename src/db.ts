@@ -451,7 +451,7 @@ export function addChatMessage(escrowId: string, msgId: string, senderPubkey: st
 }
 
 export function getChatMessages(escrowId: string, after: number = 0): any[] {
-  return db.prepare("SELECT * FROM chat_messages WHERE escrow_id = ? AND timestamp >= ? ORDER BY timestamp ASC").all(escrowId, after) as any[];
+  return db.prepare("SELECT * FROM chat_messages WHERE escrow_id = ? AND timestamp > ? ORDER BY timestamp ASC").all(escrowId, after) as any[];
 }
 
 export function updateFederationId(id: string, federationId: string): void {

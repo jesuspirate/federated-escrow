@@ -1257,7 +1257,6 @@ function TradeChat({ escrowId, pubkey, participants }) {
         for (const msg of newMsgs) {
           lastTs.current = Math.max(lastTs.current, msg.timestamp);
         }
-        lastTs.current += 1; // Skip past last seen to avoid re-fetching with >= query
         setMessages(prev => {
           const existing = new Set(prev.map(m => m.id));
           const unique = newMsgs.filter(m => !existing.has(m.id));
@@ -1287,7 +1286,6 @@ function TradeChat({ escrowId, pubkey, participants }) {
       const msgText = draft.trim();
       // Optimistic: show message immediately
       setMessages(prev => [...prev, { id: "local_" + Date.now(), sender_pubkey: pubkey, sender_role: myRole, encrypted: msgText, text: msgText, timestamp: Date.now() }]);
-      lastTs.current = Date.now() + 1;
       setDraft("");
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
       // Send to server
@@ -1415,7 +1413,6 @@ function TradeChat({ escrowId, pubkey, participants }) {
       text: msgText,
       timestamp: Date.now(),
     }]);
-    lastTs.current = Date.now() + 1;
     setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
 
     // Send to server
