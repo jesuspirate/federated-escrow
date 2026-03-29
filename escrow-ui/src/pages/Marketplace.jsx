@@ -1952,6 +1952,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
           amountMsats: customMsats || l.priceMsats,
           listingTitle: l.title,
           status: "pending",
+ listingCategory: l.category,
         });
       } else {
         onBack();
