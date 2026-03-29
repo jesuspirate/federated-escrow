@@ -1686,6 +1686,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
   const [maxPrice, setMaxPrice] = useState(l.maxPriceSats || "");
   const [editPremium, setEditPremium] = useState(() => { const m = (l.terms || "").match(/Rate:\s*(\d+)/); return m ? m[1] : ""; });
   const [editShipping, setEditShipping] = useState(l.shippingCostSats || "");
+ const [editFedOnly, setEditFedOnly] = useState(!!l.federationOnly);
   const isP2PEdit = isSatsForFiat(l.category);
   const isP2P = isSatsForFiat(l.category);
   const [editImages, setEditImages] = useState(l.images || []);
@@ -1760,6 +1761,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
           maxPriceMsats: maxPrice ? Number(maxPrice) * 1000 : null,
           images: editImages.length > 0 ? editImages : [],
           shippingCostSats: editShipping ? parseInt(editShipping) : 0,
+ federationOnly: editFedOnly,
         }),
       });
       if (res.error) throw new Error(res.error);
@@ -1876,6 +1878,15 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
 
         <div style={{ display: "flex", gap: 10 }}>
           <button style={{ ...M.secondaryBtn, flex: 1 }} onClick={() => onBack(null)}>Cancel</button>
+
+ {/ Federation-only toggle /}
+<div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "10px 14px", borderRadius: 10, background: editFedOnly ? "rgba(139,92,246,0.1)" : "#111827", border: "1px solid " + (editFedOnly ? "rgba(139,92,246,0.3)" : "#1e293b"), cursor: "pointer" }} onClick={() => setEditFedOnly(!editFedOnly)}>
+<span style={{ fontSize: 18 }}>{editFedOnly ? "🔒" : "🌐"}</span>
+<div style={{ flex: 1 }}>
+<div style={{ fontSize: 12, fontWeight: 700, color: editFedOnly ? "#a78bfa" : "#94a3b8" }}>Federation Only</div>
+<div style={{ fontSize: 10, color: "#475569" }}>{editFedOnly ? "Only your federation members can see this" : "Visible to everyone"}</div>
+</div>
+</div>
           <button style={{ ...M.primaryBtn, flex: 2 }} onClick={handleSave} disabled={loading}>
             {loading ? "Saving…" : "💾 Save Changes"}
           </button>
@@ -2363,6 +2374,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
 
     if (!title.trim()) return showToast(t("mkTitleRequired"), "error");
     if (!category) return showToast("Please select a category", "error");
+ if (isShipping && (!shippingCost || Number(shippingCost) <= 0)) return showToast("Shipping cost is required for shipping listings", "error");
     if (!sats || sats <= 0) return showToast(t("mkPriceRequired"), "error");
     if (sats < 1) return showToast("Minimum ₿ 1 sat", "error");
     if (sats > 2_000_000) return showToast(t("mkPriceExceeds"), "error");

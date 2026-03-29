@@ -1103,7 +1103,7 @@ router.post("/:id/update", ...requireAuth, (req: AuthenticatedRequest, res: Resp
       currencyDisplay: "currency_display", category: "category", condition: "condition",
       images: "images", terms: "terms", communityLink: "community_link",
       shippingCostSats: "shipping_cost_msats",
-      quantity: "quantity", status: "status",
+      quantity: "quantity", status: "status", federationOnly: "federation_only",
     };
 
     const sets: string[] = [];
@@ -1128,6 +1128,7 @@ router.post("/:id/update", ...requireAuth, (req: AuthenticatedRequest, res: Resp
         if (typeof val === "string" && ["title", "description", "terms", "category"].includes(bodyKey))
           val = val.trim();
 
+ if (bodyKey === "federationOnly") val = val ? 1 : 0;
         sets.push(`${dbCol} = ?`);
         values.push(val);
       }
@@ -1155,6 +1156,19 @@ router.post("/:id/update", ...requireAuth, (req: AuthenticatedRequest, res: Resp
       db.prepare(`UPDATE listings SET status = 'active', updated_at = datetime('now') WHERE id = ?`).run(req.params.id);
       updated = stmts.getById.get(req.params.id) as ListingRow;
       console.log(`[marketplace] Auto-activated listing \${req.params.id} (quantity: \${updated.quantity})`);
+
+ // Re-notify community if listing was restocked
+if (row.status === "sold" && updated.status === "active" && updated.quantity > 0) {
+try {
+matrixBot.notifyNewListing({
+id: updated.id, title: updated.title, priceMsats: updated.price_msats,
+minPriceMsats: updated.min_price_msats, maxPriceMsats: updated.max_price_msats,
+category: updated.category, sellerFedPrefix: updated.seller_fed_prefix,
+sellerFedDomain: updated.seller_fed_domain, federationOnly: !!(updated as any).federation_only, terms: updated.terms,
+});
+console.log("[marketplace] Restocked listing " + updated.id + " — notified community");
+} catch {}
+}
     }
 
     res.json(formatListing(updated));
