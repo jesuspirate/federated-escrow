@@ -1430,6 +1430,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
         escrowId,
         arbiterPubkey,
         status: "pending",
+        listingCategory: listing.category,
       },
       escrow: {
         id: escrowId,
