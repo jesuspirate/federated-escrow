@@ -613,9 +613,9 @@ router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
     // Notify community rooms about new listing
     try {
       matrixBot.notifyNewListing({
-        id: row.id, title: row.title, priceMsats: row.price_msats,
+        id: row.id, title: row.title, priceMsats: row.price_msats, minPriceMsats: row.min_price_msats, maxPriceMsats: row.max_price_msats,
         category: row.category, sellerFedPrefix: row.seller_fed_prefix,
-        sellerFedDomain: row.seller_fed_domain, federationOnly: !!(row as any).federation_only,
+        sellerFedDomain: row.seller_fed_domain, federationOnly: !!(row as any).federation_only, terms: row.terms,
       });
     } catch {}
     res.status(201).json(formatListing(row));

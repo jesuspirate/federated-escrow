@@ -311,6 +311,11 @@ const PAYMENT_METHODS = [
   { key: "paypal", label: "PayPal", icon: "🅿️", region: "Global" },
   { key: "bank", label: "Bank Transfer", icon: "🏦", region: "Global" },
   { key: "cash", label: "Cash (in person)", icon: "💰", region: "Local" },
+  { key: "revolut", label: "Revolut", icon: "💳", region: "Europe" },
+  { key: "pix", label: "PIX", icon: "🇧🇷", region: "Brazil" },
+  { key: "upi", label: "UPI", icon: "🇮🇳", region: "India" },
+  { key: "gcash", label: "GCash", icon: "📱", region: "Philippines" },
+  { key: "ecocash", label: "EcoCash", icon: "📱", region: "Zimbabwe" },
 ];
 function isSatsForFiat(category) { return category?.toLowerCase().trim() === SATS_FOR_FIAT; }
 function isLending(category) { return category?.toLowerCase().trim() === LENDING; }
@@ -1679,7 +1684,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
   const [quantity, setQuantity] = useState(l.quantity ?? 1);
   const [minPrice, setMinPrice] = useState(l.minPriceSats || "");
   const [maxPrice, setMaxPrice] = useState(l.maxPriceSats || "");
-  const [editPremium, setEditPremium] = useState("");
+  const [editPremium, setEditPremium] = useState(() => { const m = (l.terms || "").match(/Rate:\s*(\d+)/); return m ? m[1] : ""; });
   const [editShipping, setEditShipping] = useState(l.shippingCostSats || "");
   const isP2PEdit = isSatsForFiat(l.category);
   const isP2P = isSatsForFiat(l.category);
@@ -1742,6 +1747,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
     if (!price || Number(price) <= 0) return showToast("Price must be positive", "error");
     setLoading(true);
     try {
+      const updatedTerms = (() => { let t = terms.trim().replace(/Rate:\s*\d+/, "").trim(); if (editPremium) t = (t ? t + " | " : "") + "Rate: " + editPremium; return t; })();
       const res = await mapi(`/${l.id}/update`, {
         method: "POST",
         body: JSON.stringify({
@@ -2763,11 +2769,11 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
             <input style={M.input} placeholder="https://your-shop.com (optional)" value={websiteUrl} onChange={e => setWebsiteUrl(e.target.value)} />
             <p style={{ fontSize: 10, color: "#475569", marginTop: 4 }}>Link to your shop, portfolio, or product page</p>
           </div>
-          <div style={{ marginTop: 8 }}>
+          {!isBill && <div style={{ marginTop: 8 }}>
             <div style={M.sectionLabel}>SHIPPING COST (sats, optional)</div>
             <input style={M.input} type="number" placeholder="e.g., 500" value={shippingCost} onChange={e => setShippingCost(e.target.value)} />
             <p style={{ fontSize: 10, color: "#475569", marginTop: 4 }}>Added to the item price. Buyer pays item + shipping.</p>
-          </div>
+          </div>}
         </div>
       )}
 

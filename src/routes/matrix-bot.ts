@@ -210,13 +210,15 @@ const bot = {
   },
 
   // New listing created — broadcast to community rooms
-  async notifyNewListing(listing: { id: string; title: string; priceMsats: number; category: string; sellerFedPrefix?: string; sellerFedDomain?: string; federationOnly?: boolean }) {
+  async notifyNewListing(listing: { id: string; title: string; priceMsats: number; minPriceMsats?: number; maxPriceMsats?: number; category: string; sellerFedPrefix?: string; sellerFedDomain?: string; federationOnly?: boolean; terms?: string }) {
     if (!BOT_ENABLED) return;
-    const amount = fmtSats(listing.priceMsats);
-    const tag = listing.category === "lending" ? "🤝 Lending" : listing.category === "sats-for-fiat" ? "₿ P2P Trade" : "🛒 " + (listing.category || "Item");
+    const hasRange = listing.minPriceMsats && listing.maxPriceMsats && listing.minPriceMsats !== listing.maxPriceMsats;
+    const amount = hasRange ? `${fmtSats(listing.minPriceMsats!)} — ${fmtSats(listing.maxPriceMsats!)}` : fmtSats(listing.priceMsats);
+    const tag = listing.category === "bill-pay" ? "🧾 Bill Pay" : listing.category === "lending" ? "🤝 Lending" : listing.category === "sats-for-fiat" ? "₿ P2P Trade" : "🛒 " + (listing.category || "Item");
     const vip = listing.federationOnly ? " 🔒 Federation Only" : "";
-    const body = `📢 New listing: ${listing.title}\n${tag} — ₿ ${amount} sats${vip}\n🔗 ID: ${listing.id}`;
-
+    const rateMatch = (listing.terms || "").match(/Rate:\s*(\d+)/);
+    const premium = rateMatch ? ` 📈 ${rateMatch[1]}% premium` : "";
+    const body = `📢 New listing: ${listing.title}\n${tag} — ₿ ${amount} sats${premium}${vip}\n🔗 ID: ${listing.id}`;
     // Post to default rooms
     for (const roomId of Object.keys(ROOM_LANG)) {
       await postToRoom(roomId, body);
