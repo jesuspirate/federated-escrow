@@ -1361,8 +1361,8 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   };
 
   const subdomainFilter = (l) => {
-    if (subdomain === "p2p") return isSatsForFiat(l.category);
-    if (subdomain === "lending") return isLending(l.category);
+    if (subdomain === "p2p") return isSatsForFiat(l.category) || isBillPay(l.category);
+    if (subdomain === "lending") return isLending(l.category) || isBillPay(l.category);
     if (subdomain === "market") return !isSatsForFiat(l.category) && !isLending(l.category);
     return true; // legacy satoshimarket.app shows all
   };
