@@ -840,7 +840,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           onCreate={() => setView("create")}
           onOrders={openOrders}
           activeOrderCount={orders.length > 0 ? orders.filter(o => (o.status === "pending" || o.status === "active") && !o.isRepayment).length : cachedOrderCount}
-          onRefresh={() => loadListings(searchQuery)}
+          onRefresh={() => { loadListings(searchQuery); loadOrders(); }}
           onSwitchToEscrow={onSwitchToEscrow}
           onProfile={openProfile}
           locale={locale} onSwitchLocale={switchLocale}
