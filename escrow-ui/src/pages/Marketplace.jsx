@@ -2471,11 +2471,6 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
 
         </>}
 
-        {/* P2P + Bill Pay — context-aware */}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-          {subdomain !== "market" && <button onClick={() => setCategory("sats-for-fiat")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: category === "sats-for-fiat" ? "1.5px solid #f59e0b" : "1px solid #334155", background: category === "sats-for-fiat" ? "rgba(245,158,11,0.15)" : "#111827", color: category === "sats-for-fiat" ? "#f59e0b" : "#94a3b8" }}>{"₿"} P2P Trade</button>}
-          <button onClick={() => setCategory(category === "bill-pay" ? "" : "bill-pay")} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: category === "bill-pay" ? "1.5px solid #f59e0b" : "1px solid #334155", background: category === "bill-pay" ? "rgba(245,158,11,0.15)" : "#111827", color: category === "bill-pay" ? "#f59e0b" : "#94a3b8" }}>{"🧾"} Bill Pay</button>
-        </div>
         {/* Marketplace categories — hidden on p2p/lending subdomain */}
         {subdomain !== "p2p" && subdomain !== "lending" && <><div style={{ fontSize: 10, color: "#a78bfa", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>🛒 Marketplace</div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
