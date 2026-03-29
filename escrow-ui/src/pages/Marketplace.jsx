@@ -1879,7 +1879,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
         <div style={{ display: "flex", gap: 10 }}>
           <button style={{ ...M.secondaryBtn, flex: 1 }} onClick={() => onBack(null)}>Cancel</button>
 
- {/ Federation-only toggle /}
+ {/* Federation-only toggle */}
 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "10px 14px", borderRadius: 10, background: editFedOnly ? "rgba(139,92,246,0.1)" : "#111827", border: "1px solid " + (editFedOnly ? "rgba(139,92,246,0.3)" : "#1e293b"), cursor: "pointer" }} onClick={() => setEditFedOnly(!editFedOnly)}>
 <span style={{ fontSize: 18 }}>{editFedOnly ? "🔒" : "🌐"}</span>
 <div style={{ flex: 1 }}>
@@ -2090,6 +2090,12 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
           </div>
         )}
 
+        {canBuy && (isP2P || isBill) && !hasRange && fiatRates && (
+          <div style={{ marginBottom: 10, padding: "10px 14px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>Fiat to send</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "#f59e0b" }}>{fmtFiat(l.priceMsats, fiatRates, l.fiatCurrency || "USD")}</span>
+          </div>
+        )}
         {canBuy && (
           <button style={{ ...M.actionBtn, background: isP2P || isBillPay(l.category) ? "linear-gradient(135deg, #f59e0b, #d97706)" : "linear-gradient(135deg, #10b981, #059669)", boxShadow: isP2P || isBillPay(l.category) ? "0 4px 24px rgba(245,158,11,0.3)" : "0 4px 24px rgba(16,185,129,0.3)", color: (isP2P || isBillPay(l.category)) ? "#0c0f17" : "#fff", marginBottom: 16 }} onClick={() => { if (hasRange && (!buyAmount || parseInt(buyAmount) < l.minPriceSats || parseInt(buyAmount) > l.maxPriceSats)) { showToast("Pick an amount between " + l.minPriceSats.toLocaleString() + " and " + l.maxPriceSats.toLocaleString() + " sats", "error"); return; } handleBuy(); }} disabled={loading || (isLending(l.category) && myLendingLevel && Math.floor(l.priceMsats / 1000) > myLendingLevel.maxSats)}>
             {loading
