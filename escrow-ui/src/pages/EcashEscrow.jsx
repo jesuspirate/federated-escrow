@@ -1270,9 +1270,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
   useEffect(() => {
     if (!open || !escrowId) return;
     // Only full-reset if escrow changed; otherwise just resume polling
-    if (messages.length === 0) {
-      lastTs.current = 0;
-    }
+    lastTs.current = 0;
     loadMessages();
     pollRef.current = setInterval(loadMessages, 3000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
