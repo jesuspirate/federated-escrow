@@ -705,6 +705,13 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
     setOrdersLoading(false);
   }, []);
 
+  // Auto-refresh orders every 30 seconds
+  useEffect(() => {
+    if (!sessionReady) return;
+    const interval = setInterval(() => { loadOrders(); }, 30000);
+    return () => clearInterval(interval);
+  }, [sessionReady, loadOrders]);
+
   // Fetch fiat rates on mount (no auth needed)
   useEffect(() => {
     (async () => {
