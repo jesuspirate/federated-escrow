@@ -2597,8 +2597,8 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
         <div style={M.formGroup}><label style={M.label}>{isLoan ? "LOAN AMOUNT (SATS) *" : t("mkFieldPrice") + " *"}</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}</p></div>
       )}
 
-      {/* ── P2P-specific fields ── */}
-      {isP2P && (
+      {/* ── P2P + Bill Pay fields ── */}
+      {(isP2P || isBill) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={M.formGroup}>
             <label style={M.label}>{t("mkFiatCurrency")}</label>
