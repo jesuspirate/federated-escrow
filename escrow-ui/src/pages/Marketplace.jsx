@@ -2196,7 +2196,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
 
         {/* ── Listing info grid ── */}
         <div style={{ display: "flex", justifyContent: "space-around", padding: "12px 0", marginBottom: 14, borderRadius: 12, background: "rgba(15,23,42,0.5)", border: "1px solid #1e293b", textAlign: "center" }}>
-          {l.condition && !isP2P && (
+          {l.condition && !isP2P && !isBillPay(l.category) && (
             <div>
               <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("mkCondition")}</div>
               <div style={{ fontSize: 13, color: "#f8fafc", fontWeight: 600, marginTop: 2 }}>{t(CONDITION_KEYS[l.condition] || l.condition)}</div>
@@ -3817,10 +3817,10 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             onClick={() => onSwitchToEscrow(escrow?.id || o.escrowId)}
             style={{
               ...M.actionBtn,
-              background: status === "active"
+              background: o.listingCategory === "bill-pay" ? "linear-gradient(135deg, #f59e0b, #d97706)" : status === "active"
                 ? "linear-gradient(135deg, #f59e0b, #d97706)"
                 : "linear-gradient(135deg, #7c3aed, #6d28d9)",
-              boxShadow: status === "active"
+              boxShadow: o.listingCategory === "bill-pay" ? "0 4px 24px rgba(245,158,11,0.3)" : status === "active"
                 ? "0 4px 24px rgba(245,158,11,0.3)"
                 : "0 4px 24px rgba(124,58,237,0.3)",
               marginBottom: 8, fontSize: 16, padding: "16px 20px",
@@ -3829,7 +3829,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             {status === "pending"
               ? (isP2P
                   ? (isBuyer ? (isRepayment ? "💰 Lock Repayment" : isLoan ? "✓ Accept Loan" : "View Trade") : (isRepayment ? "🔍 View Repayment" : isLoan ? "🤝 Fund Loan" : "🔐 Lock E-cash"))
-                  : (isRepayment ? (isBuyer ? "💰 Lock Repayment" : "🔍 View Repayment") : isLoan ? (isBuyer ? "✓ Accept Loan" : "🤝 Fund Loan") : (isBuyer ? "🔐 Lock Payment" : "View Trade")))
+                  : (isRepayment ? (isBuyer ? "💰 Lock Repayment" : "🔍 View Repayment") : isLoan ? (isBuyer ? "✓ Accept Loan" : "🤝 Fund Loan") : (o.listingCategory === "bill-pay" ? (isBuyer ? "View Trade" : "🧾 Lock Sats") : (isBuyer ? "🔐 Lock Payment" : "View Trade"))))
               : isRepayment ? "💰 Open Repayment" : isLoan ? "🤝 Open Loan" : "⚡ Open Trade"
             }
           </button>
