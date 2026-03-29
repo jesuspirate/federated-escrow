@@ -1350,7 +1350,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
 
     // P2P/Lending: seller locks (seller has sats)
     // Marketplace: buyer locks (buyer pays with sats)
-    const lockRole = isP2PTrade || isLenderTrade(listing.category) ? "seller" : "buyer";
+    const lockRole = isP2PTrade || isLenderTrade(listing.category) || listing.category === "bill-pay" ? "seller" : "buyer";
 
     // Store seller's federation prefix on the escrow for lock validation
     const sellerFedPrefix = listing.seller_fed_prefix || null;
@@ -1358,7 +1358,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     DB.createEscrow({
       id: escrowId,
       amountMsats: tradeAmountMsats,
-      description: isLenderTrade(listing.category)
+      description: listing.category === "bill-pay" ? `Bill Pay: ${listing.title}` : isLenderTrade(listing.category)
         ? `Lending: ${listing.title}`
         : isP2PTrade
         ? `P2P Trade: ${listing.title}`
@@ -1409,11 +1409,17 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     // Phase 5: DM notification — listing purchased
     if (!isSandboxTrade) Notify.notifyListingPurchased(listing.id, listing.title, listing.seller_pubkey, buyerPubkey, escrowId);
 
-    const nextStepMsg = isP2PTrade
+
+    const isBillPay = listing.category === "bill-pay";
+    const nextStepMsg = isBillPay
+      ? `Listing owner opens escrow ${escrowId} and locks sats. Volunteer pays the bill.`
+      : isP2PTrade
       ? `Seller opens escrow ${escrowId} and locks sats. Buyer sends fiat.`
       : `Buyer opens escrow ${escrowId} and locks sats as payment.`;
 
-    const responseMsg = isP2PTrade
+    const responseMsg = isBillPay
+      ? "Bill Pay initiated! Lock your sats. Volunteer: prepare to pay the bill."
+      : isP2PTrade
       ? "P2P trade initiated! Seller: lock your sats. Buyer: prepare fiat payment."
       : "Purchase initiated! Buyer: lock your sats as payment. Seller: prepare to ship.";
 
@@ -1436,10 +1442,10 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
         title: listing.title,
         remainingQuantity: Math.max(0, listing.quantity - 1),
       },
-      tradeType: isP2PTrade ? "sats-for-fiat" : "marketplace",
+      tradeType: isBillPay ? "bill-pay" : isP2PTrade ? "sats-for-fiat" : "marketplace",
       escrowRoles: {
-        locksats: isP2PTrade ? "listing_seller" : "buyer",
-        receivesats: isP2PTrade ? "buyer" : "listing_seller",
+        locksats: isBillPay || isP2PTrade ? "listing_seller" : "buyer",
+        receivesats: isBillPay || isP2PTrade ? "buyer" : "listing_seller",
         escrowSellerPubkey,
         escrowBuyerPubkey,
       },
