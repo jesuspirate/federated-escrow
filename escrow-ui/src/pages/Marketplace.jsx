@@ -1875,18 +1875,16 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
             })()}
           </div>
         )}
-
+        {/* Federation-only toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "10px 14px", borderRadius: 10, background: editFedOnly ? "rgba(139,92,246,0.1)" : "#111827", border: "1px solid " + (editFedOnly ? "rgba(139,92,246,0.3)" : "#1e293b"), cursor: "pointer" }} onClick={() => setEditFedOnly(!editFedOnly)}>
+          <span style={{ fontSize: 18 }}>{editFedOnly ? "🔒" : "🌐"}</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: editFedOnly ? "#a78bfa" : "#94a3b8" }}>Federation Only</div>
+            <div style={{ fontSize: 10, color: "#475569" }}>{editFedOnly ? "Only your federation members can see this" : "Visible to everyone"}</div>
+          </div>
+        </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button style={{ ...M.secondaryBtn, flex: 1 }} onClick={() => onBack(null)}>Cancel</button>
-
- {/* Federation-only toggle */}
-<div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, padding: "10px 14px", borderRadius: 10, background: editFedOnly ? "rgba(139,92,246,0.1)" : "#111827", border: "1px solid " + (editFedOnly ? "rgba(139,92,246,0.3)" : "#1e293b"), cursor: "pointer" }} onClick={() => setEditFedOnly(!editFedOnly)}>
-<span style={{ fontSize: 18 }}>{editFedOnly ? "🔒" : "🌐"}</span>
-<div style={{ flex: 1 }}>
-<div style={{ fontSize: 12, fontWeight: 700, color: editFedOnly ? "#a78bfa" : "#94a3b8" }}>Federation Only</div>
-<div style={{ fontSize: 10, color: "#475569" }}>{editFedOnly ? "Only your federation members can see this" : "Visible to everyone"}</div>
-</div>
-</div>
           <button style={{ ...M.primaryBtn, flex: 2 }} onClick={handleSave} disabled={loading}>
             {loading ? "Saving…" : "💾 Save Changes"}
           </button>
@@ -3860,8 +3858,8 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
           >
             {status === "pending"
               ? (isP2P
-                  ? (isBuyer ? (isRepayment ? "💰 Lock Repayment" : isLoan ? "✓ Accept Loan" : "View Trade") : (isRepayment ? "🔍 View Repayment" : isLoan ? "🤝 Fund Loan" : "🔐 Lock E-cash"))
-                  : (isRepayment ? (isBuyer ? "💰 Lock Repayment" : "🔍 View Repayment") : isLoan ? (isBuyer ? "✓ Accept Loan" : "🤝 Fund Loan") : (o.listingCategory === "bill-pay" ? (isBuyer ? "View Trade" : "🧾 Lock Sats") : (isBuyer ? "🔐 Lock Payment" : "View Trade"))))
+                  ? (isBuyer ? (isRepayment ? "💰 Lock Repayment" : isLoan ? "✓ Accept Loan" : (fiatRates ? "💵 Prepare " + fmtFiat(o.amountMsats, fiatRates, "USD") : "View Trade")) : (isRepayment ? "🔍 View Repayment" : isLoan ? "🤝 Fund Loan" : "🔐 Lock E-cash"))
+                  : (isRepayment ? (isBuyer ? "💰 Lock Repayment" : "🔍 View Repayment") : isLoan ? (isBuyer ? "✓ Accept Loan" : "🤝 Fund Loan") : (o.listingCategory === "bill-pay" ? (isBuyer ? (fiatRates ? "💵 Prepare " + fmtFiat(o.amountMsats, fiatRates, "USD") : "View Trade") : "🧾 Lock Sats") : (isBuyer ? "🔐 Lock Payment" : "View Trade"))))
               : isRepayment ? "💰 Open Repayment" : isLoan ? "🤝 Open Loan" : "⚡ Open Trade"
             }
           </button>
