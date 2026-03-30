@@ -1649,12 +1649,18 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                   }}>{isSatsForFiat(l.category) ? "₿ P2P Trade" : isLending(l.category) ? "🤝 Lending" : isBillPay(l.category) ? "🧾 Bill Pay" : l.category}</span>}
                   {(() => { const fi = getFedInfo(l.sellerFedPrefix, l.sellerFedDomain); return fi ? <span style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: fi.color + "18", color: fi.color, border: "1px solid " + fi.color + "30", display: "inline-flex", alignItems: "center", gap: 3 }}>{fi.emoji} {fi.name}</span> : null; })()}
                   {l.federationOnly && <span style={{ padding: "3px 10px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(139,92,246,0.15)", color: "#a78bfa", border: "1px solid rgba(139,92,246,0.3)", display: "inline-flex", alignItems: "center", gap: 3 }}>🔒 Members</span>}
-                  {l.paymentMethods && l.paymentMethods.length > 0 && l.paymentMethods.slice(0, 3).map(pm => { const m = PAYMENT_METHODS.find(p => p.key === pm); return m ? <span key={pm} style={{ padding: "2px 6px", borderRadius: 5, fontSize: 9, fontWeight: 600, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>{m.icon} {m.label}</span> : null; })}
+                  
                 </div>
                 <span style={{ fontSize: 12, fontWeight: 600, ...(l.status === "paused" ? { color: "#64748b" } : l.quantity > 1 ? { color: "#10b981" } : l.quantity === 1 ? { color: "#f59e0b", animation: "pulse 2s ease infinite" } : { color: "#ef4444" }) }}>
                   {l.status === "paused" ? "⏸ Paused" : l.quantity > 1 ? `🟢 ${t("mkQtyAvailable", { qty: l.quantity })}` : l.quantity === 1 ? `🔥 ${t("mkQtyOneLeft")}` : `❌ ${t("mkQtySoldOut")}`}
                 </span>
               </div>
+                {l.paymentMethods && l.paymentMethods.length > 0 && (
+                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                    {l.paymentMethods.slice(0, 4).map(pm => { const m = PAYMENT_METHODS.find(p => p.key === pm); return m ? <span key={pm} style={{ padding: "2px 6px", borderRadius: 5, fontSize: 9, fontWeight: 600, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>{m.icon} {m.label}</span> : null; })}
+                    {l.paymentMethods.length > 4 && <span style={{ padding: "2px 6px", borderRadius: 5, fontSize: 9, fontWeight: 600, color: "#64748b" }}>+{l.paymentMethods.length - 4}</span>}
+                  </div>
+                )}
             </button>
             )
           )}
@@ -1845,7 +1851,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
           </div>
         </div>
 
-        {!isP2P && (
+        {!isP2P && !isBillPay(l.category) && (
           <div style={{ marginBottom: 14 }}>
             <div style={M.sectionLabel}>Shipping Cost (sats, optional)</div>
             <input style={M.input} type="number" placeholder="e.g., 500" value={editShipping} onChange={e => setEditShipping(e.target.value)} />
@@ -2103,7 +2109,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
           </div>
         )}
 
-        {canBuy && (isP2P || isBill) && !hasRange && fiatRates && (
+        {canBuy && (isP2P || isBillPay(l.category)) && !hasRange && fiatRates && (
           <div style={{ marginBottom: 10, padding: "10px 14px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>Fiat to send</span>
             <span style={{ fontSize: 15, fontWeight: 800, color: "#f59e0b" }}>{fmtFiat(l.priceMsats, fiatRates, l.fiatCurrency || "USD")}</span>
