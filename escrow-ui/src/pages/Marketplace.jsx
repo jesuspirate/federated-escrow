@@ -300,7 +300,7 @@ const PAYMENT_METHODS = [
   { key: "mpesa", label: "M-Pesa", icon: "📱", region: "East Africa" },
   { key: "airtel", label: "Airtel Money", icon: "📱", region: "East Africa" },
   { key: "mtn", label: "MTN MoMo", icon: "📱", region: "West Africa" },
-  { key: "orange", label: "Orange Money", icon: "📱", region: "West Africa" },
+  { key: "orange", label: "Orange Money", icon: "🟧", region: "West Africa" },
   { key: "wave", label: "Wave", icon: "🌊", region: "West Africa" },
   { key: "opay", label: "OPay", icon: "💚", region: "West Africa" },
   { key: "chipper", label: "Chipper Cash", icon: "💸", region: "Africa" },
@@ -1640,7 +1640,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                   </div>
                 );
               })()}
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
                   {l.status === "paused" && <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(100,116,139,0.2)", color: "#94a3b8", border: "1px solid #334155" }}>⏸ {t("mkStatusPaused")}</span>}
                   {l.condition && !isSatsForFiat(l.category) && !isLending(l.category) && l.status !== "paused" && <span style={M.conditionBadge}>{t(CONDITION_KEYS[l.condition] || l.condition)}</span>}
                   {l.category && !(subdomain === "p2p" && isSatsForFiat(l.category)) && !(subdomain === "lending" && isLending(l.category)) && <span style={{
