@@ -1302,7 +1302,7 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
 
 function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale, onChapSmart, subdomain, myFederation, onArbiters, onFaq, showToast }) {
   const [searchOpen, setSearchOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState("all");
+  const [activeCategory, setActiveCategory] = useState(() => { const h = window.location.hash.replace("#", ""); return h === "billpay" ? "bill-pay" : "all"; });
   const [filterPayMethod, setFilterPayMethod] = useState(null);
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
   const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
@@ -1478,8 +1478,8 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         {/* ── Category quick-filters ── */}
         <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 10, WebkitOverflowScrolling: "touch", scrollbarWidth: "none" }}>
         {CATEGORIES.filter(c => {
-          if (subdomain === "p2p") return c.key === "all" || c.key === "mine";
-          if (subdomain === "lending") return c.key === "all" || c.key === "mine";
+          if (subdomain === "p2p") return c.key === "all" || c.key === "mine" || c.key === "bill-pay";
+          if (subdomain === "lending") return c.key === "all" || c.key === "mine" || c.key === "bill-pay";
           if (subdomain === "market") return c.key !== "sats-for-fiat" && c.key !== "lending";
           return true;
         }).map(c => (
