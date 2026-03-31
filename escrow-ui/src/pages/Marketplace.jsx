@@ -1509,7 +1509,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
 
 
       {/* Payment method filter */}
-      {(subdomain === "p2p" || activeCategory === "sats-for-fiat" || activeCategory === "bill-pay") && (
+      {(subdomain !== "escrow") && (
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8, paddingBottom: 4 }}>
           {filterPayMethod && <button onClick={() => setFilterPayMethod(null)} style={{ padding: "4px 10px", borderRadius: 14, fontSize: 10, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>✕ Clear</button>}
           {PAYMENT_METHODS.filter(pm => listings.some(l => (l.paymentMethods || []).includes(pm.key))).map(pm => (
@@ -1519,7 +1519,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       )}
 
       {/* Currency filter */}
-      {(subdomain === "p2p" || activeCategory === "sats-for-fiat" || activeCategory === "bill-pay") && (
+      {(subdomain !== "escrow") && (
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }}>
           {filterCurrency && <button onClick={() => setFilterCurrency(null)} style={{ padding: "4px 10px", borderRadius: 14, fontSize: 10, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>✕ Clear</button>}
           {["USD","EUR","GBP","CFA","KES","TZS","NGN","BRL","INR"].filter(cur => listings.some(l => { const t = l.terms || ""; const m = t.match(/Currency:\s*(\w+)/); return (m ? m[1] : l.fiatCurrency) === cur; })).map(cur => (
@@ -1659,7 +1659,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
               })()}
                 <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
                   {l.status === "paused" && <span style={{ padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(100,116,139,0.2)", color: "#94a3b8", border: "1px solid #334155" }}>⏸ {t("mkStatusPaused")}</span>}
-                  {l.condition && !isSatsForFiat(l.category) && !isLending(l.category) && l.status !== "paused" && <span style={M.conditionBadge}>{t(CONDITION_KEYS[l.condition] || l.condition)}</span>}
+                  {l.condition && !isSatsForFiat(l.category) && !isLending(l.category) && !isBillPay(l.category) && l.status !== "paused" && <span style={M.conditionBadge}>{t(CONDITION_KEYS[l.condition] || l.condition)}</span>}
                   {l.category && !(subdomain === "p2p" && isSatsForFiat(l.category)) && !(subdomain === "lending" && isLending(l.category)) && <span style={{
                     ...M.categoryBadge,
                     ...(isSatsForFiat(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : isLending(l.category) ? { background: "rgba(16,185,129,0.15)", color: "#10b981", fontWeight: 700 } : isBillPay(l.category) ? { background: "rgba(245,158,11,0.15)", color: "#f59e0b", fontWeight: 700 } : {}),
@@ -3879,6 +3879,16 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
           </div>
         )}
 
+
+        {/* ── Accepted Payment Methods ── */}
+        {detail?.listing?.paymentMethods && detail.listing.paymentMethods.length > 0 && (
+          <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 12, background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.12)" }}>
+            <div style={{ fontSize: 10, color: "#10b981", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, textAlign: "center" }}>Accepted Payment Methods</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+              {detail.listing.paymentMethods.map(pm => { const m = PAYMENT_METHODS.find(p => p.key === pm); return m ? <span key={pm} style={{ padding: "4px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>{m.icon} {m.label}</span> : null; })}
+            </div>
+          </div>
+        )}
         {/* ── ONE action button ── */}
         {onSwitchToEscrow && (status === "pending" || status === "active") && (o.escrowId || escrow?.id) && (
           <button
