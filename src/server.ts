@@ -42,6 +42,7 @@ app.get("/", (req, res, next) => {
     }
   }
   next();
+});
 
 // French landing page
 app.get("/fr", (req: any, res: any) => {
@@ -63,7 +64,6 @@ app.get("/es", (req: any, res: any) => {
     return res.sendFile(esPath);
   }
   res.redirect("/");
-});
 });
 
 app.use(express.static(distPath, {
