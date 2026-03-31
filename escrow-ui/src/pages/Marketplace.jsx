@@ -690,7 +690,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
     try {
       // Fetch independently — if one fails, still show the other
       let buyerOrders = [], sellerOrders = [];
-      try { const b = await mapi("/orders/mine?role=buyer"); buyerOrders = b.orders || []; } catch (e) { console.warn("[marketplace-ui] buyer orders FAILED:", e.message); showToast && showToast("Orders: " + e.message, "error"); }
+      try { const b = await mapi("/orders/mine?role=buyer"); buyerOrders = b.orders || []; } catch (e) { console.warn("[marketplace-ui] buyer orders FAILED:", e.message); ; }
       try { const s = await mapi("/orders/mine?role=seller"); sellerOrders = s.orders || []; } catch (e) { console.warn("[marketplace-ui] seller orders FAILED:", e.message); }
       const all = [...buyerOrders, ...sellerOrders];
       const seen = new Set();
