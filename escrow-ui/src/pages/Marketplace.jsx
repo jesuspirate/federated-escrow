@@ -1387,7 +1387,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
     : activeCategory === "mine"
     ? listings.filter(l => l.sellerPubkey === pubkey).filter(subdomainFilter)
     : listings.filter(l => {
-        if (l.sellerPubkey === pubkey) return false;
+        if (l.sellerPubkey === pubkey && activeCategory !== "bill-pay") return false;
         if (activeCategory === "sats-for-fiat") return isSatsForFiat(l.category);
         if (activeCategory === "lending") return isLending(l.category);
         if (activeCategory === "bill-pay") return isBillPay(l.category);
