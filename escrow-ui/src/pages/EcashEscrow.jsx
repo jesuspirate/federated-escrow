@@ -2227,6 +2227,17 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
           <TradeChat escrowId={e.id} pubkey={pubkey} participants={e.participants} />
         )}
 
+        {/* ── Keet P2P Chat — community trade room ── */}
+        {(status === "LOCKED" || status === "FUNDED" || status === "APPROVED" || status === "CLAIMED") && (
+          <a href="pear://keet/nfoid1mu18n1fyx5mg83cx3ucb5tro43w46eujgpzj5hmp87kfqoy7s6drnu4bijak3pjqouhm78ffmhkm8f3jq1kjeswbttmj54qsup57nhs897o1tdpddpt81tyk8ujs739huwg5q7w38bp5djnsxz7w7iqyedsyrto6njajkxxm91jxbjpn8pukbho"
+            target="_blank" rel="noopener noreferrer"
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, margin: "8px 16px", padding: "12px 16px", borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", textDecoration: "none", cursor: "pointer" }}>
+            <span style={{ fontSize: 16 }}>{"💬"}</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#10b981" }}>Chat on Keet</span>
+            <span style={{ fontSize: 9, color: "#64748b", padding: "2px 6px", borderRadius: 4, background: "rgba(100,116,139,0.1)" }}>P2P</span>
+          </a>
+        )}
+
         {/* ── Contextual status message per subdomain ── */}
         {status === "LOCKED" && subdomain && subdomain !== "escrow" && subdomain !== "marketplace" && (
           <div style={{ textAlign: "center", padding: "6px 14px", marginBottom: 8, fontSize: 12, fontWeight: 600, color: subdomain === "p2p" ? "#f59e0b" : subdomain === "market" ? "#a78bfa" : "#10b981" }}>
