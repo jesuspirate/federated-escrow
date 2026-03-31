@@ -42,6 +42,28 @@ app.get("/", (req, res, next) => {
     }
   }
   next();
+
+// French landing page
+app.get("/fr", (req: any, res: any) => {
+  const fs = require("fs");
+  const frPath = path.join(distPath, "fr.html");
+  if (fs.existsSync(frPath)) {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    return res.sendFile(frPath);
+  }
+  res.redirect("/");
+});
+
+// Spanish landing page
+app.get("/es", (req: any, res: any) => {
+  const fs = require("fs");
+  const esPath = path.join(distPath, "es.html");
+  if (fs.existsSync(esPath)) {
+    res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    return res.sendFile(esPath);
+  }
+  res.redirect("/");
+});
 });
 
 app.use(express.static(distPath, {
