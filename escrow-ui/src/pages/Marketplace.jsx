@@ -1304,6 +1304,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(() => { const h = window.location.hash.replace("#", ""); return h === "billpay" ? "bill-pay" : "all"; });
   const [filterPayMethod, setFilterPayMethod] = useState(null);
+  const [filterCurrency, setFilterCurrency] = useState(null);
   const p2pCount = useMemo(() => listings.filter(l => isSatsForFiat(l.category)).length, [listings]);
   const lendingCount = useMemo(() => listings.filter(l => isLending(l.category)).length, [listings]);
 
@@ -1413,6 +1414,12 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
     const methods = l.paymentMethods || [];
     return methods.includes(filterPayMethod);
     // Urgent (1 left) first, then available, then sold out
+  }).filter(l => {
+    if (!filterCurrency) return true;
+    const terms = l.terms || "";
+    const currMatch = terms.match(/Currency:\s*(\w+)/);
+    const cur = currMatch ? currMatch[1] : l.fiatCurrency || null;
+    return cur === filterCurrency;
     const rank = (l) => {
       if (l.status === "paused") return 3;
       if (l.quantity <= 0 || l.status === "sold") return 4;
@@ -1507,6 +1514,16 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
           {filterPayMethod && <button onClick={() => setFilterPayMethod(null)} style={{ padding: "4px 10px", borderRadius: 14, fontSize: 10, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>✕ Clear</button>}
           {PAYMENT_METHODS.filter(pm => listings.some(l => (l.paymentMethods || []).includes(pm.key))).map(pm => (
             <button key={pm.key} onClick={() => setFilterPayMethod(filterPayMethod === pm.key ? null : pm.key)} style={{ padding: "4px 10px", borderRadius: 14, fontSize: 10, fontWeight: 600, cursor: "pointer", border: filterPayMethod === pm.key ? "1px solid rgba(245,158,11,0.4)" : "1px solid #1e293b", background: filterPayMethod === pm.key ? "rgba(245,158,11,0.12)" : "#111827", color: filterPayMethod === pm.key ? "#f59e0b" : "#64748b" }}>{pm.icon} {pm.label}</button>
+          ))}
+        </div>
+      )}
+
+      {/* Currency filter */}
+      {(subdomain === "p2p" || activeCategory === "sats-for-fiat" || activeCategory === "bill-pay") && (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 8 }}>
+          {filterCurrency && <button onClick={() => setFilterCurrency(null)} style={{ padding: "4px 10px", borderRadius: 14, fontSize: 10, fontWeight: 700, cursor: "pointer", border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.1)", color: "#ef4444" }}>✕ Clear</button>}
+          {["USD","EUR","GBP","CFA","KES","TZS","NGN","BRL","INR"].filter(cur => listings.some(l => { const t = l.terms || ""; const m = t.match(/Currency:\s*(\w+)/); return (m ? m[1] : l.fiatCurrency) === cur; })).map(cur => (
+            <button key={cur} onClick={() => setFilterCurrency(filterCurrency === cur ? null : cur)} style={{ padding: "4px 10px", borderRadius: 14, fontSize: 10, fontWeight: 600, cursor: "pointer", border: filterCurrency === cur ? "1px solid rgba(59,130,246,0.4)" : "1px solid #1e293b", background: filterCurrency === cur ? "rgba(59,130,246,0.12)" : "#111827", color: filterCurrency === cur ? "#3b82f6" : "#64748b" }}>{cur}</button>
           ))}
         </div>
       )}
