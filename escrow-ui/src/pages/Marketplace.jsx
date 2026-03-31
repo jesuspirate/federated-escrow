@@ -995,10 +995,10 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
     },
     {
       icon: "⚡",
-      title: isBrowser ? "Try it in Sandbox" : "Start Trading",
+      title: isBrowser ? "Try it in Sandbox" : "You're Ready!",
       desc: isBrowser
         ? "This is a demo — explore listings, create test trades, and see how escrow works. For real trades, download the Fedi app!"
-        : "List something for sale, browse what's available, or start a P2P sats-for-fiat trade. Join our community to connect with other traders!",
+        : "Pay a bill, trade sats, buy something, or lend to your community. Need help? Tap Support below.",
     },
   ];
 
@@ -1079,28 +1079,14 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
                 </>
               ) : (
                 <>
-                  <div style={{ fontSize: 13, color: "#10b981", fontWeight: 700, textAlign: "center", marginBottom: 16 }}>{"🎉"} You're in! No registration needed.</div>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 14, justifyContent: "center" }}>
-                    <span style={{ fontSize: 18, lineHeight: 1 }}>1️⃣</span>
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#f59e0b", marginBottom: 6 }}>Join a community to start trading</div>
-                      <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5, marginBottom: 6 }}>Pick your language. You'll join a Bitcoin community with real traders.</div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "8px 14px", borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#f59e0b", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>{"🇬🇧"} English</a>
-                        <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "8px 14px", borderRadius: 8, background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: "#3b82f6", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>{"🇫🇷"} Français</a>
-                      </div>
-                    </div>
+                  <div style={{ fontSize: 13, color: "#10b981", fontWeight: 700, textAlign: "center", marginBottom: 12 }}>{"🎉"} You're in! No registration needed.</div>
+                  <div style={{ fontSize: 11, color: "#94a3b8", textAlign: "center", marginBottom: 16, lineHeight: 1.5 }}>Your wallet is ready. Your community is connected. Start exploring.</div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", marginBottom: 4 }}>Need help? We're one tap away</div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, justifyContent: "center" }}>
-                    <span style={{ fontSize: 18, lineHeight: 1 }}>2️⃣</span>
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", marginBottom: 6 }}>Need help? We're one tap away</div>
-                      <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5, marginBottom: 6 }}>Chat directly with our team. Real humans, real support.</div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <a href="fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "8px 14px", borderRadius: 8, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#a78bfa", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>{"💬"} Support (EN)</a>
-                        <a href="fedi:room:!qHlVxBJBCKqUbetBnA:m1.8fa.in:::" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "8px 14px", borderRadius: 8, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#a78bfa", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>{"💬"} Support (FR)</a>
-                      </div>
-                    </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", marginTop: 8 }}>
+                    <a href="fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "8px 14px", borderRadius: 8, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#a78bfa", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>{"💬"} Support (EN)</a>
+                    <a href="fedi:room:!qHlVxBJBCKqUbetBnA:m1.8fa.in:::" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "8px 14px", borderRadius: 8, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#a78bfa", fontSize: 12, fontWeight: 600, textDecoration: "none" }}>{"💬"} Support (FR)</a>
                   </div>
                 </>
               )}
