@@ -2365,7 +2365,7 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
         {canBuyerVote && confirmVote === "release" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "0 0 12px" }}>
             <div style={{ textAlign: "center", padding: "12px 14px", background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.3)", borderRadius: 10, fontSize: 14, fontWeight: 700, color: "#10b981" }}>
-              {isP2PTrade ? "Confirm: You sent fiat? ₿ Sats will release to you." : isRepayment ? "Confirm: You have repaid the loan in full?" : isLending ? "Confirm: Accept this loan and begin the repayment clock?" : "Release ₿ sats to you?"}
+              {isP2PTrade ? "Confirm: You sent fiat? ₿ Sats will release to you." : isRepayment ? "Confirm: You have repaid the loan in full?" : isLending ? "Confirm: Accept this loan and begin the repayment clock?" : isBillPay ? "Confirm: Your bill was paid? Sats will go to the volunteer." : "Confirm: Trade complete? Sats will be released."}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8", fontSize: 15, padding: "14px" }} onClick={cancelConfirm}>Cancel</button>

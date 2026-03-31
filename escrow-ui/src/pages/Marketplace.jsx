@@ -2625,7 +2625,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       )}
 
       {/* ── Common fields: Title + Price ── */}
-      <div style={M.formGroup}><label style={M.label}>{t("mkFieldTitle")} *</label><input style={M.input} placeholder={isP2P ? "e.g., Selling ₿ 50,000 sats for USD" : isLoan ? "e.g., Lending ₿ 50,000 sats — 14 day term" : t("mkFieldTitleHint")} value={title} onChange={e => setTitle(e.target.value)} /></div>
+      <div style={M.formGroup}><label style={M.label}>{t("mkFieldTitle")} *</label><input style={M.input} placeholder={isBill ? "e.g., Pay my $30 AT&T phone bill" : isP2P ? "e.g., Selling ₿ 50,000 sats for USD" : isLoan ? "e.g., Lending ₿ 50,000 sats — 14 day term" : t("mkFieldTitleHint")} value={title} onChange={e => setTitle(e.target.value)} /></div>
       {isP2P ? (
         <div style={M.formGroup}>
           <label style={M.label}>PRICE RANGE (SATS) *</label>
@@ -2637,7 +2637,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
           <p style={M.hint}>Buyers choose any amount in this range. {t("maxFedLimit", { limit: "2,000,000" })}</p>
         </div>
       ) : (
-        <div style={M.formGroup}><label style={M.label}>{isLoan ? "LOAN AMOUNT (SATS) *" : t("mkFieldPrice") + " *"}</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}</p></div>
+        <div style={M.formGroup}><label style={M.label}>{isBill ? "BILL AMOUNT (SATS) *" : isLoan ? "LOAN AMOUNT (SATS) *" : t("mkFieldPrice") + " *"}</label><input style={M.input} type="number" placeholder="25000" value={price} onChange={e => setPrice(e.target.value)} /><p style={M.hint}>{t("maxFedLimit", { limit: "2,000,000" })}</p></div>
       )}
 
       {/* ── P2P + Bill Pay fields ── */}
@@ -2778,7 +2778,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       {/* ── Common fields: Description + Terms + Community ── */}
       <div style={M.formGroup}><label style={M.label}>{t("description")}</label><textarea style={{ ...M.input, minHeight: 72, resize: "vertical" }} placeholder={isP2P ? "Any additional details about your trade..." : t("mkFieldDescHint")} value={desc} onChange={e => setDesc(e.target.value)} /></div>
 
-      {!isP2P && !isLoan && (
+      {!isP2P && !isLoan && !isBill && (
         <div style={M.formGroup}>
           <label style={M.label}>PHOTOS (optional)</label>
           <input type="file" accept="image/*" ref={listingFileRef} onChange={e => { if (e.target.files?.[0]) uploadListingImage(e.target.files[0]); e.target.value = ""; }} style={{ display: "none" }} />
