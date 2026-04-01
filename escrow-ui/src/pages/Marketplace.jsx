@@ -1634,6 +1634,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                     : fmtSats(l.priceMsats)}
                 </span>
               </div>
+              {(() => { const rm = (l.terms || "").match(/Rate:\s*(\d+)/); return rm ? <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)", marginBottom: 4 }}>📈 {rm[1]}% premium</div> : null; })()}
               {l.description && <p style={M.cardDesc}>{l.description}</p>}
               <div style={M.cardMeta}>
               {isLending(l.category) && l.terms && (() => {
@@ -1885,7 +1886,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
           <textarea style={{ ...M.input, minHeight: 60, resize: "vertical" }} value={terms} onChange={e => setTerms(e.target.value)} placeholder="Terms and conditions..." maxLength={1000} />
         </div>
 
-        {isP2PEdit && (
+        {(isP2PEdit || isBillPay(l.category)) && (
           <div style={{ marginBottom: 20 }}>
             <div style={M.sectionLabel}>Rate Premium (%)</div>
             <input style={M.input} type="number" placeholder="e.g., 3" value={editPremium} onChange={e => setEditPremium(e.target.value)} />
