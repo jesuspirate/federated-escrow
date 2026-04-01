@@ -1617,7 +1617,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                 </div>
               </button>
             ) : (
-            <button key={l.id} style={{ ...M.listingCard, ...(l.status === "paused" ? { opacity: 0.55, borderColor: "#334155" } : l.quantity <= 0 ? { opacity: 0.45, borderColor: "#334155" } : {}), ...(l.federationOnly && revealedVIP[l.id] ? { borderColor: "rgba(139,92,246,0.4)", boxShadow: "0 0 12px rgba(139,92,246,0.1)", animation: "vipReveal 0.5s ease-out" } : {}) }} onClick={() => l.federationOnly && revealedVIP[l.id] ? onOpen(l.id) : onOpen(l.id)}>
+            <button key={l.id} style={{ ...M.listingCard, ...(isBillPay(l.category) && l.quantity > 0 ? { borderColor: "rgba(245,158,11,0.4)", boxShadow: "0 0 14px rgba(245,158,11,0.12)" } : {}), ...(l.status === "paused" ? { opacity: 0.55, borderColor: "#334155" } : l.quantity <= 0 ? { opacity: 0.45, borderColor: "#334155" } : {}), ...(l.federationOnly && revealedVIP[l.id] ? { borderColor: "rgba(139,92,246,0.4)", boxShadow: "0 0 12px rgba(139,92,246,0.1)", animation: "vipReveal 0.5s ease-out" } : {}) }} onClick={() => l.federationOnly && revealedVIP[l.id] ? onOpen(l.id) : onOpen(l.id)}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={M.cardTitle}>{l.title}</span>
 		<span style={M.cardPrice}>
@@ -2919,7 +2919,7 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
           {sorted.map(o => (
             <button key={o.id} style={{
               ...M.listingCard,
-              ...(o.needsRating ? { borderColor: "rgba(245,158,11,0.3)", boxShadow: "0 0 12px rgba(245,158,11,0.08)" } : {}),
+              ...(o.listingCategory === "bill-pay" && (o.status === "pending" || o.status === "active") ? { borderColor: "rgba(245,158,11,0.4)", boxShadow: "0 0 14px rgba(245,158,11,0.12)" } : {}), ...(o.needsRating ? { borderColor: "rgba(245,158,11,0.3)", boxShadow: "0 0 12px rgba(245,158,11,0.08)" } : {}),
               /* opacity removed for cleaner look */
               ...(o.status === "expired" || o.status === "cancelled" ? { opacity: 0.35 } : {}),
               ...(o.isRepayment && (o.status === "active" || o.status === "pending") ? { borderColor: "rgba(245,158,11,0.5)", boxShadow: "0 0 16px rgba(245,158,11,0.15)", animation: "pulse 2s infinite" } : {}),
