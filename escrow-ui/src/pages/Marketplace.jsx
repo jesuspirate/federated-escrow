@@ -3925,7 +3925,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
             {status === "pending"
               ? (isP2P
                   ? (isBuyer ? (isRepayment ? "💰 Lock Repayment" : isLoan ? "✓ Accept Loan" : (fiatRates ? "💵 Prepare " + fmtFiat(o.amountMsats, fiatRates, "USD") : "View Trade")) : (isRepayment ? "🔍 View Repayment" : isLoan ? "🤝 Fund Loan" : "🔐 Lock E-cash"))
-                  : (isRepayment ? (isBuyer ? "💰 Lock Repayment" : "🔍 View Repayment") : isLoan ? (isBuyer ? "✓ Accept Loan" : "🤝 Fund Loan") : (o.listingCategory === "bill-pay" ? (isBuyer ? (fiatRates ? "💵 Prepare " + fmtFiat(o.amountMsats, fiatRates, "USD") : "View Trade") : "🧾 Lock Sats") : (isBuyer ? "🔐 Lock Payment" : "View Trade"))))
+: (isRepayment ? (isBuyer ? "💰 Lock Repayment" : "🔍 View Repayment") : isLoan ? (isBuyer ? "✓ Accept Loan" : "🤝 Fund Loan") : (o.listingCategory === "bill-pay" ? (isBuyer ? (fiatRates ? "💵 Prepare " + (() => { const rm = (detail?.listing?.terms || "").match(/Rate:\s*(\d+)/); const rp = rm ? parseFloat(rm[1]) : 0; const base = rp > 0 ? Math.floor(o.amountMsats / (1 + rp / 100)) : o.amountMsats; return fmtFiat(base, fiatRates, "USD"); })() : "View Trade") : "🧾 Lock Sats") : (isBuyer ? "🔐 Lock Payment" : "View Trade"))))
               : isRepayment ? "💰 Open Repayment" : isLoan ? "🤝 Open Loan" : "⚡ Open Trade"
             }
           </button>
