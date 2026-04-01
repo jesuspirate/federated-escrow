@@ -1787,7 +1787,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
           title: title.trim(),
           description: description.trim(),
           priceMsats: Number(price) * 1000,
-          terms: terms.trim(),
+          terms: updatedTerms,
           quantity: Number(quantity),
           minPriceMsats: minPrice ? Number(minPrice) * 1000 : null,
           maxPriceMsats: maxPrice ? Number(maxPrice) * 1000 : null,
