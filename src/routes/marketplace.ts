@@ -1346,7 +1346,6 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     if (customAmount && typeof customAmount === "number" && customAmount > 0) {
       // Validate against listing range
       const minMs = listing.min_price_msats || listing.price_msats;
-      const minMs = listing.min_price_msats || listing.price_msats;
       let maxMs = listing.max_price_msats || listing.price_msats;
       // Allow premium-adjusted amounts
       const rateMatch = (listing.terms || "").match(/Rate:\s*(\d+)/);
