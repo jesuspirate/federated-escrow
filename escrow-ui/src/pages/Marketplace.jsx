@@ -1153,6 +1153,7 @@ function NewToFediBanner() {
   const [expanded, setExpanded] = useState(false);
 
   if (dismissed) return null;
+  if (inFedi) return null;
 
   return (
     <div style={{
