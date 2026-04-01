@@ -1524,7 +1524,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch" }}>
 
       {/* ── ChapSmart banner — market subdomain only ── */}
-      {(subdomain === "p2p") && <button onClick={() => onChapSmart && onChapSmart()} style={{
+      {(subdomain === "p2p" && activeCategory !== "bill-pay") && <button onClick={() => onChapSmart && onChapSmart()} style={{
         width: "100%", padding: "10px 14px", borderRadius: 10, border: "1px solid rgba(59,130,246,0.2)",
         background: "linear-gradient(135deg, rgba(59,130,246,0.08), rgba(245,158,11,0.05))",
         display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 10,
