@@ -1346,7 +1346,14 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     if (customAmount && typeof customAmount === "number" && customAmount > 0) {
       // Validate against listing range
       const minMs = listing.min_price_msats || listing.price_msats;
-      const maxMs = listing.max_price_msats || listing.price_msats;
+      const minMs = listing.min_price_msats || listing.price_msats;
+      let maxMs = listing.max_price_msats || listing.price_msats;
+      // Allow premium-adjusted amounts
+      const rateMatch = (listing.terms || "").match(/Rate:\s*(\d+)/);
+      if (rateMatch) {
+        const ratePct = parseFloat(rateMatch[1]);
+        maxMs = Math.ceil(maxMs * (1 + ratePct / 100));
+      }
       if (customAmount < minMs) return res.status(400).json({ error: `Amount below minimum (${Math.floor(minMs / 1000)} sats)` });
       if (customAmount > maxMs) return res.status(400).json({ error: `Amount above maximum (${Math.floor(maxMs / 1000)} sats)` });
       if (customAmount < 1_000) return res.status(400).json({ error: "Minimum 1 sat" });
@@ -1449,8 +1456,8 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
       escrow: {
         id: escrowId,
         status: escrow?.status || "FUNDED",
-        amountMsats: listing.price_msats,
-        amountSats: Math.floor(listing.price_msats / 1000),
+        amountMsats: tradeAmountMsats,
+        amountSats: Math.floor(tradeAmountMsats / 1000),
       },
       listing: {
         id: listing.id,
