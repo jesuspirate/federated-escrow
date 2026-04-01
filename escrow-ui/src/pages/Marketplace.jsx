@@ -1983,11 +1983,15 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
     setLoading(true);
     try {
       let customMsats = hasRange && buyAmount ? parseInt(buyAmount) * 1000 : undefined;
-      // Apply P2P premium at checkout
-      if (isP2P && customMsats) {
-        const rateM = (l.terms || "").match(/Rate:\s*(\d+)/);
-        const ratePct = rateM ? parseFloat(rateM[1]) : 0;
-        if (ratePct > 0) customMsats = Math.ceil(customMsats * (1 + ratePct / 100));
+      // Apply premium at checkout (P2P range + bill pay/P2P fixed)
+      const rateM = (l.terms || "").match(/Rate:\s*(\d+)/);
+      const ratePct = rateM ? parseFloat(rateM[1]) : 0;
+      if (isP2P && customMsats && ratePct > 0) {
+        customMsats = Math.ceil(customMsats * (1 + ratePct / 100));
+        if (customMsats > 2_000_000_000) { showToast("Total with premium exceeds 2M sats federation limit!", "error"); setLoading(false); return; }
+      }
+      if (!customMsats && ratePct > 0 && (isP2P || isBillPay(l.category))) {
+        customMsats = Math.ceil(l.priceMsats * (1 + ratePct / 100));
         if (customMsats > 2_000_000_000) { showToast("Total with premium exceeds 2M sats federation limit!", "error"); setLoading(false); return; }
       }
       const res = await mapi(`/${l.id}/buy`, { method: "POST", body: JSON.stringify(customMsats ? { amountMsats: customMsats } : {}) });
