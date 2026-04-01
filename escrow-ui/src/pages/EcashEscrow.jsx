@@ -890,7 +890,7 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
       {view === "detail" && selected && <DetailView escrow={selected} pubkey={pubkey} onBack={() => {
         if (cameFromMarketplace || subdomain !== "escrow") {
           setCameFromMarketplace(false);
-          if (onSwitchToMarketplaceOrders) { onSwitchToMarketplaceOrders("__ORDERS__"); return; }
+          if (onSwitchToMarketplaceOrders) { onSwitchToMarketplaceOrders(selected.status === "DONE" || selected.status === "EXPIRED" ? "__ORDERS_ALL__" : "__ORDERS__"); return; }
         }
         setSelected(null); setView("list"); loadEscrows();
       }} onRefresh={() => loadDetail(selected.id)} showToast={showToast} setLoading={setLoading} loading={loading} onSwitchToMarketplace={onSwitchToMarketplace} onSwitchToMarketplaceOrders={onSwitchToMarketplaceOrders} cameFromMarketplace={cameFromMarketplace} subdomain={subdomain} />}

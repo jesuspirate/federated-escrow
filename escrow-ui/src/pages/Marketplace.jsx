@@ -589,6 +589,12 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
 
     // Special marker: go directly to orders list (no API lookup)
     if (initialEscrowId === "__ORDERS__") {
+    if (initialEscrowId === "__ORDERS_ALL__") {
+      setView("orders");
+      loadOrders();
+      if (onOpened) onOpened();
+      return;
+    }
       setView("orders"); setOrderFilterHint("active");
       loadOrders();
       if (onOpened) onOpened();
