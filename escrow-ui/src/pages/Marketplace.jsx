@@ -1636,6 +1636,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                 </span>
               </div>
               {(() => { const rm = (l.terms || "").match(/Rate:\s*(\d+)/); return rm ? <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)", marginBottom: 4 }}>📈 {rm[1]}% premium</div> : null; })()}
+              {(() => { const cm = (l.terms || "").match(/Currency:\s*(\w+)/); return cm ? <span style={{ display: "inline-flex", padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)", marginBottom: 4 }}>{cm[1]}</span> : null; })()}
               {l.description && <p style={M.cardDesc}>{l.description}</p>}
               <div style={M.cardMeta}>
               {isLending(l.category) && l.terms && (() => {
@@ -3965,8 +3966,8 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
           >
             {status === "pending"
               ? (isP2P
-                  ? (isBuyer ? (isRepayment ? "💰 Lock Repayment" : isLoan ? "✓ Accept Loan" : (fiatRates ? "💵 Prepare " + fmtFiat(o.amountMsats, fiatRates, "USD") : "View Trade")) : (isRepayment ? "🔍 View Repayment" : isLoan ? "🤝 Fund Loan" : "🔐 Lock E-cash"))
-: (isRepayment ? (isBuyer ? "💰 Lock Repayment" : "🔍 View Repayment") : isLoan ? (isBuyer ? "✓ Accept Loan" : "🤝 Fund Loan") : (o.listingCategory === "bill-pay" ? (isBuyer ? (fiatRates ? "💵 Prepare " + (() => { const rm = (detail?.listing?.terms || "").match(/Rate:\s*(\d+)/); const rp = rm ? parseFloat(rm[1]) : 0; const base = rp > 0 ? Math.floor(o.amountMsats / (1 + rp / 100)) : o.amountMsats; return fmtFiat(base, fiatRates, "USD"); })() : "View Trade") : "🧾 Lock Sats") : (isBuyer ? "🔐 Lock Payment" : "View Trade"))))
+                  ? (isBuyer ? (isRepayment ? "💰 Lock Repayment" : isLoan ? "✓ Accept Loan" : (fiatRates ? "💵 " + (t("mkPrepare") || "Prepare") + " " + fmtFiat(o.amountMsats, fiatRates, "USD") : t("mkViewTrade") || "View Trade")) : (isRepayment ? "🔍 View Repayment" : isLoan ? "🤝 Fund Loan" : "🔐 " + (t("mkLockEcash") || "Lock E-cash")))
+: (isRepayment ? (isBuyer ? "💰 Lock Repayment" : "🔍 View Repayment") : isLoan ? (isBuyer ? "✓ Accept Loan" : "🤝 Fund Loan") : (o.listingCategory === "bill-pay" ? (isBuyer ? (fiatRates ? "💵 " + (t("mkPrepare") || "Prepare") + " " + (() => { const rm = (detail?.listing?.terms || "").match(/Rate:\s*(\d+)/); const rp = rm ? parseFloat(rm[1]) : 0; const base = rp > 0 ? Math.floor(o.amountMsats / (1 + rp / 100)) : o.amountMsats; return fmtFiat(base, fiatRates, "USD"); })() : "View Trade") : "🧾 " + (t("mkLockSats") || "Lock Sats")) : (isBuyer ? "🔐 " + (t("mkLockPayment") || "Lock Payment") : "View Trade"))))
               : isRepayment ? "💰 Open Repayment" : isLoan ? "🤝 Open Loan" : "⚡ Open Trade"
             }
           </button>
