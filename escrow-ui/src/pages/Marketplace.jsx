@@ -1687,7 +1687,8 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
         <div style={{ position: "fixed", bottom: 80, right: 16, zIndex: 999, display: "flex", flexDirection: "column", gap: 8, animation: "slideUp 0.2s ease-out" }}>
           <button onClick={() => { setHelpOpen(false); onFaq(); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(59,130,246,0.3)", color: "#3b82f6", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>{t("mkFaqHow") || "❓ FAQ — How it works"}</button>
           <button onClick={() => { setHelpOpen(false); onArbiters(); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>{t("mkBecomeArbiter") || "⚖️ Become an Arbiter"}</button>
-          <a href="fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(139,92,246,0.3)", color: "#a78bfa", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", textDecoration: "none" }}>{t("mkSupportChat") || "💬 Support Chat"}</a>
+          <a href="fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(139,92,246,0.3)", color: "#a78bfa", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", textDecoration: "none" }}>💬 Support (EN)</a>
+          <a href="fedi:room:!qHlVxBJBCKqUbetBnA:m1.8fa.in:::" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(139,92,246,0.3)", color: "#a78bfa", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", textDecoration: "none" }}>💬 Support (FR)</a>
         </div>
       )}
       <button onClick={() => setHelpOpen(!helpOpen)} style={{ position: "fixed", bottom: 50, right: 16, zIndex: 999, width: 48, height: 48, borderRadius: "50%", background: helpOpen ? "#ef4444" : "linear-gradient(135deg, #f59e0b, #d97706)", border: "none", color: helpOpen ? "#fff" : "#0c0f17", fontSize: 20, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>{helpOpen ? "✕" : "?"}</button>
@@ -2145,7 +2146,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
               </div>
               {premiumSats > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#10b981", marginBottom: 4 }}>
-                  <span>Volunteer earns ({ratePct}%)</span>
+                  <span>{t("mkVolunteerEarns") || "Volunteer earns"} ({ratePct}%)</span>
                   <span>+ {premiumSats.toLocaleString()} sats</span>
                 </div>
               )}
@@ -2801,7 +2802,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       {/* ── Payment Methods (P2P + Bill Pay) ── */}
       {(isP2P || isBill || (isLoan && (paymentMethod === "Fiat" || paymentMethod === "Mixed"))) && (
         <div style={{ marginBottom: 16 }}>
-          <label style={{ ...M.label, color: "#10b981" }}>{"💳"} Accepted Payment Methods</label>
+          <label style={{ ...M.label, color: "#10b981" }}>{"💳"} {t("mkAcceptedPayment") || "Accepted Payment Methods"}</label>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {PAYMENT_METHODS.map(pm => {
               const active = paymentMethods.includes(pm.key);
