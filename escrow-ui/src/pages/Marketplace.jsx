@@ -1692,6 +1692,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       )}
       <button onClick={() => setHelpOpen(!helpOpen)} style={{ position: "fixed", bottom: 50, right: 16, zIndex: 999, width: 48, height: 48, borderRadius: "50%", background: helpOpen ? "#ef4444" : "linear-gradient(135deg, #f59e0b, #d97706)", border: "none", color: helpOpen ? "#fff" : "#0c0f17", fontSize: 20, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>{helpOpen ? "✕" : "?"}</button>
       {/* ── Genesis footer — pinned at bottom ── */}
+      {/* ── Genesis footer — pinned at bottom ── */}
       <div style={{
         flexShrink: 0, padding: "8px 16px", textAlign: "center",
         background: "#0c0f17",
@@ -1702,12 +1703,6 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
           <span style={{ fontSize: 9, fontWeight: 700, color: "#475569", letterSpacing: 1.2 }}>EST. BLOCK 934,669</span>
           <span style={{ fontSize: 10 }}>🥜</span>
           <span style={{ color: "#1e293b" }}>·</span>
-          {!isDevMode() && subdomain === "marketplace" && <button onClick={() => onSwitchToEscrow()} style={{ fontSize: 9, color: "#334155", background: "none", border: "none", cursor: "pointer", padding: 0, textDecoration: "none" }}>⚖️ Advanced</button>}
-          <span style={{ color: "#1e293b" }}>·</span>
-          <span style={{ color: "#1e293b" }}>·</span>
-          <button onClick={() => onArbiters()} style={{ fontSize: 9, color: "#f59e0b", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 700 }}>⚖️ Arbiters</button>
-          <span style={{ color: "#1e293b" }}>·</span>
-          <button onClick={() => onFaq()} style={{ fontSize: 9, color: "#3b82f6", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 700 }}>❓ FAQ</button>
           <a href="https://github.com/jesuspirate/federated-escrow" target="_blank" rel="noopener noreferrer" style={{ fontSize: 9, color: "#6d28d9", textDecoration: "none", fontWeight: 600 }}>GitHub ↗</a>
         </div>
       </div>
