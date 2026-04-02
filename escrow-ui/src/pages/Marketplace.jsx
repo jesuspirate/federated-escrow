@@ -2319,7 +2319,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         )}
 
         {/* ── Listing info grid ── */}
-        <div style={{ display: "flex", justifyContent: "space-around", padding: "12px 0", marginBottom: 14, borderRadius: 12, background: "rgba(15,23,42,0.5)", border: "1px solid #1e293b", textAlign: "center" }}>
+        {!isBillPay(l.category) && <div style={{ display: "flex", justifyContent: "space-around", padding: "12px 0", marginBottom: 14, borderRadius: 12, background: "rgba(15,23,42,0.5)", border: "1px solid #1e293b", textAlign: "center" }}>
           {l.condition && !isP2P && !isBillPay(l.category) && (
             <div>
               <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("mkCondition")}</div>
