@@ -1132,10 +1132,10 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
 // ═══════════════════════════════════════════════════════════════════════
 
 const CATEGORIES = [
-  { key: "all", label: "Public", icon: "🌍" },
-  { key: "mine", label: "Mine", icon: "🏠" },
+  { key: "all", label: t("mkPublic") || "Public", icon: "🌍" },
+  { key: "mine", label: t("mkMine") || "Mine", icon: "🏠" },
   { key: "sats-for-fiat", label: "P2P", icon: "₿" },
-  { key: "bill-pay", label: "Bill Pay", icon: "🧾" },
+  { key: "bill-pay", label: t("mkBillPay") || "Bill Pay", icon: "🧾" },
   { key: "lending", label: "Lending", icon: "🤝" },
   { key: "electronics", label: "Electronics", icon: "📱" },
   { key: "services", label: "Services", icon: "🛠️" },
@@ -1467,7 +1467,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
             ...(subdomain === "p2p" ? { background: "linear-gradient(135deg, #f59e0b, #d97706)" } :
                 subdomain === "lending" ? { background: "linear-gradient(135deg, #10b981, #059669)" } :
                 subdomain === "market" ? { background: "linear-gradient(135deg, #a78bfa, #7c3aed)" } : {})
-          }} onClick={onCreate}><Icons.Plus /> {subdomain === "p2p" ? "Sell Sats" : subdomain === "lending" ? "Offer Loan" : subdomain === "market" ? "List Item" : t("mkSell")}</button>
+          }} onClick={onCreate}><Icons.Plus /> {subdomain === "p2p" ? t("mkSellSats") || "Sell Sats" : subdomain === "lending" ? "Offer Loan" : subdomain === "market" ? "List Item" : t("mkSell")}</button>
           <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center", position: "relative", ...(activeOrderCount > 0 ? { borderColor: "rgba(245,158,11,0.4)", boxShadow: "0 0 12px rgba(245,158,11,0.15)", animation: "pulse 2s infinite" } : {}) }} onClick={onOrders}>
             <Icons.Package /> {t("mkOrders")}
             {activeOrderCount > 0 && (
@@ -1685,9 +1685,9 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       {helpOpen && <div onClick={() => setHelpOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 998 }} />}
       {helpOpen && (
         <div style={{ position: "fixed", bottom: 80, right: 16, zIndex: 999, display: "flex", flexDirection: "column", gap: 8, animation: "slideUp 0.2s ease-out" }}>
-          <button onClick={() => { setHelpOpen(false); onFaq(); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(59,130,246,0.3)", color: "#3b82f6", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>❓ FAQ — How it works</button>
-          <button onClick={() => { setHelpOpen(false); onArbiters(); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>⚖️ Become an Arbiter</button>
-          <a href="fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(139,92,246,0.3)", color: "#a78bfa", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", textDecoration: "none" }}>💬 Support Chat</a>
+          <button onClick={() => { setHelpOpen(false); onFaq(); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(59,130,246,0.3)", color: "#3b82f6", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>>{t("mkFaqHow") || "❓ FAQ — How it works"}</button>
+          <button onClick={() => { setHelpOpen(false); onArbiters(); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>>{t("mkBecomeArbiter") || "⚖️ Become an Arbiter"}</button>
+          <a href="fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(139,92,246,0.3)", color: "#a78bfa", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", textDecoration: "none" }}>>{t("mkSupportChat") || "💬 Support Chat"}</a>
         </div>
       )}
       <button onClick={() => setHelpOpen(!helpOpen)} style={{ position: "fixed", bottom: 50, right: 16, zIndex: 999, width: 48, height: 48, borderRadius: "50%", background: helpOpen ? "#ef4444" : "linear-gradient(135deg, #f59e0b, #d97706)", border: "none", color: helpOpen ? "#fff" : "#0c0f17", fontSize: 20, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>{helpOpen ? "✕" : "?"}</button>
@@ -2140,7 +2140,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
           return (
             <div style={{ marginBottom: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>
-                <span>{isBillPay(l.category) ? "Bill amount" : "Base amount"}</span>
+                <span>{isBillPay(l.category) ? t("mkBillAmount") || "Bill amount" : t("mkBaseAmount") || "Base amount"}</span>
                 <span>{fiatAmount} ({baseSats.toLocaleString()} sats)</span>
               </div>
               {premiumSats > 0 && (
@@ -2150,7 +2150,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
                 </div>
               )}
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: "#f59e0b", borderTop: "1px solid rgba(245,158,11,0.15)", paddingTop: 6, marginTop: 4 }}>
-                <span>{isBillPay(l.category) ? "Volunteer receives" : "Total"}</span>
+                <span>{isBillPay(l.category) ? t("mkVolunteerReceives") || "Volunteer receives" : t("mkTotal") || "Total"}</span>
                 <span>{totalSats.toLocaleString()} sats</span>
               </div>
             </div>
@@ -2924,14 +2924,14 @@ function OrdersView({ orders, loading, pubkey, onBack, onRefresh, onOpenOrder, o
         <button style={M.iconBtn} onClick={onRefresh}><Icons.Refresh style={loading ? { animation: "pulse 1s infinite" } : {}} /></button>
       </div>
       <div style={{ marginBottom: 8 }}>
-        <input style={{ ...M.input, fontSize: 13 }} placeholder="Search orders…" value={orderSearch} onChange={e => setOrderSearch(e.target.value)} />
+        <input style={{ ...M.input, fontSize: 13 }} placeholder={t("mkSearchOrders") || "Search orders…"} value={orderSearch} onChange={e => setOrderSearch(e.target.value)} />
       </div>
       <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto" }}>
         {[
           { key: "all", label: "All", count: orders.length },
-          { key: "active", label: subdomain === "lending" ? "In Progress" : "Active", count: orders.filter(o => (o.status === "active" || o.status === "pending") ).length },
-          { key: "completed", label: "Done", count: orders.filter(o => o.status === "completed" && !o.isLoanActive).length },
-          ...(subdomain !== "lending" ? [{ key: "cancelled", label: "Closed", count: orders.filter(o => (o.status === "cancelled" || o.status === "expired")).length }] : []),
+          { key: "active", label: subdomain === "lending" ? t("mkInProgress") || "In Progress" : t("mkActive") || "Active", count: orders.filter(o => (o.status === "active" || o.status === "pending") ).length },
+          { key: "completed", label: t("mkDone") || "Done", count: orders.filter(o => o.status === "completed" && !o.isLoanActive).length },
+          ...(subdomain !== "lending" ? [{ key: "cancelled", label: t("mkClosed") || "Closed", count: orders.filter(o => (o.status === "cancelled" || o.status === "expired")).length }] : []),
         ].map(f => (
           <button key={f.key} onClick={() => setOrderFilter(f.key)} style={{
             padding: "6px 12px", borderRadius: 99, border: "1px solid",
@@ -3907,7 +3907,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
         {/* ── Accepted Payment Methods ── */}
         {detail?.listing?.paymentMethods && detail.listing.paymentMethods.length > 0 && (
           <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 12, background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.12)" }}>
-            <div style={{ fontSize: 10, color: "#10b981", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, textAlign: "center" }}>Accepted Payment Methods</div>
+            <div style={{ fontSize: 10, color: "#10b981", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8, textAlign: "center" }}>>{t("mkAcceptedPayment") || "Accepted Payment Methods"}</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
               {detail.listing.paymentMethods.map(pm => { const m = PAYMENT_METHODS.find(p => p.key === pm); return m ? <span key={pm} style={{ padding: "4px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>{m.icon} {m.label}</span> : null; })}
             </div>
