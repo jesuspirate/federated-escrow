@@ -1103,7 +1103,7 @@ router.post("/:id/update", ...requireAuth, (req: AuthenticatedRequest, res: Resp
       currencyDisplay: "currency_display", category: "category", condition: "condition",
       images: "images", terms: "terms", communityLink: "community_link",
       shippingCostSats: "shipping_cost_msats",
-      quantity: "quantity", status: "status", federationOnly: "federation_only",
+      quantity: "quantity", status: "status", federationOnly: "federation_only", payment_methods: "payment_methods",
     };
 
     const sets: string[] = [];
@@ -1345,6 +1345,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     const { amountMsats: customAmount } = req.body;
     if (customAmount && typeof customAmount === "number" && customAmount > 0) {
       // Validate against listing range
+      const minMs = listing.min_price_msats || listing.price_msats;
       const minMs = listing.min_price_msats || listing.price_msats;
       let maxMs = listing.max_price_msats || listing.price_msats;
       // Allow premium-adjusted amounts

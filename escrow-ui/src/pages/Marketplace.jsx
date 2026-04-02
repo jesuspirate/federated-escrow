@@ -1726,6 +1726,8 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
   const [editPremium, setEditPremium] = useState(() => { const m = (l.terms || "").match(/Rate:\s*(\d+)/); return m ? m[1] : ""; });
   const [editShipping, setEditShipping] = useState(l.shippingCostSats || "");
  const [editFedOnly, setEditFedOnly] = useState(!!l.federationOnly);
+  const [editCurrency, setEditCurrency] = useState(() => { const m = (l.terms || "").match(/Currency:\s*(\w+)/); return m ? m[1] : ""; });
+  const [editPaymentMethods, setEditPaymentMethods] = useState(l.paymentMethods || []);
   const isP2PEdit = isSatsForFiat(l.category);
   const isP2P = isSatsForFiat(l.category);
   const [editImages, setEditImages] = useState(l.images || []);
@@ -1787,7 +1789,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
     if (!price || Number(price) <= 0) return showToast("Price must be positive", "error");
     setLoading(true);
     try {
-      const updatedTerms = (() => { let t = terms.trim().replace(/Rate:\s*\d+/, "").trim(); if (editPremium) t = (t ? t + " | " : "") + "Rate: " + editPremium; return t; })();
+      const updatedTerms = (() => { let t = terms.trim().replace(/Rate:\s*\d+/, "").trim(); if (editPremium) t = (t ? t + " | " : "") + "Rate: " + editPremium; t = t.replace(/Currency:\s*\w+/, "").trim(); if (editCurrency) t = (t ? t + " | " : "") + "Currency: " + editCurrency; return t; })();
       const res = await mapi(`/${l.id}/update`, {
         method: "POST",
         body: JSON.stringify({
@@ -1800,7 +1802,7 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
           maxPriceMsats: maxPrice ? Number(maxPrice) * 1000 : null,
           images: editImages.length > 0 ? editImages : [],
           shippingCostSats: editShipping ? parseInt(editShipping) : 0,
- federationOnly: editFedOnly,
+ federationOnly: editFedOnly, payment_methods: editPaymentMethods.length > 0 ? editPaymentMethods.join(",") : "",
         }),
       });
       if (res.error) throw new Error(res.error);
@@ -1912,6 +1914,31 @@ function EditListingView({ listing: l, onBack, showToast, loading, setLoading, s
                 {exceeds && <p style={{ fontSize: 11, color: "#ef4444", fontWeight: 700, marginTop: 2 }}>⚠️ Exceeds 2M sats federation limit!</p>}
               </>;
             })()}
+          </div>
+        )}
+
+        {/* Currency picker (edit) */}
+        {(isP2PEdit || isBillPay(l.category)) && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={M.sectionLabel}>{t("mkFiatCurrency") || "Fiat Currency"}</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {["USD","EUR","GBP","CFA","KES","TZS","NGN","BRL","INR","CAD","AUD"].map(cur => (
+                <button key={cur} onClick={() => setEditCurrency(editCurrency === cur ? "" : cur)} style={{ padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: "pointer", border: editCurrency === cur ? "1.5px solid #f59e0b" : "1px solid #334155", background: editCurrency === cur ? "rgba(245,158,11,0.15)" : "#111827", color: editCurrency === cur ? "#f59e0b" : "#94a3b8" }}>{cur}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Payment methods (edit) */}
+        {(isP2PEdit || isBillPay(l.category)) && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ ...M.sectionLabel, color: "#10b981" }}>{t("mkAcceptedPayment") || "Accepted Payment Methods"}</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {PAYMENT_METHODS.map(pm => {
+                const active = editPaymentMethods.includes(pm.key);
+                return <button key={pm.key} onClick={() => setEditPaymentMethods(prev => active ? prev.filter(k => k !== pm.key) : [...prev, pm.key])} style={{ padding: "5px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: "pointer", border: active ? "1.5px solid #10b981" : "1px solid #334155", background: active ? "rgba(16,185,129,0.15)" : "#111827", color: active ? "#10b981" : "#94a3b8" }}>{pm.icon} {pm.label}</button>;
+              })}
+            </div>
           </div>
         )}
         {/* Federation-only toggle */}
@@ -2309,7 +2336,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
             <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("mkAvailable")}</div>
             <div style={{ fontSize: 13, color: "#10b981", fontWeight: 700, marginTop: 2 }}>{l.quantity}</div>
           </div>}
-        </div>
+        </div>}
 
         {/* ── Seller ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", marginBottom: 10, borderRadius: 10, background: "rgba(245,158,11,0.04)", border: "1px solid rgba(245,158,11,0.1)" }}>
@@ -2345,7 +2372,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
   const [category, setCategory] = useState(subdomain === "p2p" ? "sats-for-fiat" : subdomain === "lending" ? "lending" : "");
   const [condition, setCondition] = useState("new");
   const [quantity, setQuantity] = useState("1");
-  const [fiatCurrency, setFiatCurrency] = useState("");
+  const [fiatCurrency, setFiatCurrency] = useState("USD");
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [listingImages, setListingImages] = useState([]);
@@ -2446,6 +2473,8 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
 
     if (!title.trim()) return showToast(t("mkTitleRequired"), "error");
     if (!category) return showToast("Please select a category", "error");
+    if ((isP2P || isBill) && !fiatCurrency) return showToast("Please select a currency", "error");
+    if (isLoan && (paymentMethod === "Fiat" || paymentMethod === "Mixed") && !fiatCurrency) return showToast("Please select a currency for fiat repayment", "error");
  if (isShipping && (!shippingCost || Number(shippingCost) <= 0)) return showToast("Shipping cost is required for shipping listings", "error");
     if (!sats || sats <= 0) return showToast(t("mkPriceRequired"), "error");
     if (sats < 1) return showToast("Minimum ₿ 1 sat", "error");
