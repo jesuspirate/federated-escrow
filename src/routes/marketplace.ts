@@ -401,7 +401,7 @@ function formatListing(row: ListingRow) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     federationOnly: !!(row as any).federation_only,
-    paymentMethods: (() => { try { return JSON.parse((row as any).payment_methods || "null"); } catch { return null; } })(),
+    paymentMethods: (() => { const pm = (row as any).payment_methods; if (!pm) return null; try { const parsed = JSON.parse(pm); return Array.isArray(parsed) ? parsed : null; } catch { return pm.includes(",") ? pm.split(",").map((s: string) => s.trim()) : [pm.trim()]; } })(),
   };
 }
 
