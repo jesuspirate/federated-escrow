@@ -1680,6 +1680,21 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
 
       </div>{/* end scrollable */}
 
+      {/* ── Floating Help Button ── */}
+      {(() => {
+        const [helpOpen, setHelpOpen] = React.useState(false);
+        return <>
+          {helpOpen && <div onClick={() => setHelpOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 998 }} />}
+          {helpOpen && (
+            <div style={{ position: "fixed", bottom: 80, right: 16, zIndex: 999, display: "flex", flexDirection: "column", gap: 8, animation: "slideUp 0.2s ease-out" }}>
+              <button onClick={() => { setHelpOpen(false); onFaq(); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(59,130,246,0.3)", color: "#3b82f6", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>❓ FAQ — How it works</button>
+              <button onClick={() => { setHelpOpen(false); onArbiters(); }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)" }}>⚖️ Become an Arbiter</button>
+              <a href="fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::" style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderRadius: 12, background: "#111827", border: "1px solid rgba(139,92,246,0.3)", color: "#a78bfa", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.3)", textDecoration: "none" }}>💬 Support Chat</a>
+            </div>
+          )}
+          <button onClick={() => setHelpOpen(!helpOpen)} style={{ position: "fixed", bottom: 50, right: 16, zIndex: 999, width: 48, height: 48, borderRadius: "50%", background: helpOpen ? "#ef4444" : "linear-gradient(135deg, #f59e0b, #d97706)", border: "none", color: helpOpen ? "#fff" : "#0c0f17", fontSize: 20, fontWeight: 800, cursor: "pointer", boxShadow: "0 4px 24px rgba(245,158,11,0.3)", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s" }}>{helpOpen ? "✕" : "?"}</button>
+        </>;
+      })()}
       {/* ── Genesis footer — pinned at bottom ── */}
       <div style={{
         flexShrink: 0, padding: "8px 16px", textAlign: "center",
