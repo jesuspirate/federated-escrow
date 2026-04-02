@@ -1132,10 +1132,10 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
 // ═══════════════════════════════════════════════════════════════════════
 
 const CATEGORIES = [
-  { key: "all", label: t("mkPublic") || "Public", icon: "🌍" },
-  { key: "mine", label: t("mkMine") || "Mine", icon: "🏠" },
+  { key: "all", label: "Public", icon: "🌍" },
+  { key: "mine", label: "Mine", icon: "🏠" },
   { key: "sats-for-fiat", label: "P2P", icon: "₿" },
-  { key: "bill-pay", label: t("mkBillPay") || "Bill Pay", icon: "🧾" },
+  { key: "bill-pay", label: "Bill Pay", icon: "🧾" },
   { key: "lending", label: "Lending", icon: "🤝" },
   { key: "electronics", label: "Electronics", icon: "📱" },
   { key: "services", label: "Services", icon: "🛠️" },
@@ -1495,7 +1495,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
               color: activeCategory === c.key ? (subdomain === "market" ? "#a78bfa" : subdomain === "lending" ? "#10b981" : "#fbbf24") : "#94a3b8",
             }}
           >
-            {c.icon} {c.label}
+            {c.icon} {({"Public": t("mkPublic"), "Mine": t("mkMine"), "Bill Pay": t("mkBillPay")})[c.label] || c.label}
           </button>
         ))}
         </div>
@@ -2182,7 +2182,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         )}
         {l.platformFeeBps > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 14px", marginBottom: 10, borderRadius: 10, background: "rgba(100,116,139,0.04)", border: "1px solid rgba(100,116,139,0.1)" }}>
-            <span style={{ fontSize: 11, color: "#64748b" }}>Platform fee</span>
+            <span style={{ fontSize: 11, color: "#64748b" }}>{t("mkPlatformFee") || "Platform fee"}</span>
             <span style={{ fontSize: 11, fontWeight: 600, color: "#64748b" }}>{(l.platformFeeBps / 100)}% ({Math.ceil(Math.floor(l.priceMsats / 1000) * l.platformFeeBps / 10000).toLocaleString()} sats)</span>
           </div>
         )}
@@ -2280,7 +2280,7 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         {l.terms && !isSeller && (
           <div style={{ ...M.infoBanner, borderColor: "rgba(100,116,139,0.2)", background: "rgba(100,116,139,0.04)", marginBottom: 14 }}>
             <div style={{ fontSize: 12, color: "#64748b", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-              🔒 Trade terms visible after purchase
+              🔒 {t("mkTradeTermsHidden") || "Trade terms visible after purchase"}
             </div>
           </div>
         )}
@@ -2772,7 +2772,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       {/* ── P2P/Lending: Quantity (how many trades) ── */}
       {(isP2P || isLoan) && (
         <div style={{ marginBottom: 16 }}>
-          <label style={M.label}>How many trades will you accept?</label>
+          <label style={M.label}>{t("mkHowManyTrades") || "How many trades will you accept?"}</label>
           <input style={{ ...M.input, width: 100 }} type="number" min="1" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="1" />
           <p style={M.hint}>Each buyer creates a separate trade within your price range.</p>
         </div>
