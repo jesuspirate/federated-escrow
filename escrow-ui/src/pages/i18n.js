@@ -235,7 +235,6 @@ const translations = {
     mkP2PNote: "P2P sats-for-fiat trade. You lock sats, buyer pays in fiat.",
     mkP2PSellTitle: "Sell Sats for Fiat",
     mkTradeStarted: "Trade started!",
-  },
     mkPublic: "Public",
     mkMine: "Mine",
     mkBillPay: "Bill Pay",
@@ -270,6 +269,7 @@ const translations = {
     mkSellSatsBtn: "+ Sell Sats",
     mkOfferLoanBtn: "+ Offer Loan",
     mkListItemBtn: "+ List Item",
+  },
 
   // ─────────────────────────────────────────────────────────────────────
   // FRANÇAIS
