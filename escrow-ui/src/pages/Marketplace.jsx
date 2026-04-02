@@ -2216,7 +2216,12 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
         {canBuy && !isP2P && (
           <div style={{ ...M.infoBanner, borderColor: "rgba(16,185,129,0.2)", background: "rgba(16,185,129,0.04)", marginBottom: 14 }}>
             <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
-              {isLending(l.category) ? <span>The lender will lock <strong style={{ color: "#10b981" }}>{"₿"} {fmtSats(l.priceMsats)}</strong> for you to borrow.</span> : <span>You'll lock <strong style={{ color: "#10b981" }}>{"₿"} {fmtSats(l.priceMsats + (l.shippingCostSats ? l.shippingCostSats * 1000 : 0))}</strong> as payment.</span>}
+              {isLending(l.category) ? <span>The lender will lock <strong style={{ color: "#10b981" }}>{"₿"} {fmtSats(l.priceMsats)}</strong> for you to borrow.</span>
+              : isBillPay(l.category) ? <div>
+                  {(() => { const cm = (l.terms || "").match(/Currency:\s*(\w+)/); return cm ? <div style={{ marginBottom: 4 }}><span style={{ color: "#64748b" }}>{t("mkFiatCurrency") || "Currency"}:</span> <strong style={{ color: "#f59e0b" }}>{cm[1]}</strong></div> : null; })()}
+                  {l.paymentMethods && l.paymentMethods.length > 0 && <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>{l.paymentMethods.map(pm => { const m = PAYMENT_METHODS.find(p => p.key === pm); return m ? <span key={pm} style={{ padding: "3px 8px", borderRadius: 6, fontSize: 10, fontWeight: 600, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>{m.icon} {m.label}</span> : null; })}</div>}
+                </div>
+              : <span>You'll lock <strong style={{ color: "#10b981" }}>{"₿"} {fmtSats(l.priceMsats + (l.shippingCostSats ? l.shippingCostSats * 1000 : 0))}</strong> as payment.</span>}
             </div>
           </div>
         )}
@@ -2294,16 +2299,16 @@ function ListingDetail({ listing: l, pubkey, onBack, onProfile, onOrderCreated, 
               <div style={{ fontSize: 13, color: "#f8fafc", fontWeight: 600, marginTop: 2 }}>{t(CONDITION_KEYS[l.condition] || l.condition)}</div>
             </div>
           )}
-          {l.category && (
+          {l.category && !isBillPay(l.category) && (
             <div>
               <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("mkCategory")}</div>
               <div style={{ fontSize: 13, color: "#f8fafc", fontWeight: 600, marginTop: 2 }}>{l.category}</div>
             </div>
           )}
-          <div>
+          {!isBillPay(l.category) && <div>
             <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>{t("mkAvailable")}</div>
             <div style={{ fontSize: 13, color: "#10b981", fontWeight: 700, marginTop: 2 }}>{l.quantity}</div>
-          </div>
+          </div>}
         </div>
 
         {/* ── Seller ── */}
