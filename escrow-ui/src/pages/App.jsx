@@ -46,7 +46,7 @@ function _isSandboxCheck() {
 // -- Subdomain definitions --
 const SUBDOMAINS = [
   { id: "market",  label: "Market",  icon: "🛒", color: "#a78bfa" },
-  { id: "p2p",     label: "P2P",     icon: "₿",     color: "#f59e0b" },
+  { id: "p2p",     label: "P2P",     icon: "🪙",     color: "#f59e0b" },
   { id: "lending", label: "Lending", icon: "🤝",  color: "#10b981" },
   { id: "escrow",  label: "Escrow",  icon: "⚖️", color: "#64748b" },
 ];
