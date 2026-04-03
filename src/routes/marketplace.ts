@@ -581,7 +581,7 @@ router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ error: "images must be an array of up to 10 URLs" });
     if (communityLink && !isValidCommunityLink(communityLink))
       return res.status(400).json({ error: 'communityLink format: "fedi:room:!roomId:federation.domain:::"' });
-    if (!communityLink || !isValidCommunityLink(communityLink))
+    if (category !== "bill-pay" && (!communityLink || !isValidCommunityLink(communityLink)))
       return res.status(400).json({ error: "communityLink is required. Paste your Fedi room link (fedi:room:!roomId:domain:::)." });
 
     const id = generateListingId();

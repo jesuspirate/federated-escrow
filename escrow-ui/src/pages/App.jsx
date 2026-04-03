@@ -43,6 +43,14 @@ function _isSandboxCheck() {
   return !_isFediRuntime();
 }
 
+// -- Subdomain definitions --
+const SUBDOMAINS = [
+  { id: "market",  label: "Market",  icon: "🛒", color: "#a78bfa" },
+  { id: "p2p",     label: "P2P",     icon: "₿",     color: "#f59e0b" },
+  { id: "lending", label: "Lending", icon: "🤝",  color: "#10b981" },
+  { id: "escrow",  label: "Escrow",  icon: "⚖️", color: "#64748b" },
+];
+
 // ═══════════════════════════════════════════════════════════════════════
 
 // ── SatoshiMarket Landing Page ────────────────────────────────────────────
@@ -248,35 +256,63 @@ function LandingPage() {
         </div>
         <div style={{ fontSize: 9, color: "#1e293b", marginTop: 8 }}>Non-custodial · Shamir 2-of-3 · Fedimint · Nostr</div>
       </div>
+
+      {showProductionNav && (
+        <AppNavigator activeSubdomain={prodSubdomain} onSwitch={handleSubdomainSwitch} />
+      )}
     </div>
   );
 }
 
 
+// -- PRODUCTION APP NAVIGATOR --
+function AppNavigator({ activeSubdomain, onSwitch }) {
+  return (
+    <div style={{ display: "flex", alignItems: "stretch", background: "#0a0e17", borderTop: "1px solid #1e293b", flexShrink: 0, zIndex: 100, padding: "0 4px", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+      {SUBDOMAINS.map(s => {
+        const active = activeSubdomain === s.id;
+        return (
+          <button key={s.id} onClick={() => onSwitch(s.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "8px 0 6px", background: "none", border: "none", cursor: "pointer", WebkitTapHighlightColor: "rgba(0,0,0,0)", position: "relative" }}>
+            {active && <div style={{ position: "absolute", top: 0, left: "20%", right: "20%", height: 2, borderRadius: "0 0 2px 2px", background: s.color }} />}
+            <span style={{ fontSize: 18, filter: active ? "none" : "grayscale(0.6) opacity(0.5)" }}>{s.icon}</span>
+            <span style={{ fontSize: 9, fontWeight: active ? 700 : 500, letterSpacing: 0.3, color: active ? s.color : "#475569", textTransform: "uppercase" }}>{s.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function App() {
-  // ── Subdomain routing ──────────────────────────────────────────
-  const subdomain = (() => {
+  const realSubdomain = (() => {
     const host = window.location.hostname;
     if (host.startsWith("escrow.")) return "escrow";
     if (host.startsWith("p2p.")) return "p2p";
     if (host.startsWith("lending.")) return "lending";
     if (host.startsWith("market.")) return "market";
-    return "marketplace"; // satoshimarket.app (legacy)
+    if (host.startsWith("sandbox.")) return "sandbox";
+    return "marketplace";
   })();
-  const [activeApp, setActiveApp] = useState(subdomain === "escrow" ? "escrow" : "marketplace");
+  const isSandbox = _isSandboxCheck();
+  const [sandboxSubdomain, setSandboxSubdomain] = useState(() => {
+    if (realSubdomain !== "sandbox" && realSubdomain !== "marketplace" && !isSandbox) return realSubdomain;
+    return "market";
+  });
+  const isDirectSubdomain = ["escrow", "p2p", "lending"].includes(realSubdomain);
+  const showProductionNav = !isSandbox && !isDirectSubdomain && realSubdomain !== "marketplace";
+  const [prodSubdomain, setProdSubdomain] = useState(realSubdomain === "market" ? "market" : realSubdomain);
+  const effectiveSubdomain = isSandbox ? sandboxSubdomain : (showProductionNav ? prodSubdomain : realSubdomain);
+  const [activeApp, setActiveApp] = useState(effectiveSubdomain === "escrow" ? "escrow" : "marketplace");
+  useEffect(() => { setActiveApp(effectiveSubdomain === "escrow" ? "escrow" : "marketplace"); }, [effectiveSubdomain]);
   const [initialEscrowId, setInitialEscrowId] = useState(null);
   const [initialMarketplaceEscrowId, setInitialMarketplaceEscrowId] = useState(null);
 
-  // ── Auth state (single source of truth) ─────────────────────────
-  const [pubkey, setPubkey] = useState(_isSandboxCheck() ? DEV_IDENTITIES["seller"] : null);
+  const [pubkey, setPubkey] = useState(isSandbox ? DEV_IDENTITIES["seller"] : null);
   const [devRole, setDevRole] = useState("seller");
 
   // Resolve pubkey once on mount
   useEffect(() => {
-    if (_isSandboxCheck()) {
-      setPubkey(DEV_IDENTITIES[devRole]);
-      return;
-    }
+    if (isSandbox) { setPubkey(DEV_IDENTITIES[devRole]); return; }
     // Fedi: get real Nostr pubkey
     (async () => {
       // Try sessionStorage first (fast, no prompt)
@@ -322,11 +358,17 @@ export default function App() {
     setActiveApp("marketplace");
   }, []);
 
+  const handleSubdomainSwitch = useCallback((newSub) => {
+    if (isSandbox) setSandboxSubdomain(newSub);
+    else setProdSubdomain(newSub);
+    setInitialEscrowId(null);
+    setInitialMarketplaceEscrowId(null);
+    setActiveApp(newSub === "escrow" ? "escrow" : "marketplace");
+  }, [isSandbox]);
+
   // ── Landing page for root domain ──────────────────────────────
   // Landing page for root domain (satoshimarket.app) — not sandbox, not subdomains
-  if (subdomain === "marketplace") {
-    return <LandingPage />;
-  }
+  if (realSubdomain === "marketplace" && !isSandbox) { return <LandingPage />; }
 
   // ── Loading state ───────────────────────────────────────────────
   if (!pubkey) {
@@ -339,47 +381,40 @@ export default function App() {
 
   return (
     <div style={{ background: "#0c0f17", height: "100dvh", maxHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* ── Sandbox bar — always visible, fixed at top ── */}
-      {_isSandboxCheck() && (
-        <div style={{
-          display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-          padding: "10px 14px 12px",
-          background: "linear-gradient(180deg, #1a1428, #12101d)",
-          borderBottom: "1px solid #2d264080",
-          flexShrink: 0,
-          zIndex: 200,
-        }}>
+      {isSandbox && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "8px 10px 10px", background: "linear-gradient(180deg, #1a1428, #12101d)", borderBottom: "1px solid #2d264080", flexShrink: 0, zIndex: 200 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b" }} />
-            <span style={{ fontSize: 12, fontWeight: 800, color: "#f59e0b", letterSpacing: 1, textTransform: "uppercase" }}>Sandbox</span>
-            <div style={{ width: 1, height: 14, background: "#2d2640" }} />
-            <span style={{ fontSize: 11, color: "#64748b" }}>Play as:</span>
+            <span style={{ fontSize: 11, fontWeight: 800, color: "#f59e0b", letterSpacing: 1, textTransform: "uppercase" }}>Sandbox</span>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
+            {SUBDOMAINS.map(s => { const active = sandboxSubdomain === s.id; return (
+              <button key={s.id} onClick={() => handleSubdomainSwitch(s.id)} style={{ padding: "5px 10px", borderRadius: 6, background: active ? (s.color + "20") : "#111827", color: active ? s.color : "#64748b", fontSize: 11, fontWeight: active ? 700 : 500, border: active ? ("1px solid " + s.color + "40") : "1px solid transparent", cursor: "pointer", WebkitTapHighlightColor: "rgba(0,0,0,0)", display: "flex", alignItems: "center", gap: 4 }}>
+                <span style={{ fontSize: 12 }}>{s.icon}</span> {s.label}
+              </button>
+            ); })}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 10, color: "#475569", marginRight: 4 }}>Play as:</span>
             {["seller", "buyer", "arbiter"].map(r => (
-              <button key={r} onClick={() => switchDevIdentity(r)} style={{
-                padding: "6px 12px", borderRadius: 8,
-                background: devRole === r ? "rgba(245,158,11,0.12)" : "#111827",
-                color: devRole === r ? "#fbbf24" : "#64748b",
-                fontSize: 12, fontWeight: 600,
-                border: devRole === r ? "1px solid rgba(245,158,11,0.3)" : "1px solid transparent",
-                cursor: "pointer", textTransform: "capitalize",
-                WebkitTapHighlightColor: "rgba(0,0,0,0)",
-              }}>
+              <button key={r} onClick={() => switchDevIdentity(r)} style={{ padding: "4px 10px", borderRadius: 6, background: devRole === r ? "rgba(245,158,11,0.12)" : "#111827", color: devRole === r ? "#fbbf24" : "#64748b", fontSize: 11, fontWeight: 600, border: devRole === r ? "1px solid rgba(245,158,11,0.3)" : "1px solid transparent", cursor: "pointer", textTransform: "capitalize", WebkitTapHighlightColor: "rgba(0,0,0,0)" }}>
                 {r === "seller" ? "🏠" : r === "buyer" ? "🛒" : "⚖️"} {r}
               </button>
             ))}
+          </div>
+          <div style={{ fontSize: 9, color: "#334155", textAlign: "center" }}>
+            Viewing as <span style={{ color: (SUBDOMAINS.find(s => s.id === sandboxSubdomain) || {}).color || "#94a3b8", fontWeight: 700 }}>{sandboxSubdomain}.satoshimarket.app</span>
           </div>
         </div>
       )}
 
       {/* ── Active view ── */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-      {(activeApp === "escrow" || subdomain === "escrow") && (
+      {(activeApp === "escrow" || effectiveSubdomain === "escrow") && (
         <EcashEscrow
           pubkey={pubkey}
           devRole={devRole}
-          subdomain={subdomain}
+          subdomain={effectiveSubdomain}
           onSwitchToMarketplace={switchToMarketplace}
           onSwitchToMarketplaceOrders={switchToMarketplaceOrders}
           initialEscrowId={initialEscrowId}
@@ -390,7 +425,7 @@ export default function App() {
         <Marketplace
           pubkey={pubkey}
           devRole={devRole}
-          subdomain={subdomain}
+          subdomain={effectiveSubdomain}
           onSwitchToEscrow={switchToEscrow}
           initialEscrowId={initialMarketplaceEscrowId}
           onOpened={() => setInitialMarketplaceEscrowId(null)}
