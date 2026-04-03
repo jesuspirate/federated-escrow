@@ -1656,8 +1656,13 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                     : fmtSats(l.priceMsats)}
                 </span>
               </div>
-              {(() => { const rm = (l.terms || "").match(/Rate:\s*(\d+)/); return rm ? <div style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)", marginBottom: 4 }}>📈 {rm[1]}% premium</div> : null; })()}
-              {(() => { const cm = (l.terms || "").match(/Currency:\s*(\w+)/); return cm ? <span style={{ display: "inline-flex", padding: "2px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "rgba(245,158,11,0.1)", color: "#f59e0b", border: "1px solid rgba(245,158,11,0.2)", marginBottom: 4 }}>{cm[1]}</span> : null; })()}
+              {/* Single-line badges: premium + currency + description */}
+              <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "nowrap", overflow: "hidden", marginBottom: 2 }}>
+                {(() => { const rm = (l.terms || "").match(/Rate:\s*(\d+)/); return rm ? <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: "rgba(16,185,129,0.1)", color: "#10b981", flexShrink: 0 }}>📈 {rm[1]}%</span> : null; })()}
+                {(() => { const cm = (l.terms || "").match(/Currency:\s*(\w+)/); return cm ? <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: "rgba(245,158,11,0.1)", color: "#f59e0b", flexShrink: 0 }}>{cm[1]}</span> : null; })()}
+                {l.paymentMethods && l.paymentMethods.length > 0 && l.paymentMethods.slice(0, 3).map(pm => { const m = PAYMENT_METHODS.find(p => p.key === pm); return m ? <span key={pm} style={{ padding: "2px 5px", borderRadius: 4, fontSize: 8, fontWeight: 600, background: "rgba(16,185,129,0.08)", color: "#10b981", flexShrink: 0, whiteSpace: "nowrap" }}>{m.icon}{m.label}</span> : null; })}
+                {l.paymentMethods && l.paymentMethods.length > 3 && <span style={{ fontSize: 8, color: "#475569", flexShrink: 0 }}>+{l.paymentMethods.length - 3}</span>}
+              </div>
               {l.description && <p style={M.cardDesc}>{l.description}</p>}
               <div style={M.cardMeta}>
               {isLending(l.category) && l.terms && (() => {
@@ -1689,12 +1694,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                   {l.status === "paused" ? "⏸ Paused" : l.quantity > 1 ? `🟢 ${t("mkQtyAvailable", { qty: l.quantity })}` : l.quantity === 1 ? `🔥 ${t("mkQtyOneLeft")}` : `❌ ${t("mkQtySoldOut")}`}
                 </span>
               </div>
-                {l.paymentMethods && l.paymentMethods.length > 0 && (
-                  <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
-                    {l.paymentMethods.slice(0, 4).map(pm => { const m = PAYMENT_METHODS.find(p => p.key === pm); return m ? <span key={pm} style={{ padding: "2px 6px", borderRadius: 5, fontSize: 9, fontWeight: 600, background: "rgba(16,185,129,0.1)", color: "#10b981", border: "1px solid rgba(16,185,129,0.2)" }}>{m.icon} {m.label}</span> : null; })}
-                    {l.paymentMethods.length > 4 && <span style={{ padding: "2px 6px", borderRadius: 5, fontSize: 9, fontWeight: 600, color: "#64748b" }}>+{l.paymentMethods.length - 4}</span>}
-                  </div>
-                )}
+
             </button>
             )
           )}
