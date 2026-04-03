@@ -1657,7 +1657,7 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                 </span>
               </div>
               {/* Single-line badges: premium + currency + description */}
-              <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "nowrap", overflow: "hidden", marginBottom: 2 }}>
+              <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "nowrap", overflowX: "auto", overflowY: "hidden", marginBottom: 2, scrollbarWidth: "none", WebkitOverflowScrolling: "touch", msOverflowStyle: "none" }}>
                 {(() => { const rm = (l.terms || "").match(/Rate:\s*(\d+)/); return rm ? <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: "rgba(16,185,129,0.1)", color: "#10b981", flexShrink: 0 }}>📈 {rm[1]}%</span> : null; })()}
                 {(() => { const cm = (l.terms || "").match(/Currency:\s*(\w+)/); return cm ? <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: "rgba(245,158,11,0.1)", color: "#f59e0b", flexShrink: 0 }}>{cm[1]}</span> : null; })()}
                 {l.paymentMethods && l.paymentMethods.length > 0 && l.paymentMethods.slice(0, 3).map(pm => { const m = PAYMENT_METHODS.find(p => p.key === pm); return m ? <span key={pm} style={{ padding: "2px 5px", borderRadius: 4, fontSize: 8, fontWeight: 600, background: "rgba(16,185,129,0.08)", color: "#10b981", flexShrink: 0, whiteSpace: "nowrap" }}>{m.icon}{m.label}</span> : null; })}
