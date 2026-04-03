@@ -257,9 +257,6 @@ function LandingPage() {
         <div style={{ fontSize: 9, color: "#1e293b", marginTop: 8 }}>Non-custodial · Shamir 2-of-3 · Fedimint · Nostr</div>
       </div>
 
-      {showProductionNav && (
-        <AppNavigator activeSubdomain={prodSubdomain} onSwitch={handleSubdomainSwitch} />
-      )}
     </div>
   );
 }
@@ -298,7 +295,7 @@ export default function App() {
     if (realSubdomain !== "sandbox" && realSubdomain !== "marketplace" && !isSandbox) return realSubdomain;
     return "market";
   });
-  const isDirectSubdomain = ["escrow", "p2p", "lending"].includes(realSubdomain);
+  const isDirectSubdomain = ["escrow", "lending"].includes(realSubdomain);
   const showProductionNav = !isSandbox && !isDirectSubdomain && realSubdomain !== "marketplace";
   const [prodSubdomain, setProdSubdomain] = useState(realSubdomain === "market" ? "market" : realSubdomain);
   const effectiveSubdomain = isSandbox ? sandboxSubdomain : (showProductionNav ? prodSubdomain : realSubdomain);
@@ -432,6 +429,10 @@ export default function App() {
         />
       )}
       </div>
+
+      {showProductionNav && (
+        <AppNavigator activeSubdomain={prodSubdomain} onSwitch={handleSubdomainSwitch} />
+      )}
     </div>
   );
 }
