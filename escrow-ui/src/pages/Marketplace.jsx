@@ -1148,7 +1148,6 @@ const CATEGORIES = [
   { key: "all", label: "Public", icon: "🌍" },
   { key: "mine", label: "Mine", icon: "🏠" },
   { key: "sats-for-fiat", label: "P2P", icon: "₿" },
-  { key: "bill-pay", label: "Bill Pay", icon: "🧾" },
   { key: "lending", label: "Lending", icon: "🤝" },
   { key: "electronics", label: "Electronics", icon: "📱" },
   { key: "services", label: "Services", icon: "🛠️" },
@@ -1308,7 +1307,7 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
 
 function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale, onChapSmart, subdomain, myFederation, onArbiters, onFaq, showToast, onBillPay }) {
   const [searchOpen, setSearchOpen] = useState(false);
-  const [activeCategory, setActiveCategory] = useState(() => { const h = window.location.hash.replace("#", ""); return h === "billpay" ? "bill-pay" : "all"; });
+  const [activeCategory, setActiveCategory] = useState(() => { const h = window.location.hash.replace("#", ""); if (h === "billpay" && onBillPay) { setTimeout(() => onBillPay(), 100); } return "all"; });
   const [helpOpen, setHelpOpen] = useState(false);
   const [filterPayMethod, setFilterPayMethod] = useState(null);
   const [filterCurrency, setFilterCurrency] = useState(null);
@@ -1473,6 +1472,15 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
             <input style={M.input} placeholder={t("mkSearchPlaceholder") || "Search by title, description, or category..."} value={searchQuery} onChange={e => setSearchQuery(e.target.value)} autoFocus />
             {searchQuery && <button style={M.iconBtn} onClick={() => { setSearchQuery(""); onSearch(""); }}><Icons.X /></button>}
           </div>
+        )}
+
+        {/* Bill Pay prominent button */}
+        {onBillPay && (
+          <button onClick={onBillPay} style={{ width: "100%", padding: "12px 0", marginBottom: 10, borderRadius: 10, background: "linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05))", border: "1.5px solid rgba(245,158,11,0.3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <span style={{ fontSize: 16 }}>{"🧾"}</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#f59e0b" }}>Pay a Bill with Bitcoin</span>
+            <span style={{ color: "#f59e0b", fontSize: 14 }}>{"→"}</span>
+          </button>
         )}
 
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
@@ -2671,10 +2679,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
       )}
 
 
-      {/* Bill Pay — available on ALL subdomains */}
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6, marginTop: 4 }}>
-        <button onClick={() => { if (onBillPay) onBillPay(); else setCategory(category === "bill-pay" ? (subdomain === "p2p" ? "sats-for-fiat" : subdomain === "lending" ? "lending" : "") : "bill-pay"); }} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", border: category === "bill-pay" ? "1.5px solid #f59e0b" : "1px solid #334155", background: category === "bill-pay" ? "rgba(245,158,11,0.15)" : "#111827", color: category === "bill-pay" ? "#f59e0b" : "#94a3b8" }}>{"🧾"} Bill Pay</button>
-      </div>
+      {/* Bill Pay button removed - now accessed via BillPayView */}
       {/* ── P2P mode banner ── */}
       {isP2P && (
         <div style={{ ...M.infoBanner, borderColor: "rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.06)", marginBottom: 14, borderLeft: "3px solid #f59e0b" }}>
@@ -2688,18 +2693,7 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
         </div>
       )}
 
-      {/* ── Bill Pay mode banner ── */}
-      {isBill && (
-        <div style={{ ...M.infoBanner, borderColor: "rgba(245,158,11,0.3)", background: "rgba(245,158,11,0.06)", marginBottom: 14, borderLeft: "3px solid #f59e0b" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-            <span style={{ fontSize: 15 }}>{"🧾"}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#f59e0b" }}>Bill Pay — Let your community pay your bills</span>
-          </div>
-          <div style={{ fontSize: 11, color: "#94a3b8", lineHeight: 1.5 }}>
-            Lock your sats in escrow. Someone from your community pays your bill with fiat, shows proof, and claims the sats. Secure, fast, community-powered.
-          </div>
-        </div>
-      )}
+      {/* Old Bill Pay banner removed - now handled by BillPayView */}
 
       {/* ── Lending mode banner ── */}
       {isLoan && (
@@ -3055,7 +3049,7 @@ function BillPayView({ listings, loading, pubkey, onBack, onCreate, onOpen, onOr
             { step: "1", icon: "🧾", label: "Post your bill", desc: "Say what you need and how much", color: "#f59e0b" },
             { step: "2", icon: "🔒", label: "Sats are secured", desc: "Locked in escrow — safe for both sides", color: "#a78bfa" },
             { step: "3", icon: "💵", label: "Fiat is sent", desc: "Volunteer sends you fiat via your preferred method", color: "#10b981" },
-            { step: "4", icon: "✅", label: "Confirm & release", desc: "You got the fiat? Tap confirm. Sats go to the volunteer.", color: "#3b82f6" },
+            { step: "4", icon: "✅", label: "Confirm & done", desc: "Got the fiat? Tap confirm. Everyone's happy.", color: "#3b82f6" },
           ].map((s, i) => (
             <div key={s.step} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < 3 ? 10 : 0 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: s.color + "15", border: "1px solid " + s.color + "30", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{s.icon}</div>
