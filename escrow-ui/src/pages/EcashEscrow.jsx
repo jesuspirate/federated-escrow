@@ -1669,7 +1669,9 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
             const fedParts = member.id.split(":");
             const myFed = fedParts.length >= 2 ? fedParts[fedParts.length - 1] : null;
             const escrowFed = e.federationId || e.federation_id;
-            if (myFed && escrowFed && myFed !== escrowFed) {
+            const sellerPrefix = e.seller_fed_prefix || e.sellerFedPrefix || "";
+            const isBillPayEscrow = (e.description || "").startsWith("Bill Pay:");
+            if (myFed && escrowFed && myFed !== escrowFed && !isBillPayEscrow) {
               showToast("You're on " + myFed + " but this trade is on " + escrowFed + ". You must be on the same federation to lock sats.", "error");
               setLocking(false);
               return;
