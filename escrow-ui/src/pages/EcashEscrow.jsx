@@ -2029,7 +2029,7 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
             } else {
               showToast("E-cash received! " + receivedSats.toLocaleString() + " sats in your wallet!");
             }
-            setClaimProgress({ stage: "✅ Claimed!", pct: 100, active: true });
+            clearInterval(_claimTimer); setClaimProgress({ stage: "✅ Claimed!", pct: 100, active: true });
             stopHaptic();
             try { navigator.vibrate?.([100, 50, 100, 50, 200]); } catch {}
             setTimeout(() => setClaimProgress({ stage: "", pct: 0, active: false }), 2000);
@@ -2098,10 +2098,10 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
           const receivedAmt = ecashData.amountMsats ? Math.floor(ecashData.amountMsats / 1000) : amountSats;
           const feeSats = ecashData.platformFeeMsats ? Math.floor(ecashData.platformFeeMsats / 1000) : 0;
           showToast("Receiving " + receivedAmt.toLocaleString() + " sats...");
-          setClaimProgress({ stage: "Receiving sats...", pct: 60, active: true });
+          clearInterval(_claimTimer); setClaimProgress(prev => ({ stage: "Receiving sats...", pct: Math.max(prev.pct, 75), active: true }));
           await window.fediInternal.receiveEcash(ecashData.notes);
           const confirmRes = await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
-          setClaimProgress({ stage: "Confirming receipt...", pct: 80, active: true });
+          setClaimProgress(prev => ({ stage: "Confirming receipt...", pct: Math.max(prev.pct, 90), active: true }));
           if (confirmRes?.autoRepaymentId) setAutoRepaymentId(confirmRes.autoRepaymentId);
           setPendingNotes(null);
           if (feeSats > 0) {
