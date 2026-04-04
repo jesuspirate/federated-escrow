@@ -1386,7 +1386,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
         ? `Marketplace Shipping: ${listing.title}`
         : `Marketplace: ${listing.title}`,
       terms: listing.terms || "Standard marketplace terms apply.",
-      communityLink: listing.community_link,
+      communityLink: listing.community_link || "",
       federationId,
       sellerPubkey: escrowSellerPubkey,
       lockRole,
