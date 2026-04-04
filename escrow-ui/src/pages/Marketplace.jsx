@@ -3268,7 +3268,17 @@ function BillPayView({ listings, loading, pubkey, onBack, onCreate, onOpen, onOr
                 </div>
                 <div style={{ textAlign: "right", flexShrink: 0 }}>
                   {fiatDisplay && <div style={{ fontSize: 18, fontWeight: 800, color: "#f8fafc" }}>{fiatDisplay}</div>}
-                  <div style={{ fontSize: 10, color: "#f59e0b", fontWeight: 600 }}>{"₿"} {sats.toLocaleString()} sats</div>
+                  <div style={{ fontSize: 10, color: "#f59e0b", fontWeight: 600 }}>{"₿"} {(() => {
+                    if (!fiatRates || !fiatRates.btcUsd) return sats.toLocaleString();
+                    const fm = (l.terms || "").match(/Fiat needed:\s*(\w+)\s+([\d.]+)/);
+                    const rm = (l.terms || "").match(/Rate:\s*(\d+)/);
+                    if (!fm) return sats.toLocaleString();
+                    const fx = fiatRates.rates[fm[1]] || 1;
+                    const usd = parseFloat(fm[2]) / fx;
+                    const base = Math.floor((usd / fiatRates.btcUsd) * 100000000);
+                    const prem = rm ? parseInt(rm[1]) : 0;
+                    return Math.floor(base * (1 + prem / 100)).toLocaleString();
+                  })()} sats</div>
                 </div>
 
               </div>

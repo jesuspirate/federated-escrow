@@ -1343,6 +1343,24 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     // ── Bracket pricing: buyer picks amount within range ──────────────
     const shippingMsats = listing.shipping_cost_msats || 0;
     let tradeAmountMsats = listing.price_msats + shippingMsats;
+
+    // ── Bill Pay: recalculate sats from live rates at buy time ──
+    if (listing.category === "bill-pay" && ratesCache && ratesCache.btcUsd > 0) {
+      const fiatMatch = (listing.terms || "").match(/Fiat needed:\s*(\w+)\s+([\d.]+)/);
+      const rateMatch = (listing.terms || "").match(/Rate:\s*(\d+)/);
+      if (fiatMatch) {
+        const currency = fiatMatch[1];
+        const fiatAmount = parseFloat(fiatMatch[2]);
+        const premiumPct = rateMatch ? parseInt(rateMatch[1]) : 0;
+        const fxRate = ratesCache.rates[currency] || 1;
+        const usd = fiatAmount / fxRate;
+        const baseSats = Math.floor((usd / ratesCache.btcUsd) * 100_000_000);
+        const totalSats = Math.floor(baseSats * (1 + premiumPct / 100));
+        const recalcMsats = totalSats * 1000;
+        console.log("[bill-pay] Recalculated: " + currency + " " + fiatAmount + " @ BTC $" + ratesCache.btcUsd.toFixed(0) + " = " + totalSats + " sats (was " + Math.floor(listing.price_msats / 1000) + ")");
+        tradeAmountMsats = recalcMsats + shippingMsats;
+      }
+    }
     const { amountMsats: customAmount } = req.body;
     if (customAmount && typeof customAmount === "number" && customAmount > 0) {
       // Validate against listing range
