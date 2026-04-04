@@ -2015,12 +2015,12 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
               }
             } catch {}
             showToast("Redeeming " + amountSats.toLocaleString() + " sats...");
-            clearInterval(_claimTimer); setClaimProgress({ stage: "Redeeming e-cash...", pct: 50, active: true });
+            clearInterval(_claimTimer); setClaimProgress(prev => ({ stage: "Redeeming e-cash...", pct: Math.max(prev.pct, 70), active: true }));
             const redeemResult = await window.fediInternal.receiveEcash(pendingNotes);
             // Confirm successful receipt
             const confirmRes = await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
             if (confirmRes?.autoRepaymentId) setAutoRepaymentId(confirmRes.autoRepaymentId);
-            setClaimProgress({ stage: "Confirming receipt...", pct: 80, active: true });
+            setClaimProgress({ stage: "Confirming receipt...", pct: 90, active: true });
             setPendingNotes(null);
             const receivedSats = payoutInfo?.winnerMsats ? Math.floor(payoutInfo.winnerMsats / 1000) : amountSats;
             const feeSats = payoutInfo?.feeMsats ? Math.floor(payoutInfo.feeMsats / 1000) : 0;
@@ -2062,8 +2062,12 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
         setClaimProgress({ stage: "Claiming escrow...", pct: 20, active: true });
         // Animate progress while waiting
         const _claimTimer = setInterval(() => {
-          setClaimProgress(prev => prev.pct < 45 ? { ...prev, pct: prev.pct + 1 } : prev);
-        }, 800);
+          setClaimProgress(prev => {
+            if (prev.pct >= 92) return prev;
+            const speed = prev.pct < 40 ? 2 : prev.pct < 70 ? 1 : 0.5;
+            return { ...prev, pct: Math.min(prev.pct + speed, 92) };
+          });
+        }, 600);
         if (status !== "CLAIMED" && status !== "COMPLETED" && !claimRetry) {
           try {
             const claim = await api("/" + e.id + "/claim", { method: "POST" });
@@ -2076,7 +2080,7 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
           }
         }
         showToast("Retrieving e-cash notes...");
-        setClaimProgress({ stage: "Retrieving e-cash...", pct: 40, active: true });
+        setClaimProgress(prev => ({ stage: "Retrieving e-cash...", pct: Math.max(prev.pct, 50), active: true }));
         const ecashData = await api("/" + e.id + "/ecash-payout", {}, 0);
         if (ecashData.error) throw new Error(ecashData.error);
         if (ecashData.mode !== "ecash" || !ecashData.notes) throw new Error("No e-cash notes available");
