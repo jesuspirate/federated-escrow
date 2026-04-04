@@ -2973,6 +2973,13 @@ function BillPayView({ listings, loading, pubkey, onBack, onCreate, onOpen, onOr
   const [premiumPct, setPremiumPct] = useState("5");
   const [payMethods, setPayMethods] = useState([]);
 
+  // Auto-refresh every 15 seconds
+  useEffect(() => {
+    if (onRefresh) onRefresh();
+    const iv = setInterval(() => { if (onRefresh) onRefresh(); }, 15000);
+    return () => clearInterval(iv);
+  }, []);
+
   const billListings = useMemo(() =>
     listings.filter(l => l.category === "bill-pay" && l.status !== "sold" && l.status !== "paused"),
     [listings]

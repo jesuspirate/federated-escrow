@@ -616,6 +616,7 @@ router.post("/", ...requireAuth, (req: AuthenticatedRequest, res: Response) => {
         id: row.id, title: row.title, priceMsats: row.price_msats, minPriceMsats: row.min_price_msats, maxPriceMsats: row.max_price_msats,
         category: row.category, sellerFedPrefix: row.seller_fed_prefix,
         sellerFedDomain: row.seller_fed_domain, federationOnly: !!(row as any).federation_only, terms: row.terms,
+        paymentMethods: row.payment_methods ? JSON.parse(row.payment_methods) : [],
       });
     } catch {}
     res.status(201).json(formatListing(row));

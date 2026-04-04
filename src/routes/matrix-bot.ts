@@ -210,7 +210,7 @@ const bot = {
   },
 
   // New listing created — broadcast to community rooms
-  async notifyNewListing(listing: { id: string; title: string; priceMsats: number; minPriceMsats?: number; maxPriceMsats?: number; category: string; sellerFedPrefix?: string; sellerFedDomain?: string; federationOnly?: boolean; terms?: string }) {
+  async notifyNewListing(listing: { id: string; title: string; priceMsats: number; minPriceMsats?: number; maxPriceMsats?: number; category: string; sellerFedPrefix?: string; sellerFedDomain?: string; federationOnly?: boolean; terms?: string; paymentMethods?: string[] }) {
     if (!BOT_ENABLED) return;
     const hasRange = listing.minPriceMsats && listing.maxPriceMsats && listing.minPriceMsats !== listing.maxPriceMsats;
     const amount = hasRange ? `${fmtSats(listing.minPriceMsats!)} — ${fmtSats(listing.maxPriceMsats!)}` : fmtSats(listing.priceMsats);
@@ -218,7 +218,13 @@ const bot = {
     const vip = listing.federationOnly ? " 🔒 Federation Only" : "";
     const rateMatch = (listing.terms || "").match(/Rate:\s*(\d+)/);
     const premium = rateMatch ? ` 📈 ${rateMatch[1]}% premium` : "";
-    const body = `📢 New listing: ${listing.title}\n${tag} — ₿ ${amount} sats${premium}${vip}\n🔗 ID: ${listing.id}`;
+    // Extract fiat info and payment methods from terms
+    const fiatMatch = (listing.terms || "").match(/Fiat needed:\s*(\w+)\s+([\d.]+)/);
+    const fiatLine = fiatMatch ? `\n💵 ${fiatMatch[1]} ${fiatMatch[2]}` : "";
+    const pmMatch = (listing.terms || "").match(/Payment Methods?:\s*(.+)/i);
+    const pmNames: Record<string,string> = { mpesa: "M-Pesa", airtel: "Airtel", mtn: "MTN", orange: "Orange", wave: "Wave", opay: "OPay", chipper: "Chipper", cashapp: "Cash App", zelle: "Zelle", venmo: "Venmo", wise: "Wise", paypal: "PayPal", bank: "Bank", cash: "Cash", revolut: "Revolut", pix: "PIX", upi: "UPI", gcash: "GCash", ecocash: "EcoCash" };
+    const pmLine = (listing.paymentMethods || []).length > 0 ? `\n💳 ${(listing.paymentMethods || []).map((k: string) => pmNames[k] || k).join(", ")}` : "";
+    const body = `📢 New listing: ${listing.title}\n${tag} — ₿ ${amount} sats${premium}${fiatLine}${pmLine}${vip}\n🔗 ID: ${listing.id}`;
     // Post to default rooms
     for (const roomId of Object.keys(ROOM_LANG)) {
       await postToRoom(roomId, body);
