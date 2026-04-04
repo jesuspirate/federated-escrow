@@ -2116,11 +2116,16 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
         } catch (autoRedeemErr) {
           // Auto-redeem failed — fall back to manual tap (notes already in state)
           console.warn("[claim] auto-redeem failed:", autoRedeemErr);
-          showToast("Tap the redeem button to complete.", "error");
+          showToast("E-cash saved. Tap Claim again to retry receiving sats.", "error");
+          clearInterval(_claimTimer);
+          setClaimProgress({ stage: "", pct: 0, active: false });
+          setClaimInProgress(false);
+          setClaimRetry(true);
+          setLoading(false);
+          stopHaptic();
+          return;
         }
-        stopHaptic(); setClaimProgress({ stage: "", pct: 0, active: false });
-        setClaimInProgress(false);
-        setLoading(false);
+        // Success path already handled inside try block via setTimeout
         return;
       }
 
