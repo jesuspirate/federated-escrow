@@ -1298,8 +1298,8 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     if (listing.category !== "bill-pay" && (!listing.community_link || !isValidCommunityLink(listing.community_link)))
       return res.status(400).json({ error: "Listing has no valid community link — seller must update it before purchases are possible" });
 
-    const federationId = listing.community_link ? extractFederationId(listing.community_link) : null;
-    if (!federationId)
+    const federationId = listing.community_link ? extractFederationId(listing.community_link) : (listing.seller_fed_prefix || "bill-pay-" + listing.id);
+    if (!federationId && listing.category !== "bill-pay")
       return res.status(400).json({ error: "Could not extract federation ID from listing's community link" });
 
     // ── Pick arbiter ──────────────────────────────────────────────────
