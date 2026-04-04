@@ -3071,7 +3071,7 @@ function BillPayView({ listings, loading, pubkey, onBack, onCreate, onOpen, onOr
     const premiumSats = totalSats - baseSats;
 
     return (
-      <div style={{ padding: "0 16px 80px" }}>
+      <div style={{ padding: "0 16px 160px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
           <button onClick={() => setMode(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: 4 }}>{"←"}</button>
           <div>
