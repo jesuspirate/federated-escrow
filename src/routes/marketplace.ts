@@ -1295,7 +1295,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     if (!buyerIsSandbox && sellerIsSandbox)
       return res.status(403).json({ error: "Real users cannot buy sandbox listings." });
 
-    if (!listing.community_link || !isValidCommunityLink(listing.community_link))
+    if (listing.category !== "bill-pay" && (!listing.community_link || !isValidCommunityLink(listing.community_link)))
       return res.status(400).json({ error: "Listing has no valid community link — seller must update it before purchases are possible" });
 
     const federationId = extractFederationId(listing.community_link);
