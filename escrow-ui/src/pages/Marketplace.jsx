@@ -3263,16 +3263,9 @@ function BillPayView({ listings, loading, pubkey, onBack, onCreate, onOpen, onOr
                   {fiatDisplay && <div style={{ fontSize: 18, fontWeight: 800, color: "#f8fafc" }}>{fiatDisplay}</div>}
                   <div style={{ fontSize: 10, color: "#f59e0b", fontWeight: 600 }}>{"₿"} {sats.toLocaleString()} sats</div>
                 </div>
-                {/* Currency badge */}
-                {(() => { const cm = (l.terms || "").match(/Currency:\s*(\w+)/); const cur = cm ? cm[1] : l.fiatCurrency || null; return cur ? <span style={{ padding: "2px 6px", borderRadius: 4, fontSize: 9, fontWeight: 700, background: "rgba(59,130,246,0.1)", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.15)", marginLeft: 4 }}>{cur}</span> : null; })()}
+
               </div>
-              {/* Payment methods row */}
-              {(l.paymentMethods || []).length > 0 && (
-                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 8, paddingTop: 8, borderTop: "1px solid #1e293b" }}>
-                  {(l.paymentMethods || []).slice(0, 4).map(pm => { const m = PAYMENT_METHODS.find(p => p.key === pm); return m ? <span key={pm} style={{ padding: "2px 6px", borderRadius: 4, fontSize: 9, background: "rgba(16,185,129,0.08)", color: "#10b981", border: "1px solid rgba(16,185,129,0.12)" }}>{m.icon} {m.label}</span> : null; })}
-                  {(l.paymentMethods || []).length > 4 && <span style={{ fontSize: 9, color: "#475569" }}>+{(l.paymentMethods || []).length - 4}</span>}
-                </div>
-              )}
+
             </button>
           );
         })}
