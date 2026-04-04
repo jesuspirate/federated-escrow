@@ -3001,7 +3001,7 @@ function BillPayView({ listings, loading, pubkey, onBack, onCreate, onOpen, onOr
   // CHOOSER
   if (mode === null) {
     return (
-      <div style={{ padding: "0 16px" }}>
+      <div style={{ padding: "0 16px 80px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
           <button onClick={onBack} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: 4 }}>{"←"}</button>
           <div>
@@ -3071,7 +3071,7 @@ function BillPayView({ listings, loading, pubkey, onBack, onCreate, onOpen, onOr
     const premiumSats = totalSats - baseSats;
 
     return (
-      <div style={{ padding: "0 16px" }}>
+      <div style={{ padding: "0 16px 80px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
           <button onClick={() => setMode(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: 4 }}>{"←"}</button>
           <div>
@@ -3143,6 +3143,7 @@ function BillPayView({ listings, loading, pubkey, onBack, onCreate, onOpen, onOr
 
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 6 }}>Note (optional)</label>
+          <div style={{ fontSize: 10, color: "#475569", marginBottom: 6, lineHeight: 1.4 }}>Your payment details (phone number, $cashtag, etc.) will be shared privately via encrypted chat after a volunteer accepts.</div>
           <input placeholder="e.g., Need this by Friday, rent is due" value={note} onChange={e => setNote(e.target.value)} style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #334155", background: "#0f172a", color: "#f8fafc", fontSize: 13, outline: "none", fontFamily: "inherit" }} />
         </div>
 
@@ -3158,13 +3159,14 @@ function BillPayView({ listings, loading, pubkey, onBack, onCreate, onOpen, onOr
         <button onClick={async () => {
             if (!billType) return showToast("Pick a bill type", "error");
             if (!fiatAmount || parseFloat(fiatAmount) <= 0) return showToast("Enter the fiat amount you need", "error");
+            if (payMethods.length === 0) return showToast("Select at least one payment method", "error");
             const bt = BILL_TYPES.find(b => b.id === billType);
             const totalSats = totalSatsWithPremium();
             if (totalSats <= 0) return showToast("Could not calculate sats amount - check fiat rates", "error");
             if (totalSats > 2000000) return showToast("Exceeds 2,000,000 sats federation limit", "error");
 
             const billTitle = bt.icon + " " + bt.label + " bill - " + fiatCurrency + " " + parseFloat(fiatAmount).toFixed(2);
-            const billTerms = "--- Bill Pay Details ---\nType: " + bt.label + "\nFiat needed: " + fiatCurrency + " " + parseFloat(fiatAmount).toFixed(2) + "\nRate: " + premiumPct + (note ? "\n\n" + note : "");
+            const billTerms = "--- Bill Pay Details ---\nType: " + bt.label + "\nFiat needed: " + fiatCurrency + " " + parseFloat(fiatAmount).toFixed(2) + "\nCurrency: " + fiatCurrency + "\nRate: " + premiumPct + (note ? "\n\n" + note : "");
 
             setPosting(true);
             try {
@@ -3179,6 +3181,11 @@ function BillPayView({ listings, loading, pubkey, onBack, onCreate, onOpen, onOr
                     try { await window.fediInternal.receiveEcash(probe); } catch {}
                   }
                 } catch {}
+              }
+              if (!sellerFedPrefix && !_isSandbox) {
+                showToast("Federation detection failed. Please approve the prompt to continue.", "error");
+                setPosting(false);
+                return;
               }
 
               const res = await mapi("/", {
@@ -3212,7 +3219,7 @@ function BillPayView({ listings, loading, pubkey, onBack, onCreate, onOpen, onOr
   // "I WANT TO BUY SATS" browse
   if (mode === "earn") {
     return (
-      <div style={{ padding: "0 16px" }}>
+      <div style={{ padding: "0 16px 80px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
           <button onClick={() => setMode(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: 4 }}>{"←"}</button>
           <div>
