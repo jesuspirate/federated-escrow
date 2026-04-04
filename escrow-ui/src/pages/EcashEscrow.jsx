@@ -1870,10 +1870,10 @@ function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoadin
  if (sd === "billpay") return {
 lockBtn: "🧾 Lock ₿ " + fmtSats(e.amountMsats) + " for bill",
 lockedStatus: isLocker ? "Sats locked — waiting for someone to pay your bill" : "Sats locked — pay the bill and show proof",
-releaseBtn: role === "buyer" ? "✓ Bill has been paid" : role === "seller" ? "✓ I confirm bill paid" : t("release"),
+releaseBtn: role === "buyer" ? "✓ Bill has been paid" : role === "seller" ? "✓ I received the fiat" : t("release"),
 refundBtn: "⚠ Dispute",
 claimBtn: "⚡ Receive ₿ " + fmtSats(e.amountMsats) + " sats",
-voteConfirmRelease: role === "buyer" ? "Confirm the bill was paid?" : "Confirm you verified the bill payment?",
+voteConfirmRelease: role === "buyer" ? "Confirm you sent the fiat to the bill poster?" : "Confirm you received the fiat? Sats will go to the volunteer.",
 voteConfirmRefund: "Open a dispute? The arbiter will review.",
 };
     if (sd === "market") return {
@@ -2013,7 +2013,7 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
               }
             } catch {}
             showToast("Redeeming " + amountSats.toLocaleString() + " sats...");
-            setClaimProgress({ stage: "Redeeming e-cash...", pct: 50, active: true });
+            clearInterval(_claimTimer); setClaimProgress({ stage: "Redeeming e-cash...", pct: 50, active: true });
             const redeemResult = await window.fediInternal.receiveEcash(pendingNotes);
             // Confirm successful receipt
             const confirmRes = await api("/" + e.id + "/confirm-ecash-received", { method: "POST" });
@@ -2058,6 +2058,10 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
 
         // STEP 1: Claim on server + fetch notes (stores in state for step 2)
         setClaimProgress({ stage: "Claiming escrow...", pct: 20, active: true });
+        // Animate progress while waiting
+        const _claimTimer = setInterval(() => {
+          setClaimProgress(prev => prev.pct < 45 ? { ...prev, pct: prev.pct + 1 } : prev);
+        }, 800);
         if (status !== "CLAIMED" && status !== "COMPLETED" && !claimRetry) {
           try {
             const claim = await api("/" + e.id + "/claim", { method: "POST" });
@@ -2355,7 +2359,7 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
         {canBuyerVote && !confirmVote && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "4px 0 12px" }}>
             <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)", fontSize: 16, padding: "16px 20px" }} onClick={() => setConfirmVote("release")} disabled={loading}>
-              {loading ? t("voting") : isP2PTrade ? "✓ I sent the fiat payment" : isRepayment ? "✓ I have repaid" : isLending ? "✓ I accept the loan" : isBillPay ? "✓ I confirm bill paid" : "✓ I received what I paid for"}
+              {loading ? t("voting") : isP2PTrade ? "✓ I sent the fiat payment" : isRepayment ? "✓ I have repaid" : isLending ? "✓ I accept the loan" : isBillPay ? "✓ I sent the fiat payment" : "✓ I received what I paid for"}
             </button>
             {!isP2PTrade && <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #b45309, #92400e)", fontSize: 13, padding: "12px 16px" }} onClick={() => setConfirmVote("refund")} disabled={loading}>
               {isRepayment ? "⚠ Dispute repayment" : isLending ? "⚠ Dispute terms" : "⚠ Dispute — incorrect"}
@@ -2376,7 +2380,7 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
         {canBuyerVote && confirmVote === "release" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "0 0 12px" }}>
             <div style={{ textAlign: "center", padding: "12px 14px", background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.3)", borderRadius: 10, fontSize: 14, fontWeight: 700, color: "#10b981" }}>
-              {isP2PTrade ? "Confirm: You sent fiat? ₿ Sats will release to you." : isRepayment ? "Confirm: You have repaid the loan in full?" : isLending ? "Confirm: Accept this loan and begin the repayment clock?" : isBillPay ? "Confirm: Your bill was paid? Sats will go to the volunteer." : "Confirm: Trade complete? Sats will be released."}
+              {isP2PTrade ? "Confirm: You sent fiat? ₿ Sats will release to you." : isRepayment ? "Confirm: You have repaid the loan in full?" : isLending ? "Confirm: Accept this loan and begin the repayment clock?" : isBillPay ? "Confirm: You sent the fiat? The bill poster will verify and release sats to you." : "Confirm: Trade complete? Sats will be released."}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8", fontSize: 15, padding: "14px" }} onClick={cancelConfirm}>Cancel</button>
