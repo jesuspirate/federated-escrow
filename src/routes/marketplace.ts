@@ -1298,7 +1298,7 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
     if (listing.category !== "bill-pay" && (!listing.community_link || !isValidCommunityLink(listing.community_link)))
       return res.status(400).json({ error: "Listing has no valid community link — seller must update it before purchases are possible" });
 
-    const federationId = extractFederationId(listing.community_link);
+    const federationId = listing.community_link ? extractFederationId(listing.community_link) : null;
     if (!federationId)
       return res.status(400).json({ error: "Could not extract federation ID from listing's community link" });
 
