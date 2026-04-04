@@ -1453,7 +1453,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
   if (!open) {
     return (
       <button onClick={() => { setOpen(true); setUnreadCount(0); }} style={{
-        position: "fixed", bottom: 20, right: 16, width: 48, height: 48, borderRadius: "50%",
+        position: "fixed", bottom: 70, right: 16, width: 48, height: 48, borderRadius: "50%",
         background: "linear-gradient(135deg, #3b82f6, #2563eb)", border: "none", cursor: "pointer",
         boxShadow: "0 4px 20px rgba(59,130,246,0.4)", display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: 20, zIndex: 100,
