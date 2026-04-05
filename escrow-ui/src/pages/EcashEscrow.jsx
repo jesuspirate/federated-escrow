@@ -1503,7 +1503,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
 
   return (
     <div style={{
-      position: "fixed", bottom: 0, left: 0, right: 0, maxHeight: "60vh",
+      position: "fixed", bottom: 56, left: 0, right: 0, maxHeight: "55vh",
       background: "#111827", borderTop: "1px solid #1e293b", borderRadius: "16px 16px 0 0",
       display: "flex", flexDirection: "column", zIndex: 100,
       boxShadow: "0 -4px 30px rgba(0,0,0,0.5)",
