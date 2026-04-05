@@ -1221,6 +1221,34 @@ function TradeChat({ escrowId, pubkey, participants }) {
   const lastTs = useRef(0);
   const chatEndRef = useRef(null);
 
+  // Draggable bubble state
+  const [bubblePos, setBubblePos] = useState(() => {
+    try { const s = sessionStorage.getItem("sm_chat_bubble_pos"); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
+  const dragRef = useRef({ startX: 0, startY: 0, startRight: 16, startBottom: 70, dragging: false });
+  const bubbleRight = bubblePos?.right ?? 16;
+  const bubbleBottom = bubblePos?.bottom ?? 70;
+  const onBubbleTouchStart = (e) => {
+    const t = e.touches[0];
+    dragRef.current = { startX: t.clientX, startY: t.clientY, startRight: bubbleRight, startBottom: bubbleBottom, dragging: false };
+  };
+  const onBubbleTouchMove = (e) => {
+    const t = e.touches[0];
+    const dx = dragRef.current.startX - t.clientX;
+    const dy = dragRef.current.startY - t.clientY;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) dragRef.current.dragging = true;
+    if (!dragRef.current.dragging) return;
+    e.preventDefault();
+    const newRight = Math.max(4, Math.min(window.innerWidth - 56, dragRef.current.startRight + dx));
+    const newBottom = Math.max(4, Math.min(window.innerHeight - 56, dragRef.current.startBottom + dy));
+    setBubblePos({ right: newRight, bottom: newBottom });
+  };
+  const onBubbleTouchEnd = () => {
+    if (dragRef.current.dragging) {
+      try { sessionStorage.setItem("sm_chat_bubble_pos", JSON.stringify({ right: bubbleRight, bottom: bubbleBottom })); } catch {}
+    } else { setOpen(true); setUnreadCount(0); }
+  };
+
   const myRole = pubkey === participants?.seller ? "seller" : pubkey === participants?.buyer ? "buyer" : "arbiter";
   const roleColors = { seller: "#f59e0b", buyer: "#a78bfa", arbiter: "#64748b" };
   const roleLabels = { seller: "Seller", buyer: "Buyer", arbiter: "Arbiter" };
@@ -1452,12 +1480,19 @@ function TradeChat({ escrowId, pubkey, participants }) {
 
   if (!open) {
     return (
-      <button onClick={() => { setOpen(true); setUnreadCount(0); }} style={{
-        position: "fixed", bottom: 70, right: 16, width: 48, height: 48, borderRadius: "50%",
-        background: "linear-gradient(135deg, #3b82f6, #2563eb)", border: "none", cursor: "pointer",
-        boxShadow: "0 4px 20px rgba(59,130,246,0.4)", display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 20, zIndex: 100,
-      }}>
+      <button
+        onTouchStart={onBubbleTouchStart}
+        onTouchMove={onBubbleTouchMove}
+        onTouchEnd={onBubbleTouchEnd}
+        onClick={() => { if (!dragRef.current.dragging) { setOpen(true); setUnreadCount(0); } }}
+        style={{
+          position: "fixed", bottom: bubbleBottom, right: bubbleRight,
+          width: 48, height: 48, borderRadius: "50%",
+          background: "linear-gradient(135deg, #3b82f6, #2563eb)", border: "none", cursor: "pointer",
+          boxShadow: "0 4px 20px rgba(59,130,246,0.4)", display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 20, zIndex: 100, touchAction: "none", WebkitUserSelect: "none", userSelect: "none",
+          transition: dragRef.current?.dragging ? "none" : "all 0.15s ease",
+        }}>
         💬
         {unreadCount > 0 && (
           <span style={{ position: "absolute", top: -4, right: -4, width: 20, height: 20, borderRadius: "50%", background: "#ef4444", color: "#fff", fontSize: 10, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center" }}>{unreadCount}</span>
