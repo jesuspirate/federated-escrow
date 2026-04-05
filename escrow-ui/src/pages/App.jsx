@@ -265,7 +265,7 @@ function LandingPage() {
 // -- PRODUCTION APP NAVIGATOR --
 function AppNavigator({ activeSubdomain, onSwitch }) {
   return (
-    <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, display: "flex", alignItems: "stretch", background: "#0a0e17", borderTop: "1px solid #1e293b", zIndex: 1000, padding: "0 4px", paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+    <div style={{ display: "flex", alignItems: "stretch", background: "#0a0e17", borderTop: "1px solid #1e293b", zIndex: 100, padding: "0 4px", paddingBottom: "env(safe-area-inset-bottom, 0px)", flexShrink: 0 }}>
       {SUBDOMAINS.map(s => {
         const active = activeSubdomain === s.id;
         return (
@@ -407,7 +407,7 @@ export default function App() {
       )}
 
       {/* ── Active view ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
       {(activeApp === "escrow" || effectiveSubdomain === "escrow") && (
         <EcashEscrow
           pubkey={pubkey}

@@ -1017,7 +1017,7 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
 
       </div>
       {/* ══ SCROLLABLE TRADE LIST ══ */}
-      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 120 }}>
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 20 }}>
         {filteredEscrows.length === 0 ? (
           <div style={S.emptyState}>
             <SvgArbiter size={40} color="#475569" />
@@ -2236,7 +2236,7 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
 
       {/* Category badge removed — escrow view is purely for voting */}
 
-      <div style={{ paddingBottom: 140 }}>
+      <div style={{ paddingBottom: 20 }}>
         {/* ═══ THE VAULT ═══ */}
         <Vault status={status} amountMsats={e.amountMsats} showBurst={showBurst} resolvedOutcome={e.resolvedOutcome} />
 
@@ -2278,15 +2278,15 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
           <TradeChat escrowId={e.id} pubkey={pubkey} participants={e.participants} />
         )}
 
-        {/* ── Keet P2P Chat — community trade room ── */}
+        {/* ── Keet P2P Chat — inline pill ── */}
         {(status === "LOCKED" || status === "FUNDED" || status === "APPROVED" || status === "CLAIMED") && (
-          <a href="pear://keet/nfoid1mu18n1fyx5mg83cx3ucb5tro43w46eujgpzj5hmp87kfqoy7s6drnu4bijak3pjqouhm78ffmhkm8f3jq1kjeswbttmj54qsup57nhs897o1tdpddpt81tyk8ujs739huwg5q7w38bp5djnsxz7w7iqyedsyrto6njajkxxm91jxbjpn8pukbho"
-            target="_blank" rel="noopener noreferrer"
-            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, margin: "8px 16px", padding: "12px 16px", borderRadius: 12, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", textDecoration: "none", cursor: "pointer" }}>
-            <span style={{ fontSize: 16 }}>{"💬"}</span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#10b981" }}>Chat on Keet</span>
-            <span style={{ fontSize: 9, color: "#64748b", padding: "2px 6px", borderRadius: 4, background: "rgba(100,116,139,0.1)" }}>P2P</span>
-          </a>
+          <div style={{ display: "flex", justifyContent: "center", margin: "4px 0 2px" }}>
+            <a href="pear://keet/nfoid1mu18n1fyx5mg83cx3ucb5tro43w46eujgpzj5hmp87kfqoy7s6drnu4bijak3pjqouhm78ffmhkm8f3jq1kjeswbttmj54qsup57nhs897o1tdpddpt81tyk8ujs739huwg5q7w38bp5djnsxz7w7iqyedsyrto6njajkxxm91jxbjpn8pukbho"
+              target="_blank" rel="noopener noreferrer"
+              style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 20, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.15)", textDecoration: "none", fontSize: 11, fontWeight: 600, color: "#10b981" }}>
+              {"💬"} Keet <span style={{ fontSize: 8, color: "#475569", marginLeft: 2 }}>P2P</span>
+            </a>
+          </div>
         )}
 
         {/* ── Contextual status message per subdomain ── */}
@@ -2398,43 +2398,47 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
               {status === "LOCKED" && role === "arbiter" && buyerVoted && sellerVoted && buyerOutcome === sellerOutcome && (
                 <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 12, color: "#10b981" }}><I.Check /> {t("noDispute")}</div>
               )}
+
+              {/* ── Buyer vote (inline under tally) ──────────────── */}
+              {canBuyerVote && !confirmVote && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)", fontSize: 15, padding: "14px 20px" }} onClick={() => setConfirmVote("release")} disabled={loading}>
+                    {loading ? t("voting") : isP2PTrade ? "✓ I sent the fiat payment" : isRepayment ? "✓ I have repaid" : isLending ? "✓ I accept the loan" : isBillPay ? "✓ I sent the fiat payment" : "✓ I received what I paid for"}
+                  </button>
+                  {!isP2PTrade && <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #b45309, #92400e)", fontSize: 12, padding: "10px 16px" }} onClick={() => setConfirmVote("refund")} disabled={loading}>
+                    {isRepayment ? "⚠ Dispute repayment" : isLending ? "⚠ Dispute terms" : "⚠ Dispute — incorrect"}
+                  </button>}
+                </div>
+              )}
+              {canBuyerVote && confirmVote === "refund" && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ textAlign: "center", padding: "10px 12px", background: "rgba(180,83,9,0.1)", border: "1px solid rgba(180,83,9,0.3)", borderRadius: 10, fontSize: 13, fontWeight: 700, color: "#f59e0b", lineHeight: 1.5 }}>
+                    {isP2PTrade ? "Open a dispute? The arbiter will review and decide." : isLending ? "Dispute this loan? The arbiter will review." : isBillPay ? "Dispute this bill payment? The arbiter will review." : "Open a dispute? The arbiter will review your case. Use the chat to explain what happened."}
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8" }} onClick={cancelConfirm}>Cancel</button>
+                    <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)" }} onClick={() => handleVote("refund")} disabled={loading}>{loading ? t("voting") : "Yes, open dispute"}</button>
+                  </div>
+                </div>
+              )}
+              {canBuyerVote && confirmVote === "release" && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid #1e293b", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ textAlign: "center", padding: "10px 12px", background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.3)", borderRadius: 10, fontSize: 13, fontWeight: 700, color: "#10b981" }}>
+                    {isP2PTrade ? "Confirm: You sent fiat? ₿ Sats will release to you." : isRepayment ? "Confirm: You have repaid the loan in full?" : isLending ? "Confirm: Accept this loan and begin the repayment clock?" : isBillPay ? "Confirm: You sent the fiat? The bill poster will verify and release sats to you." : "Confirm: Trade complete? Sats will be released."}
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8" }} onClick={cancelConfirm}>Cancel</button>
+                    <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)" }} onClick={() => handleVote("release")} disabled={loading}>{loading ? t("voting") : "Yes, confirm ⚡"}</button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* ═══ PRIMARY ACTION — right after participants/tally ═══ */}
-        {canBuyerVote && !confirmVote && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "4px 0 12px" }}>
-            <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #059669, #047857)", boxShadow: "0 4px 24px rgba(5,150,105,0.3)", fontSize: 16, padding: "16px 20px" }} onClick={() => setConfirmVote("release")} disabled={loading}>
-              {loading ? t("voting") : isP2PTrade ? "✓ I sent the fiat payment" : isRepayment ? "✓ I have repaid" : isLending ? "✓ I accept the loan" : isBillPay ? "✓ I sent the fiat payment" : "✓ I received what I paid for"}
-            </button>
-            {!isP2PTrade && <button style={{ ...S.actionBtn, background: "linear-gradient(135deg, #b45309, #92400e)", fontSize: 13, padding: "12px 16px" }} onClick={() => setConfirmVote("refund")} disabled={loading}>
-              {isRepayment ? "⚠ Dispute repayment" : isLending ? "⚠ Dispute terms" : "⚠ Dispute — incorrect"}
-            </button>}
-          </div>
-        )}
-        {canBuyerVote && confirmVote === "refund" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "0 0 12px" }}>
-            <div style={{ textAlign: "center", padding: "12px 14px", background: "rgba(180,83,9,0.1)", border: "1px solid rgba(180,83,9,0.3)", borderRadius: 10, fontSize: 14, fontWeight: 700, color: "#f59e0b", lineHeight: 1.5 }}>
-              {isP2PTrade ? "Open a dispute? The arbiter will review and decide." : isLending ? "Dispute this loan? The arbiter will review." : isBillPay ? "Dispute this bill payment? The arbiter will review." : "Open a dispute? The arbiter will review your case. Use the chat to explain what happened."}
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8", fontSize: 15, padding: "14px" }} onClick={cancelConfirm}>Cancel</button>
-              <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #b45309, #92400e)", fontSize: 15, padding: "14px" }} onClick={() => handleVote("refund")} disabled={loading}>{loading ? t("voting") : "Yes, open dispute"}</button>
-            </div>
-          </div>
-        )}
-        {canBuyerVote && confirmVote === "release" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "0 0 12px" }}>
-            <div style={{ textAlign: "center", padding: "12px 14px", background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.3)", borderRadius: 10, fontSize: 14, fontWeight: 700, color: "#10b981" }}>
-              {isP2PTrade ? "Confirm: You sent fiat? ₿ Sats will release to you." : isRepayment ? "Confirm: You have repaid the loan in full?" : isLending ? "Confirm: Accept this loan and begin the repayment clock?" : isBillPay ? "Confirm: You sent the fiat? The bill poster will verify and release sats to you." : "Confirm: Trade complete? Sats will be released."}
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button style={{ ...S.actionBtn, flex: 1, background: "#1e293b", color: "#94a3b8", fontSize: 15, padding: "14px" }} onClick={cancelConfirm}>Cancel</button>
-              <button style={{ ...S.actionBtn, flex: 1, background: "linear-gradient(135deg, #059669, #047857)", fontSize: 15, padding: "14px" }} onClick={() => handleVote("release")} disabled={loading}>{loading ? t("voting") : "Yes, confirm ⚡"}</button>
-            </div>
-          </div>
-        )}
+
+
+
         {claimProgress.active && (
           <div style={{ marginBottom: 12, padding: "12px 16px", borderRadius: 12, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 12 }}>

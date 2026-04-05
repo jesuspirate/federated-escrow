@@ -46,7 +46,7 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
   // CHOOSER
   if (mode === null) {
     return (
-      <div style={{ padding: "0 16px 80px" }}>
+      <div style={{ padding: "0 16px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
           <button onClick={onBack} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: 4 }}>{"←"}</button>
           <div>
@@ -116,7 +116,7 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
     const premiumSats = totalSats - baseSats;
 
     return (
-      <div style={{ padding: "0 16px 160px" }}>
+      <div style={{ padding: "0 16px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
           <button onClick={() => setMode(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: 4 }}>{"←"}</button>
           <div>
@@ -142,13 +142,12 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, display: "block", marginBottom: 6 }}>How much do you need?</label>
           <div style={{ display: "flex", gap: 8 }}>
-            <div style={{ flex: 1, position: "relative" }}>
-              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 18, color: "#f59e0b", fontWeight: 700 }}>$</span>
-              <input type="number" inputMode="decimal" placeholder="0.00" value={fiatAmount} onChange={e => setFiatAmount(e.target.value)} style={{ width: "100%", padding: "14px 14px 14px 32px", borderRadius: 10, border: "1.5px solid #334155", background: "#0f172a", color: "#f8fafc", fontSize: 22, fontWeight: 700, outline: "none", fontFamily: "inherit" }} />
-            </div>
             <select value={fiatCurrency} onChange={e => setFiatCurrency(e.target.value)} style={{ padding: "14px 12px", borderRadius: 10, border: "1.5px solid #334155", background: "#0f172a", color: "#f8fafc", fontSize: 14, fontWeight: 600, outline: "none", cursor: "pointer", fontFamily: "inherit" }}>
               {["USD", "EUR", "GBP", "KES", "TZS", "NGN", "CFA", "BRL", "INR"].map(c => (<option key={c} value={c}>{c}</option>))}
             </select>
+            <div style={{ flex: 1, position: "relative" }}>
+              <input type="number" inputMode="decimal" placeholder="0.00" value={fiatAmount} onChange={e => setFiatAmount(e.target.value)} style={{ width: "100%", padding: "14px", borderRadius: 10, border: "1.5px solid #334155", background: "#0f172a", color: "#f8fafc", fontSize: 22, fontWeight: 700, outline: "none", fontFamily: "inherit" }} />
+            </div>
           </div>
           {fiatAmount && baseSats > 0 && (
             <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>
@@ -264,7 +263,7 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
   // "I WANT TO BUY SATS" browse
   if (mode === "earn") {
     return (
-      <div style={{ padding: "0 16px 80px" }}>
+      <div style={{ padding: "0 16px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
           <button onClick={() => setMode(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: 4 }}>{"←"}</button>
           <div>

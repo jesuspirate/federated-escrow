@@ -89,7 +89,7 @@ export default function OrderDetailView({ order: o, pubkey, onBack, onProfile, o
   const isP2P = detail?.tradeType === "sats-for-fiat" || isSatsForFiat(detail?.listing?.category);
   const isLoan = detail?.tradeType === "lending" || isLending(detail?.listing?.category) || (escrow?.description || "").startsWith("Lending:") || (escrow?.description || "").startsWith("Loan Repayment");
   const isRepayment = (escrow?.description || "").startsWith("Loan Repayment") || (detail?.listing?.category === "lending" && escrow?.loanParentId);
-  const needsRating = detailLoaded && status === "completed" && !rated && (!isLoan || isRepayment);
+  const needsRating = (detailLoaded || o.status === "completed") && status === "completed" && !rated && (!isLoan || isRepayment);
   const isLender = isLoan && o.sellerPubkey === pubkey;
   const isBorrower = isLoan && o.buyerPubkey === pubkey;
   const otherRole = isLoan ? (isBuyer ? "Lender" : "Borrower") : isBuyer ? t("seller") : t("buyer");
