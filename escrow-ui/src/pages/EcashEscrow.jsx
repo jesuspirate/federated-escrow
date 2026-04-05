@@ -1016,7 +1016,7 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
 
       </div>
       {/* ══ SCROLLABLE TRADE LIST ══ */}
-      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 80 }}>
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 120 }}>
         {filteredEscrows.length === 0 ? (
           <div style={S.emptyState}>
             <SvgArbiter size={40} color="#475569" />
@@ -2200,7 +2200,7 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
 
       {/* Category badge removed — escrow view is purely for voting */}
 
-      <div style={{ paddingBottom: 100 }}>
+      <div style={{ paddingBottom: 140 }}>
         {/* ═══ THE VAULT ═══ */}
         <Vault status={status} amountMsats={e.amountMsats} showBurst={showBurst} resolvedOutcome={e.resolvedOutcome} />
 
