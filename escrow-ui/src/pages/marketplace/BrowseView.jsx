@@ -5,8 +5,8 @@ import { t, getAvailableLocales } from "../i18n";
 import { Icons } from "./components";
 import M from "./styles";
 
-function NewToFediBanner() {
-  const inFedi = _isFediRuntime();
+function NewToFediBanner({ _isFediRuntime }) {
+  const inFedi = _isFediRuntime ? _isFediRuntime() : false;
   const [dismissed, setDismissed] = useState(() => {
     try { return localStorage.getItem(LEARN_DISMISSED_KEY) === "1"; } catch { return false; }
   });
@@ -379,7 +379,7 @@ export default function BrowseView({ listings, loading, pubkey, searchQuery, set
       </button>}
 
       {/* ── New to Bitcoin / Fedi? ── */}
-      <NewToFediBanner />
+      <NewToFediBanner _isFediRuntime={_isFediRuntime} />
 
       {/* ── Browser sandbox banner ── */}
       {isDevMode() && listings.length === 0 && (
