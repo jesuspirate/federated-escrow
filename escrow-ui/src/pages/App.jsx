@@ -407,7 +407,7 @@ export default function App() {
       )}
 
       {/* ── Active view ── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, overflow: "auto" }}>
       {(activeApp === "escrow" || effectiveSubdomain === "escrow") && (
         <EcashEscrow
           pubkey={pubkey}
