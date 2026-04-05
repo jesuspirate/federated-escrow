@@ -1653,7 +1653,20 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
                   <span style={{ color: "#f7931a", fontWeight: 800 }}>₿</span>
                   {l.minPriceSats && l.maxPriceSats && l.minPriceSats !== l.maxPriceSats
                     ? <>{fmtSatsShort(l.minPriceMsats)}<span style={{ color: "#475569", fontWeight: 400 }}>{" — "}</span>{fmtSatsShort(l.maxPriceMsats)}</>
-                    : fmtSats(l.priceMsats)}
+                    : (() => {
+                      if (isBillPay(l.category) && fiatRates && fiatRates.btcUsd) {
+                        const fm = (l.terms || "").match(/Fiat needed:\s*(\w+)\s+([\d.]+)/);
+                        const rm = (l.terms || "").match(/Rate:\s*(\d+)/);
+                        if (fm) {
+                          const fx = fiatRates.rates[fm[1]] || 1;
+                          const usd = parseFloat(fm[2]) / fx;
+                          const base = Math.floor((usd / fiatRates.btcUsd) * 100000000);
+                          const prem = rm ? parseInt(rm[1]) : 0;
+                          return Math.floor(base * (1 + prem / 100)).toLocaleString();
+                        }
+                      }
+                      return fmtSats(l.priceMsats);
+                    })()}
                 </span>
               </div>
               {/* Single-line badges: premium + currency + description */}
