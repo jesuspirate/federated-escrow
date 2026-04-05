@@ -667,7 +667,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           onSwitchToEscrow={onSwitchToEscrow}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
           fiatRates={fiatRates}
-         subdomain={subdomain}/>
+         subdomain={subdomain} mapi={mapi}/>
       )}
       {view === "chapsmart" && (
         <ChapSmartView
