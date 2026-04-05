@@ -1016,7 +1016,7 @@ function ListView({ escrows, pubkey, loading, onOpen, onCreate, onJoin, onRefres
 
       </div>
       {/* ══ SCROLLABLE TRADE LIST ══ */}
-      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 20 }}>
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 80 }}>
         {filteredEscrows.length === 0 ? (
           <div style={S.emptyState}>
             <SvgArbiter size={40} color="#475569" />
