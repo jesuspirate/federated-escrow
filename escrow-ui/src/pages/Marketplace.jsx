@@ -874,7 +874,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           onFaq={() => setView("faq")}
           showToast={showToast}
         
-          onBillPay={() => setView("billpay")}
+          onBillPay={() => setView("billpay")} fiatRates={fiatRates}
         />
       )}
       {view === "edit" && editingListing && (
@@ -1310,7 +1310,7 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
 // BROWSE VIEW — Community homepage with hero + categories
 // ═══════════════════════════════════════════════════════════════════════
 
-function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale, onChapSmart, subdomain, myFederation, onArbiters, onFaq, showToast, onBillPay }) {
+function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale, onChapSmart, subdomain, myFederation, onArbiters, onFaq, showToast, onBillPay, fiatRates }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(() => { const h = window.location.hash.replace("#", ""); if (h === "billpay" && onBillPay) { setTimeout(() => onBillPay(), 100); } return "all"; });
   const [helpOpen, setHelpOpen] = useState(false);
