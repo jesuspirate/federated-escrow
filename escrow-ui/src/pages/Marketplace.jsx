@@ -4371,7 +4371,7 @@ function OrderDetailView({ order: o, pubkey, onBack, onProfile, onSwitchToEscrow
 
         {/* ── Cancel (buyer only, before lock) ── */}
         {canCancel && (
-          <button style={{ ...M.actionBtn, background: "linear-gradient(135deg, #dc2626, #b91c1c)", marginTop: 8, marginBottom: 16, fontSize: 13, padding: "10px 16px" }} onClick={handleCancel} disabled={loading}>
+          <button style={{ ...M.actionBtn, background: "linear-gradient(135deg, #dc2626, #b91c1c)", marginTop: 8, marginBottom: 80, fontSize: 13, padding: "10px 16px" }} onClick={handleCancel} disabled={loading}>
             {loading ? t("mkCancelling") : t("mkCancelOrder")}
           </button>
         )}
