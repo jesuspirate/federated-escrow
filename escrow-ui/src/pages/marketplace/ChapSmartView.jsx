@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Icons } from "./components";
 import M from "./styles";
 
 export default function ChapSmartView({ onBack, showToast, pubkey }) {

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { t } from "../i18n";
+import { Icons } from "./components";
 import M from "./styles";
 
 export default function FAQView({ onBack, subdomain }) {

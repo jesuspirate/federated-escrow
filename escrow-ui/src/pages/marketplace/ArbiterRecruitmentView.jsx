@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { getFedName } from "./helpers";
+import { Icons } from "./components";
 import M from "./styles";
 
-export default function ArbiterRecruitmentView({ pubkey, onBack, showToast }) {
+export default function ArbiterRecruitmentView({ pubkey, onBack, showToast, mapi }) {
   const [fediProfile, setFediProfile] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [motivation, setMotivation] = useState("");

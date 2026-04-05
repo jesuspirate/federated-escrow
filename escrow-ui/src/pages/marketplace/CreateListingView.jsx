@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { CONDITION_KEYS, PAYMENT_METHODS, SATS_FOR_FIAT, LENDING } from "./constants";
 import { isBillPay, isLending, isSatsForFiat, isSpecialCategory } from "./helpers";
-import { t } from "../i18n";
+import { t, getLocale } from "../i18n";
 import { Icons } from "./components";
 import M from "./styles";
 

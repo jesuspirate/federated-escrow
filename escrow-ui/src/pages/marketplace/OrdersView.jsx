@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { fmtSats, fmtFiat } from "./helpers";
 import { t } from "../i18n";
+import { Icons } from "./components";
 import M from "./styles";
 
 const ORDER_STATUS_KEYS = {
