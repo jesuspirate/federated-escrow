@@ -347,13 +347,13 @@ export default function App() {
   const switchToMarketplace = useCallback((escrowId = null) => {
     setInitialEscrowId(null);
     setInitialMarketplaceEscrowId(escrowId || null);
-    setActiveApp("marketplace");
+    setActiveApp("marketplace"); setEscrowInTrade(false);
   }, []);
 
   const switchToMarketplaceOrders = useCallback((escrowId = null) => {
     setInitialEscrowId(null);
     setInitialMarketplaceEscrowId(escrowId || "__ORDERS__");
-    setActiveApp("marketplace");
+    setActiveApp("marketplace"); setEscrowInTrade(false);
   }, []);
 
   const handleSubdomainSwitch = useCallback((newSub) => {
@@ -361,7 +361,7 @@ export default function App() {
     else setProdSubdomain(newSub);
     setInitialEscrowId(null);
     setInitialMarketplaceEscrowId(null);
-    setActiveApp(newSub === "escrow" ? "escrow" : "marketplace");
+    setActiveApp(newSub === "escrow" ? "escrow" : "marketplace"); setEscrowInTrade(false);
   }, [isSandbox]);
 
   // ── Landing page for root domain ──────────────────────────────
