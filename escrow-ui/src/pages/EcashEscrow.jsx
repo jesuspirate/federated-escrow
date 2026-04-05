@@ -702,7 +702,7 @@ function OnboardingSplash({ onComplete, locale }) {
 // MAIN APP
 // ═══════════════════════════════════════════════════════════════════════
 
-export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, subdomain, onSwitchToMarketplace, onSwitchToMarketplaceOrders, initialEscrowId, onEscrowOpened, sharedPubkey, onPubkeyResolved }) {
+export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, subdomain, onSwitchToMarketplace, onSwitchToMarketplaceOrders, initialEscrowId, onEscrowOpened, sharedPubkey, onTradeView, onPubkeyResolved }) {
   const [onboarded, setOnboarded] = useState(() => {
     try { return localStorage.getItem(ONBOARDING_KEY) === "1"; } catch { return false; }
   });
@@ -710,6 +710,7 @@ export default function EcashEscrow({ pubkey: propPubkey, devRole: propDevRole, 
   const [pubkey, setPubkey] = useState(propPubkey || null);
   const [devRole, setDevRole] = useState(propDevRole || "seller");
   const [view, setView] = useState("list");
+  useEffect(() => { if (onTradeView) onTradeView(view === "detail"); }, [view]);
   const [escrows, setEscrows] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -1503,7 +1504,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
 
   return (
     <div style={{
-      position: "fixed", bottom: 72, left: 0, right: 0, maxHeight: "50vh",
+      position: "fixed", bottom: 0, left: 0, right: 0, maxHeight: "60vh",
       background: "#111827", borderTop: "1px solid #1e293b", borderRadius: "16px 16px 0 0",
       display: "flex", flexDirection: "column", zIndex: 100,
       boxShadow: "0 -4px 30px rgba(0,0,0,0.5)",

@@ -303,6 +303,7 @@ export default function App() {
   useEffect(() => { setActiveApp(effectiveSubdomain === "escrow" ? "escrow" : "marketplace"); }, [effectiveSubdomain]);
   const [initialEscrowId, setInitialEscrowId] = useState(null);
   const [initialMarketplaceEscrowId, setInitialMarketplaceEscrowId] = useState(null);
+  const [escrowInTrade, setEscrowInTrade] = useState(false);
 
   const [pubkey, setPubkey] = useState(isSandbox ? DEV_IDENTITIES["seller"] : null);
   const [devRole, setDevRole] = useState("seller");
@@ -415,7 +416,7 @@ export default function App() {
           onSwitchToMarketplace={switchToMarketplace}
           onSwitchToMarketplaceOrders={switchToMarketplaceOrders}
           initialEscrowId={initialEscrowId}
-          onEscrowOpened={() => setInitialEscrowId(null)}
+          onEscrowOpened={() => setInitialEscrowId(null)} onTradeView={setEscrowInTrade}
         />
       )}
       {activeApp === "marketplace" && (
@@ -430,7 +431,7 @@ export default function App() {
       )}
       </div>
 
-      {showProductionNav && (
+      {showProductionNav && !escrowInTrade && (
         <AppNavigator activeSubdomain={prodSubdomain} onSwitch={handleSubdomainSwitch} />
       )}
     </div>
