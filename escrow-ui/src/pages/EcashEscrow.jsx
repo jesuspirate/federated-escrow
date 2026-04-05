@@ -1225,9 +1225,9 @@ function TradeChat({ escrowId, pubkey, participants }) {
   const [bubblePos, setBubblePos] = useState(() => {
     try { const s = sessionStorage.getItem("sm_chat_bubble_pos"); return s ? JSON.parse(s) : null; } catch { return null; }
   });
-  const dragRef = useRef({ startX: 0, startY: 0, startRight: 16, startBottom: 70, dragging: false });
+  const dragRef = useRef({ startX: 0, startY: 0, startRight: 16, startBottom: 120, dragging: false });
   const bubbleRight = bubblePos?.right ?? 16;
-  const bubbleBottom = bubblePos?.bottom ?? 70;
+  const bubbleBottom = bubblePos?.bottom ?? 120;
   const onBubbleTouchStart = (e) => {
     const t = e.touches[0];
     dragRef.current = { startX: t.clientX, startY: t.clientY, startRight: bubbleRight, startBottom: bubbleBottom, dragging: false };
@@ -1503,7 +1503,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
 
   return (
     <div style={{
-      position: "fixed", bottom: 56, left: 0, right: 0, maxHeight: "55vh",
+      position: "fixed", bottom: 60, left: 0, right: 0, maxHeight: "52vh",
       background: "#111827", borderTop: "1px solid #1e293b", borderRadius: "16px 16px 0 0",
       display: "flex", flexDirection: "column", zIndex: 100,
       boxShadow: "0 -4px 30px rgba(0,0,0,0.5)",
