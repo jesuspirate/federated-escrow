@@ -1,5 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { t, getLocale, getAvailableLocales, setLocale } from "./i18n";
+
+// ── Extracted modules (refactor step 1) ──
+import { MAPI as _MAPI, PAYMENT_METHODS as _PM, BILL_TYPES as _BT, CATEGORIES as _CAT, CONDITION_KEYS as _CK, FED_LIMITS as _FL, BILL_PAY as _BP, SATS_FOR_FIAT as _SFF, LENDING as _LN, CURRENCY_SYMBOLS as _CS, FED_NAMES_GLOBAL as _FNG, DEV_IDENTITIES as _DI, LEARN_DISMISSED_KEY as _LDK } from "./marketplace/constants";
+import { isBillPay as _isBP, isSatsForFiat as _isSFF, isLending as _isLN, isSpecialCategory as _isSC, fmtSats as _fmtS, fmtSatsShort as _fmtSS, fmtVolume as _fmtV, fmtFiat as _fmtF, msatsToFiat as _m2f, truncPk as _tPk, getFedName as _gFN, getFedInfo as _gFI, recalcBillPaySats as _rBPS } from "./marketplace/helpers";
+import { default as _M } from "./marketplace/styles";
 // FUTURE: Re-enable for PWA/Start9/Umbrel push notifications
 //import NotificationSettings, { NotifBellIcon } from "./NotificationSettings";
 
