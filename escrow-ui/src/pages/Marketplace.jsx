@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { t, getLocale, getAvailableLocales, setLocale } from "./i18n";
 
-// ── Extracted modules (refactor step 1) ──
-import { MAPI as _MAPI, PAYMENT_METHODS as _PM, BILL_TYPES as _BT, CATEGORIES as _CAT, CONDITION_KEYS as _CK, FED_LIMITS as _FL, BILL_PAY as _BP, SATS_FOR_FIAT as _SFF, LENDING as _LN, CURRENCY_SYMBOLS as _CS, FED_NAMES_GLOBAL as _FNG, DEV_IDENTITIES as _DI, LEARN_DISMISSED_KEY as _LDK } from "./marketplace/constants";
-import { isBillPay as _isBP, isSatsForFiat as _isSFF, isLending as _isLN, isSpecialCategory as _isSC, fmtSats as _fmtS, fmtSatsShort as _fmtSS, fmtVolume as _fmtV, fmtFiat as _fmtF, msatsToFiat as _m2f, truncPk as _tPk, getFedName as _gFN, getFedInfo as _gFI, recalcBillPaySats as _rBPS } from "./marketplace/helpers";
-import { default as _M } from "./marketplace/styles";
+// ── Extracted modules ──
+import { MAPI, PAYMENT_METHODS, BILL_TYPES, CATEGORIES, CONDITION_KEYS, FED_LIMITS, BILL_PAY, SATS_FOR_FIAT, LENDING, CURRENCY_SYMBOLS, FED_NAMES_GLOBAL, DEV_IDENTITIES, LEARN_DISMISSED_KEY } from "./marketplace/constants";
+import { isBillPay, isSatsForFiat, isLending, isLenderTrade, isSpecialCategory, fmtSats, fmtSatsShort, fmtVolume, fmtFiat, msatsToFiat, truncPk, getFedName, getFedInfo, recalcBillPaySats } from "./marketplace/helpers";
+import M from "./marketplace/styles";
 // FUTURE: Re-enable for PWA/Start9/Umbrel push notifications
 //import NotificationSettings, { NotifBellIcon } from "./NotificationSettings";
 
@@ -14,27 +14,8 @@ import { default as _M } from "./marketplace/styles";
 // NIP-98 Nostr auth • Fedi + browser sandbox
 // ═══════════════════════════════════════════════════════════════════════
 
-const MAPI = "/api/marketplace/listings";
 
 // ── Auth ─────────────────────────────────────────────────────────────
-
-const FED_NAMES_GLOBAL = {
-  "AwEEiItw7A": { name: "Bitcoin Life", emoji: "🏛️", color: "#a78bfa" },
-  "AwEEG8tk5g": { name: "Global Bitcoin Federation", emoji: "🏛️", color: "#f59e0b" },
-  "AwEE_yhqbg": { name: "Afribit Kibera", emoji: "🏛️", color: "#10b981" },
-};
-function getFedName(prefix, domain) {
-  if (domain && domain.toLowerCase().includes("bitsacco")) return "Bitsacco";
-  if (prefix && FED_NAMES_GLOBAL[prefix]) return FED_NAMES_GLOBAL[prefix].name;
-  if (domain) return domain.replace(/^m\d+\./, "").replace(/\.in$/, "").replace(/\.com$/, "");
-  return domain || prefix || "Unknown";
-}
-
-const DEV_IDENTITIES = {
-  seller:  "aa".repeat(32),
-  buyer:   "bb".repeat(32),
-  arbiter: "cc".repeat(32),
-};
 
 function _detectFediApp() {
   if (typeof window === "undefined") return false;
@@ -188,43 +169,6 @@ async function mapi(path, opts = {}, _retries = 1) {
   try { return JSON.parse(text); } catch { return { error: text || `HTTP ${res.status}` }; }
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────
-
-function msatsToFiat(msats, rates, currency = "USD") {
-  if (!rates || !rates.btcUsd) return null;
-  const btc = msats / 100_000_000_000;
-  const usd = btc * rates.btcUsd;
-  if (currency === "USD") return usd;
-  const rate = rates.rates?.[currency];
-  return rate ? usd * rate : null;
-}
-
-function fmtFiat(msats, rates, currency = "USD") {
-  const val = msatsToFiat(msats, rates, currency);
-  if (val === null) return null;
-  const sym = { USD: "$", EUR: "€", GBP: "£", TZS: "TSh", KES: "KSh", NGN: "₦", UGX: "USh", GHS: "GH₵", XOF: "CFA", ZAR: "R", BRL: "R$", CAD: "CA$", AUD: "A$", JPY: "¥", CHF: "CHF", INR: "₹" }[currency] || currency + " ";
-  if (val < 0.01) return sym + val.toFixed(4);
-  if (val < 1000) return sym + val.toFixed(2);
-  return sym + val.toLocaleString(undefined, { maximumFractionDigits: 0 });
-}
-
-function fmtSats(msats) { return Math.floor(msats / 1000).toLocaleString(); }
-function fmtSatsShort(msats) {
-  const sats = Math.floor(msats / 1000);
-  if (sats >= 1000000) return (sats / 1000000).toFixed(1) + "M";
-  if (sats >= 10000) return (sats / 1000).toFixed(0) + "K";
-  if (sats >= 1000) return (sats / 1000).toFixed(1) + "K";
-  return sats.toLocaleString();
-}
-function fmtVolume(msats) {
-  const sats = Math.floor(msats / 1000);
-  if (sats >= 1_000_000_000) return (sats / 1_000_000_000).toFixed(1) + "B";
-  if (sats >= 1_000_000) return (sats / 1_000_000).toFixed(1) + "M";
-  if (sats >= 100_000) return (sats / 1_000).toFixed(0) + "K";
-  if (sats >= 1_000) return (sats / 1_000).toFixed(1) + "K";
-  return sats.toLocaleString();
-}
-
 // ── BTC Price Hook — fetches from mempool.space + forex conversion ──
 let _btcPrices = null; // { USD, EUR, GBP, ... }
 let _forexRates = null; // { CFA: 615, KES: 129, ... } per 1 USD
@@ -283,48 +227,6 @@ function useBtcPrice() {
   return prices;
 }
 
-const CURRENCY_SYMBOLS = {
-  USD: "$", EUR: "€", GBP: "£", CFA: "CFA ", KES: "KSh ", TZS: "TSh ", NGN: "₦",
-  BRL: "R$", ARS: "ARS ", INR: "₹", ZAR: "R", CAD: "CA$", CHF: "CHF ", AUD: "A$", JPY: "¥",
-};
-
-// Old fmtFiat removed — using Yadio-based version above
-
-function truncPk(hex) {
-  if (!hex || hex.length < 16) return hex || "";
-  return hex.slice(0, 8) + "…" + hex.slice(-8);
-}
-
-// ── Trade Type Detection ────────────────────────────────────────────
-const SATS_FOR_FIAT = "sats-for-fiat";
-const BILL_PAY = "bill-pay";
-function isBillPay(category) { return category?.toLowerCase().trim() === BILL_PAY; }
-const LENDING = "lending";
-
-const PAYMENT_METHODS = [
-  { key: "mpesa", label: "M-Pesa", icon: "📱", region: "East Africa" },
-  { key: "airtel", label: "Airtel Money", icon: "📱", region: "East Africa" },
-  { key: "mtn", label: "MTN MoMo", icon: "📱", region: "West Africa" },
-  { key: "orange", label: "Orange Money", icon: "🟧", region: "West Africa" },
-  { key: "wave", label: "Wave", icon: "🌊", region: "West Africa" },
-  { key: "opay", label: "OPay", icon: "💚", region: "West Africa" },
-  { key: "chipper", label: "Chipper Cash", icon: "💸", region: "Africa" },
-  { key: "cashapp", label: "Cash App", icon: "💵", region: "US" },
-  { key: "zelle", label: "Zelle", icon: "💸", region: "US" },
-  { key: "venmo", label: "Venmo", icon: "💙", region: "US" },
-  { key: "wise", label: "Wise", icon: "🌍", region: "Global" },
-  { key: "paypal", label: "PayPal", icon: "🅿️", region: "Global" },
-  { key: "bank", label: "Bank Transfer", icon: "🏦", region: "Global" },
-  { key: "cash", label: "Cash (in person)", icon: "💰", region: "Local" },
-  { key: "revolut", label: "Revolut", icon: "💳", region: "Europe" },
-  { key: "pix", label: "PIX", icon: "🇧🇷", region: "Brazil" },
-  { key: "upi", label: "UPI", icon: "🇮🇳", region: "India" },
-  { key: "gcash", label: "GCash", icon: "📱", region: "Philippines" },
-  { key: "ecocash", label: "EcoCash", icon: "📱", region: "Zimbabwe" },
-];
-function isSatsForFiat(category) { return category?.toLowerCase().trim() === SATS_FOR_FIAT; }
-function isLending(category) { return category?.toLowerCase().trim() === LENDING; }
-function isSpecialCategory(category) { return isSatsForFiat(category) || isLending(category) || isBillPay(category); }
 
 // ── Nostr Profile Lookup (client-side, no server relay needed) ────────
 
@@ -513,7 +415,6 @@ const ORDER_STATUS_KEYS = {
   cancelled: { color: "#64748b", bg: "rgba(100,116,139,0.12)", key: "mkOrderCancelled" },
 };
 
-const CONDITION_KEYS = { new: "mkCondNew", used: "mkCondUsed", digital: "mkCondDigital", service: "mkCondService" };
 
 function OrderBadge({ status }) {
   const c = ORDER_STATUS_KEYS[status] || ORDER_STATUS_KEYS.pending;
@@ -1149,24 +1050,9 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
 // CATEGORY QUICK-FILTERS
 // ═══════════════════════════════════════════════════════════════════════
 
-const CATEGORIES = [
-  { key: "all", label: "Public", icon: "🌍" },
-  { key: "mine", label: "Mine", icon: "🏠" },
-  { key: "sats-for-fiat", label: "P2P", icon: "₿" },
-  { key: "lending", label: "Lending", icon: "🤝" },
-  { key: "electronics", label: "Electronics", icon: "📱" },
-  { key: "services", label: "Services", icon: "🛠️" },
-  { key: "digital", label: "Digital", icon: "💾" },
-  { key: "clothing", label: "Clothing", icon: "👕" },
-  { key: "shipping", label: "Shipping", icon: "📦" },
-  { key: "other", label: "Other", icon: "🏷️" },
-];
-
 // ═══════════════════════════════════════════════════════════════════════
 // NEW TO BITCOIN / FEDI — Collapsible education banner
 // ═══════════════════════════════════════════════════════════════════════
-
-const LEARN_DISMISSED_KEY = "fedi-mk-learn-dismissed";
 
 function NewToFediBanner() {
   const inFedi = _isFediRuntime();
@@ -1369,21 +1255,6 @@ function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, on
       } catch {}
     })();
   }, [pubkey, subdomain]);
-  // Federation prefix → friendly name mapping
-  const FED_NAMES = {
-    "AwEEiItw7A": { name: "Bitcoin Life", emoji: "🏛️", color: "#a78bfa" },
-    "AwEEG8tk5g": { name: "Global Bitcoin Federation", emoji: "🏛️", color: "#f59e0b" },
-    "AwEE_yhqbg": { name: "Afribit Kibera", emoji: "🏛️", color: "#10b981" },
-  };
-  const getFedInfo = (prefix, domain) => {
-    if (prefix && FED_NAMES[prefix]) return FED_NAMES[prefix];
-    if (domain) {
-      // Derive from domain if prefix not mapped
-      const short = domain.replace(/^m\d+\./, "").replace(/\.in$/, "").replace(/\.com$/, "");
-      return { name: short, emoji: "🏛", color: "#64748b" };
-    }
-    return null;
-  };
 
   const subdomainFilter = (l) => {
     if (subdomain === "p2p") return isSatsForFiat(l.category) || isBillPay(l.category);
@@ -2968,18 +2839,6 @@ function CreateListingView({ pubkey, subdomain, myFederation, onBack, onCreated,
 // BILL PAY VIEW - Simplified two-door flow
 // "I need fiat for a bill" / "I want to buy sats"
 // =====================================================================
-
-const BILL_TYPES = [
-  { id: "electricity", icon: "⚡", label: "Electricity" },
-  { id: "phone",       icon: "📱", label: "Phone / Airtime" },
-  { id: "internet",    icon: "🌐", label: "Internet" },
-  { id: "rent",        icon: "🏠", label: "Rent" },
-  { id: "school",      icon: "🎓", label: "School Fees" },
-  { id: "car",         icon: "🚗", label: "Car Payment" },
-  { id: "water",       icon: "💧", label: "Water" },
-  { id: "insurance",   icon: "🛡️", label: "Insurance" },
-  { id: "other",       icon: "📋", label: "Other" },
-];
 
 function BillPayView({ listings, loading, pubkey, onBack, onCreate, onOpen, onOrders, onRefresh, fiatRates, showToast, subdomain, activeOrderCount }) {
   const [mode, setMode] = useState(null);
@@ -4705,39 +4564,3 @@ function SellerProfileView({ pubkey: pk, myPubkey, onBack, onOpen, showToast }) 
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// STYLES
-// ═══════════════════════════════════════════════════════════════════════
-
-const M = {
-  root: { background: "#0c0f17", color: "#e2e8f0", flex: 1, display: "flex", flexDirection: "column", minHeight: 0, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif', fontSize: 14, lineHeight: 1.5 },
-  container: { width: "100%", maxWidth: 480, margin: "0 auto", padding: "0 16px 20px", overflowX: "hidden", flex: 1, overflowY: "auto" },
-  header: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0 12px", minHeight: 52 },
-  title: { fontSize: 24, fontWeight: 700, color: "#f8fafc", margin: 0, letterSpacing: -0.5 },
-  subtitle: { fontSize: 12, color: "#64748b", margin: "2px 0 0" },
-  viewHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0 12px" },
-  viewTitle: { fontSize: 17, fontWeight: 600, color: "#f8fafc", margin: 0 },
-  iconBtn: { background: "rgba(30,41,59,0.5)", color: "#cbd5e1", padding: 9, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(51,65,85,0.3)", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none", minWidth: 36, minHeight: 36 },
-  primaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontWeight: 700, fontSize: 15, padding: "14px 24px", borderRadius: 14, flex: 1, border: "none", cursor: "pointer", boxShadow: "0 2px 12px rgba(245,158,11,0.2)", WebkitTapHighlightColor: "transparent", outline: "none" },
-  secondaryBtn: { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, background: "linear-gradient(145deg, #1e293b, #1a2332)", color: "#e2e8f0", fontWeight: 600, fontSize: 15, padding: "14px 24px", borderRadius: 14, flex: 1, border: "1px solid #334155", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
-  actionBtn: { display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "16px 0", borderRadius: 14, color: "#fff", fontSize: 15, fontWeight: 800, letterSpacing: -0.3, border: "none", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none" },
-  input: { width: "100%", padding: "12px 14px", borderRadius: 10, border: "1px solid #1e293b", background: "#111827", color: "#f8fafc", fontSize: 14, outline: "none", boxSizing: "border-box" },
-  formGroup: { marginBottom: 16 },
-  label: { display: "block", fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 },
-  hint: { fontSize: 11, color: "#475569", marginTop: 4 },
-  section: { marginBottom: 14 },
-  sectionLabel: { fontSize: 11, fontWeight: 600, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 },
-  sectionValue: { fontSize: 13, color: "#cbd5e1", lineHeight: 1.6 },
-  emptyState: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", textAlign: "center" },
-  listingCard: { background: "linear-gradient(145deg, #111827, #0f1320)", border: "1px solid #1e293b", borderRadius: 14, padding: "16px 18px", textAlign: "left", color: "#e2e8f0", width: "100%", cursor: "pointer", transition: "all 0.2s ease" },
-  cardTitle: { fontSize: 16, fontWeight: 600, color: "#f8fafc", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 },
-  cardPrice: { fontSize: 16, fontWeight: 700, color: "#f8fafc", whiteSpace: "nowrap", marginLeft: 8 },
-  cardDesc: { fontSize: 13, color: "#94a3b8", margin: "6px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textAlign: "center" },
-  cardMeta: { display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10 },
-  conditionBadge: { padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, background: "rgba(139,92,246,0.1)", color: "#a78bfa", letterSpacing: 0.3 },
-  categoryBadge: { padding: "3px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600, background: "rgba(100,116,139,0.1)", color: "#94a3b8" },
-  chipBtn: { padding: "6px 12px", borderRadius: 8, background: "#111827", color: "#94a3b8", fontSize: 12, fontWeight: 500, border: "1px solid transparent", cursor: "pointer", WebkitTapHighlightColor: "rgba(0,0,0,0)", outline: "none" },
-  chipBtnActive: { background: "#1e293b", color: "#f8fafc", borderColor: "#f59e0b" },
-  infoBanner: { padding: "10px 14px", border: "1px solid", borderRadius: 10, marginBottom: 12 },
-  participantRow: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", fontSize: 13 },
-};
