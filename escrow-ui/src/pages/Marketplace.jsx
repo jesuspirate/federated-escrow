@@ -830,8 +830,10 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
           )}
         </div>
 
-        {/* ── Buttons right under content ── */}
-        <div style={{ width: "100%", marginTop: 28 }}>
+      </div>
+
+      {/* ── Buttons — pinned above genesis footer, always visible ── */}
+      <div style={{ width: "100%", maxWidth: 340, padding: "20px 0 0", flexShrink: 0 }}>
           <button onClick={handleNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: isLast ? "#f59e0b" : "transparent", border: isLast ? "none" : "1.5px solid #334155", color: isLast ? "#0c0f17" : "#f8fafc", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             {isLast ? (isBrowser ? "🧪 Explore Demo" : subdomain === "p2p" ? "₿ Start Trading" : subdomain === "lending" ? "🤝 Start Lending" : subdomain === "market" ? "🛒 Enter Market" : "🏪 Enter Market") : "Next →"}
           </button>
@@ -841,7 +843,6 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
               Skip
             </button>
           )}
-        </div>
       </div>
 
       {/* ── Genesis mark — pinned at bottom ── */}
