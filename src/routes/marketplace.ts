@@ -1352,7 +1352,9 @@ router.post("/:id/buy", ...requireAuth, (req: AuthenticatedRequest, res: Respons
         const currency = fiatMatch[1];
         const fiatAmount = parseFloat(fiatMatch[2]);
         const premiumPct = rateMatch ? parseInt(rateMatch[1]) : 0;
-        const fxRate = ratesCache.rates[currency] || 1;
+        const CURRENCY_ALIASES: Record<string, string> = { CFA: "XOF", FCFA: "XAF" };
+        const isoCode = CURRENCY_ALIASES[currency] || currency;
+        const fxRate = ratesCache.rates[isoCode] || 1;
         const usd = fiatAmount / fxRate;
         const baseSats = Math.floor((usd / ratesCache.btcUsd) * 100_000_000);
         const totalSats = Math.floor(baseSats * (1 + premiumPct / 100));

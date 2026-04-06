@@ -23,9 +23,11 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
     [listings]
   );
 
+  const CURRENCY_ALIASES = { CFA: "XOF", FCFA: "XAF" };
   const satsFromFiat = (fiatAmt, currency) => {
     if (!fiatRates || !fiatRates.btcUsd || !fiatRates.rates || !fiatAmt) return 0;
-    const fxRate = fiatRates.rates[currency];
+    const isoCode = CURRENCY_ALIASES[currency] || currency;
+    const fxRate = fiatRates.rates[isoCode];
     if (!fxRate) return 0;
     const usd = parseFloat(fiatAmt) / fxRate;
     return Math.floor((usd / fiatRates.btcUsd) * 100000000);
