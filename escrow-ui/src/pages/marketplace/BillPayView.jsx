@@ -329,7 +329,9 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
                     const fm = (l.terms || "").match(/Fiat needed:\s*(\w+)\s+([\d.]+)/);
                     const rm = (l.terms || "").match(/Rate:\s*(\d+)/);
                     if (!fm) return sats.toLocaleString();
-                    const fx = fiatRates.rates[fm[1]] || 1;
+                    const BILL_ALIASES = { CFA: "XOF", FCFA: "XAF" };
+                    const billIso = BILL_ALIASES[fm[1]] || fm[1];
+                    const fx = fiatRates.rates[billIso] || 1;
                     const usd = parseFloat(fm[2]) / fx;
                     const base = Math.floor((usd / fiatRates.btcUsd) * 100000000);
                     const prem = rm ? parseInt(rm[1]) : 0;
