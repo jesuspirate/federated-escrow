@@ -747,7 +747,7 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
   };
 
   return (
-    <div style={{ ...M.root, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 24px", textAlign: "center", height: "100dvh", maxHeight: "100vh", overflow: "hidden" }}>
+    <div style={{ ...M.root, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 24px", textAlign: "center", flex: 1, overflow: "auto" }}>
       <style>{`@keyframes obFadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
 
       {/* ── Center content ── */}

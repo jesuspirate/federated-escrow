@@ -88,22 +88,22 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
           </div>
         </div>
 
-        <div style={{ padding: "14px", borderRadius: 12, background: "#111827", border: "1px solid #1e293b" }}>
+        <div style={{ padding: "14px", borderRadius: 12, background: "#111827", border: "1px solid #1e293b", textAlign: "center" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>How it works</div>
-          {[
-            { step: "1", icon: "🧾", label: "Post your bill", desc: "Say what you need and how much", color: "#f59e0b" },
-            { step: "2", icon: "🔒", label: "Sats are secured", desc: "Locked in escrow — safe for both sides", color: "#a78bfa" },
-            { step: "3", icon: "💵", label: "Fiat is sent", desc: "Volunteer sends you fiat via your preferred method", color: "#10b981" },
-            { step: "4", icon: "✅", label: "Confirm & done", desc: "Got the fiat? Tap confirm. Everyone's happy.", color: "#3b82f6" },
-          ].map((s, i) => (
-            <div key={s.step} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < 3 ? 10 : 0 }}>
-              <div style={{ width: 32, height: 32, borderRadius: 8, background: s.color + "15", border: "1px solid " + s.color + "30", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{s.icon}</div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#f8fafc" }}>{s.label}</div>
-                <div style={{ fontSize: 11, color: "#64748b", lineHeight: 1.3 }}>{s.desc}</div>
+          <div style={{ display: "flex", justifyContent: "space-around", gap: 6 }}>
+            {[
+              { icon: "🧾", label: "Post", desc: "Tell us your bill", color: "#f59e0b" },
+              { icon: "🔒", label: "Lock", desc: "Sats held safe", color: "#a78bfa" },
+              { icon: "💵", label: "Pay", desc: "Fiat is sent", color: "#10b981" },
+              { icon: "✅", label: "Done", desc: "Confirm & earn", color: "#3b82f6" },
+            ].map((s) => (
+              <div key={s.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: s.color + "15", border: "1px solid " + s.color + "30", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>{s.icon}</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#f8fafc" }}>{s.label}</div>
+                <div style={{ fontSize: 9, color: "#475569", lineHeight: 1.2 }}>{s.desc}</div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     );

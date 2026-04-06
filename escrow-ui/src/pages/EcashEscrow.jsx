@@ -1250,7 +1250,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
     } else { setOpen(true); setUnreadCount(0); }
   };
 
-  const myRole = pubkey === participants?.seller ? "seller" : pubkey === participants?.buyer ? "buyer" : "arbiter";
+  const myRole = pubkey === participants?.seller ? "seller" : pubkey === participants?.buyer ? "buyer" : pubkey === participants?.arbiter ? "arbiter" : "buyer";
   const roleColors = { seller: "#f59e0b", buyer: "#a78bfa", arbiter: "#64748b" };
   const roleLabels = { seller: "Seller", buyer: "Buyer", arbiter: "Arbiter" };
 
