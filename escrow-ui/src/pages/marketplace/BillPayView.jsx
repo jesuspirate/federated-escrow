@@ -46,7 +46,7 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
   // CHOOSER
   if (mode === null) {
     return (
-      <div style={{ padding: "0 16px 20px", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+      <div style={{ padding: "0 16px 80px", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box", overflowY: "auto", flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
           <button onClick={onBack} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: 4 }}>{"←"}</button>
           <div>
@@ -121,7 +121,7 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
     const premiumSats = totalSats - baseSats;
 
     return (
-      <div style={{ padding: "0 16px 20px", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+      <div style={{ padding: "0 16px 80px", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box", overflowY: "auto", flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
           <button onClick={() => setMode(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: 4 }}>{"←"}</button>
           <div>
@@ -268,7 +268,7 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
   // "I WANT TO BUY SATS" browse
   if (mode === "earn") {
     return (
-      <div style={{ padding: "0 16px 20px", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+      <div style={{ padding: "0 16px 80px", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box", overflowY: "auto", flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
           <button onClick={() => setMode(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: 4 }}>{"←"}</button>
           <div>
