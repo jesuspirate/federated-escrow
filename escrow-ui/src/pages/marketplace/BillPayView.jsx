@@ -48,7 +48,7 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
     return (
       <div style={{ display: "flex", flexDirection: "column", flex: 1, overflowY: "auto", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
         {/* ── Back button — subtle, top-left ── */}
-        <button onClick={onBack} style={{ alignSelf: "flex-start", background: "none", border: "none", color: "#475569", fontSize: 22, cursor: "pointer", padding: "14px 16px 0", WebkitTapHighlightColor: "transparent" }}>{"←"}</button>
+        <button onClick={onBack} style={{ alignSelf: "flex-start", background: "rgba(30,41,59,0.5)", color: "#cbd5e1", padding: 9, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(51,65,85,0.3)", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none", margin: "12px 16px 0" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
 
         {/* ── Hero ── */}
         <div style={{ textAlign: "center", padding: "12px 24px 24px" }}>
@@ -130,7 +130,7 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
     return (
       <div style={{ padding: "0 16px 80px", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box", overflowY: "auto", flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-          <button onClick={() => setMode(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: 4 }}>{"←"}</button>
+          <button onClick={() => setMode(null)} style={{ background: "rgba(30,41,59,0.5)", color: "#cbd5e1", padding: 9, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(51,65,85,0.3)", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none", flexShrink: 0 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 800, color: "#f8fafc", margin: 0 }}>{"💸"} I need fiat for a bill</h2>
             <p style={{ fontSize: 11, color: "#64748b", margin: "2px 0 0" }}>Lock sats, get fiat from your community</p>
@@ -277,7 +277,7 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
     return (
       <div style={{ padding: "0 16px 80px", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box", overflowY: "auto", flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-          <button onClick={() => setMode(null)} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: 4 }}>{"←"}</button>
+          <button onClick={() => setMode(null)} style={{ background: "rgba(30,41,59,0.5)", color: "#cbd5e1", padding: 9, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(51,65,85,0.3)", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none", flexShrink: 0 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
           <div>
             <h2 style={{ fontSize: 18, fontWeight: 800, color: "#f8fafc", margin: 0 }}>{"₿"} Buy Sats</h2>
             <p style={{ fontSize: 11, color: "#64748b", margin: "2px 0 0" }}>Send fiat, earn sats at a premium</p>

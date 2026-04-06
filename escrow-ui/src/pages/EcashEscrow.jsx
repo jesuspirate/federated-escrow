@@ -630,7 +630,7 @@ function OnboardingSplash({ onComplete, locale }) {
   };
 
   return (
-    <div style={{ ...S.root, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: "40px 24px", textAlign: "center", minHeight: "100vh" }}>
+    <div style={{ ...S.root, display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 24px", textAlign: "center", flex: 1, overflow: "auto" }}>
       <style>{`
         @keyframes obFadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes obPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
@@ -645,14 +645,14 @@ function OnboardingSplash({ onComplete, locale }) {
       )}
 
       {/* Progress dots */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 48 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 28 }}>
         {steps.map((_, i) => (
           <div key={i} style={{ width: i === step ? 24 : 8, height: 8, borderRadius: 4, background: i <= step ? "#f59e0b" : "#1e293b", transition: "all 0.3s ease" }} />
         ))}
       </div>
 
       {/* Icon */}
-      <div key={step} style={{ width: 96, height: 96, borderRadius: "50%", background: "linear-gradient(145deg, #1a2035, #111827)", border: "2px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 32, animation: "obFadeUp 0.4s ease-out", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
+      <div key={step} style={{ width: 96, height: 96, borderRadius: "50%", background: "linear-gradient(145deg, #1a2035, #111827)", border: "2px solid #1e293b", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20, animation: "obFadeUp 0.4s ease-out", boxShadow: "0 8px 32px rgba(0,0,0,0.3)" }}>
         {s.icon}
       </div>
 
@@ -663,7 +663,7 @@ function OnboardingSplash({ onComplete, locale }) {
       </div>
 
       {/* Actions */}
-      <div style={{ marginTop: 48, width: "100%", maxWidth: 320 }}>
+      <div style={{ marginTop: 28, width: "100%", maxWidth: 320 }}>
         {isLast && isBrowser ? (
           <>
             <button onClick={handleNext} style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: "#f59e0b", border: "none", color: "#0c0f17", fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -691,7 +691,7 @@ function OnboardingSplash({ onComplete, locale }) {
       </div>
 
       {/* Footer */}
-      <div style={{ position: "absolute", bottom: 24, left: 24, right: 24, textAlign: "center", fontSize: 11, color: "#334155", animation: "obPulse 4s ease infinite" }}>
+      <div style={{ textAlign: "center", fontSize: 11, color: "#334155", animation: "obPulse 4s ease infinite", marginTop: 24, paddingBottom: 16 }}>
         {isBrowser ? t("sandboxFooter") : t("obFedLimit", { limit: FED_LIMITS.MAX_TX_SATS.toLocaleString() })}
       </div>
     </div>
