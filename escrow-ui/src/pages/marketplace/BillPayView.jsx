@@ -46,7 +46,7 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
   // CHOOSER
   if (mode === null) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", flex: 1, overflowY: "auto", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, overflowY: "auto", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box", justifyContent: "center" }}>
         {/* ── Compact header: back + title in one row ── */}
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px 16px" }}>
           <button onClick={onBack} style={{ background: "rgba(30,41,59,0.5)", color: "#cbd5e1", padding: 9, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(51,65,85,0.3)", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none", flexShrink: 0 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
