@@ -789,7 +789,7 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
                     </div>
                   </div>
                   <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "12px 0", marginBottom: 14, borderRadius: 10,
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 10,
                     background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontSize: 14, fontWeight: 700, textDecoration: "none",
                   }}>{"📲"} Download Fedi (Free)</a>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12, justifyContent: "center" }}>
@@ -802,16 +802,7 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
                       </div>
                     </div>
                   </div>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, justifyContent: "center" }}>
-                    <span style={{ fontSize: 18, lineHeight: 1 }}>3️⃣</span>
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", marginBottom: 4 }}>Need help? Chat with us</div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <a href="fedi:room:!kENaQZKCKhRhawCjxf:m1.8fa.in:::" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#a78bfa", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>💬 Support (EN)</a>
-                        <a href="fedi:room:!qHlVxBJBCKqUbetBnA:m1.8fa.in:::" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)", color: "#a78bfa", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>💬 Support (FR)</a>
-                      </div>
-                    </div>
-                  </div>
+
                 </>
               ) : (
                 <>
@@ -845,15 +836,15 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
           )}
       </div>
 
-      {/* ── Genesis mark — pinned at bottom ── */}
-      <div style={{ flexShrink: 0, padding: "10px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+      {/* ── Genesis mark — hidden in browser (sandbox bar already takes space) ── */}
+      {!isBrowser && <div style={{ flexShrink: 0, padding: "10px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
         <span style={{ fontSize: 9 }}>⚡</span>
         <span style={{ fontSize: 8, fontWeight: 600, color: "#334155", letterSpacing: 1.2 }}>EST. BLOCK 934,669</span>
         <span style={{ fontSize: 9 }}>🥜</span>
         <span style={{ color: "#1e293b" }}>·</span>
         <span style={{ fontSize: 8, color: "#1e293b" }}>Open source</span>
         <a href="https://github.com/jesuspirate/federated-escrow" target="_blank" rel="noopener noreferrer" style={{ fontSize: 8, color: "#4c1d95", textDecoration: "none", fontWeight: 600 }}>GitHub ↗</a>
-      </div>
+      </div>}
     </div>
   );
 }
