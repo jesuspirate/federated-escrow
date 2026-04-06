@@ -82,10 +82,10 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
             <div style={{ fontSize: 20, fontWeight: 800, color: "#f59e0b" }}>{billListings.length}</div>
             <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Bills Posted</div>
           </div>
-          <div style={{ flex: 1, padding: "12px", borderRadius: 10, background: "#111827", border: "1px solid #1e293b", textAlign: "center" }}>
+          <button onClick={onOrders} style={{ flex: 1, padding: "12px", borderRadius: 10, background: "#111827", border: "1px solid #1e293b", textAlign: "center", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: "#10b981" }}>{activeOrderCount || 0}</div>
-            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Your Trades</div>
-          </div>
+            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Your Trades ↗</div>
+          </button>
         </div>
 
         <div style={{ padding: "14px", borderRadius: 12, background: "#111827", border: "1px solid #1e293b", textAlign: "center" }}>

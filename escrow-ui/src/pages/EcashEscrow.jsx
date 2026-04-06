@@ -1250,9 +1250,9 @@ function TradeChat({ escrowId, pubkey, participants }) {
     } else { setOpen(true); setUnreadCount(0); }
   };
 
-  const myRole = pubkey === participants?.seller ? "seller" : pubkey === participants?.buyer ? "buyer" : pubkey === participants?.arbiter ? "arbiter" : "buyer";
+  const myRole = pubkey === participants?.seller ? "seller" : pubkey === participants?.buyer ? "buyer" : pubkey === participants?.arbiter ? "arbiter" : "unknown";
   const roleColors = { seller: "#f59e0b", buyer: "#a78bfa", arbiter: "#64748b" };
-  const roleLabels = { seller: "Seller", buyer: "Buyer", arbiter: "Arbiter" };
+  const roleLabels = { seller: "Seller", buyer: "Buyer", arbiter: "Arbiter", unknown: "?" };
 
   const chatFetch = async (path, opts = {}) => {
     const headers = { "Content-Type": "application/json" };
@@ -1527,7 +1527,7 @@ function TradeChat({ escrowId, pubkey, participants }) {
           return (
             <div key={msg.id || i} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start", marginBottom: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 2, flexDirection: isMe ? "row-reverse" : "row" }}>
-                <div style={{ width: 20, height: 20, borderRadius: "50%", background: (roleColors[msg.sender_role] || "#64748b") + "25", border: "1.5px solid " + (roleColors[msg.sender_role] || "#64748b"), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: roleColors[msg.sender_role] || "#64748b", flexShrink: 0 }}>{isMe ? "Y" : (roleLabels[msg.sender_role] || "?")[0]}</div>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: (roleColors[msg.sender_role] || "#64748b") + "25", border: "1.5px solid " + (roleColors[msg.sender_role] || "#64748b"), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 800, color: roleColors[msg.sender_role] || "#64748b", flexShrink: 0 }}>{isMe ? "Y" : (roleLabels[msg.sender_role] || msg.sender_role || "?")[0].toUpperCase()}</div>
                 <span style={{ fontSize: 10, color: roleColors[msg.sender_role] || "#64748b" }}>{isMe ? "You" : roleLabels[msg.sender_role] || msg.sender_role}</span>
               </div>
               <div style={{
