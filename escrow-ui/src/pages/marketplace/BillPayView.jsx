@@ -46,50 +46,57 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
   // CHOOSER
   if (mode === null) {
     return (
-      <div style={{ padding: "0 16px 80px", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box", overflowY: "auto", flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-          <button onClick={onBack} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 18, cursor: "pointer", padding: 4 }}>{"←"}</button>
-          <div>
-            <h2 style={{ fontSize: 20, fontWeight: 800, color: "#f8fafc", margin: 0 }}>{"🧾"} Bill Pay</h2>
-            <p style={{ fontSize: 12, color: "#64748b", margin: "2px 0 0" }}>Community-powered bill payments</p>
-          </div>
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, overflowY: "auto", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+        {/* ── Back button — subtle, top-left ── */}
+        <button onClick={onBack} style={{ alignSelf: "flex-start", background: "none", border: "none", color: "#475569", fontSize: 22, cursor: "pointer", padding: "14px 16px 0", WebkitTapHighlightColor: "transparent" }}>{"←"}</button>
+
+        {/* ── Hero ── */}
+        <div style={{ textAlign: "center", padding: "12px 24px 24px" }}>
+          <div style={{ fontSize: 52, marginBottom: 10, lineHeight: 1 }}>🧾</div>
+          <h2 style={{ fontSize: 26, fontWeight: 900, color: "#f8fafc", margin: "0 0 8px", letterSpacing: -0.5 }}>Bill Pay</h2>
+          <p style={{ fontSize: 13, color: "#64748b", margin: 0, lineHeight: 1.5 }}>Pay any bill with sats.<br/>Your community has your back.</p>
         </div>
 
-        <button onClick={() => setMode("need")} style={{ width: "100%", padding: "20px 16px", marginBottom: 10, borderRadius: 14, background: "linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02))", border: "1.5px solid rgba(245,158,11,0.25)", cursor: "pointer", textAlign: "left" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(245,158,11,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{"💸"}</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#f59e0b" }}>I need fiat for a bill</div>
-              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2, lineHeight: 1.4 }}>Lock your sats. Someone sends you fiat. You pay your own bill.</div>
+        {/* ── Action cards ── */}
+        <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+          <button onClick={() => setMode("need")} style={{ width: "100%", padding: "20px 16px", borderRadius: 16, background: "linear-gradient(135deg, rgba(245,158,11,0.10), rgba(245,158,11,0.03))", border: "1.5px solid rgba(245,158,11,0.3)", cursor: "pointer", textAlign: "left", WebkitTapHighlightColor: "transparent" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(245,158,11,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>{"💸"}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 17, fontWeight: 800, color: "#f59e0b", marginBottom: 3 }}>I need fiat for a bill</div>
+                <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.4 }}>Lock your sats. Someone pays your bill. You confirm receipt.</div>
+              </div>
+              <span style={{ color: "#f59e0b", fontSize: 20, flexShrink: 0 }}>{"→"}</span>
             </div>
-            <span style={{ color: "#f59e0b", fontSize: 18 }}>{"→"}</span>
-          </div>
-        </button>
+          </button>
 
-        <button onClick={() => setMode("earn")} style={{ width: "100%", padding: "20px 16px", marginBottom: 16, borderRadius: 14, background: "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02))", border: "1.5px solid rgba(16,185,129,0.25)", cursor: "pointer", textAlign: "left" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 12, background: "rgba(16,185,129,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{"₿"}</div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#10b981" }}>I want to buy sats</div>
-              <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2, lineHeight: 1.4 }}>Send fiat to someone. Earn sats at a premium. Easy on-ramp.</div>
+          <button onClick={() => setMode("earn")} style={{ width: "100%", padding: "20px 16px", borderRadius: 16, background: "linear-gradient(135deg, rgba(16,185,129,0.10), rgba(16,185,129,0.03))", border: "1.5px solid rgba(16,185,129,0.3)", cursor: "pointer", textAlign: "left", WebkitTapHighlightColor: "transparent" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(16,185,129,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>{"₿"}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 17, fontWeight: 800, color: "#10b981", marginBottom: 3 }}>I want to buy sats</div>
+                <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.4 }}>Pay someone's bill. Earn sats at a premium. Easy on-ramp.</div>
+              </div>
+              <span style={{ color: "#10b981", fontSize: 20, flexShrink: 0 }}>{"→"}</span>
             </div>
-            <span style={{ color: "#10b981", fontSize: 18 }}>{"→"}</span>
-          </div>
-        </button>
-
-        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-          <div style={{ flex: 1, padding: "12px", borderRadius: 10, background: "#111827", border: "1px solid #1e293b", textAlign: "center" }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "#f59e0b" }}>{billListings.length}</div>
-            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Bills Posted</div>
-          </div>
-          <button onClick={onOrders} style={{ flex: 1, padding: "12px", borderRadius: 10, background: "#111827", border: "1px solid #1e293b", textAlign: "center", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
-            <div style={{ fontSize: 20, fontWeight: 800, color: "#10b981" }}>{activeOrderCount || 0}</div>
-            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5 }}>Your Trades ↗</div>
           </button>
         </div>
 
-        <div style={{ padding: "14px", borderRadius: 12, background: "#111827", border: "1px solid #1e293b", textAlign: "center" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 }}>How it works</div>
+        {/* ── Stats ── */}
+        <div style={{ display: "flex", gap: 10, margin: "16px 16px 0" }}>
+          <div style={{ flex: 1, padding: "14px 12px", borderRadius: 12, background: "#111827", border: "1px solid #1e293b", textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "#f59e0b" }}>{billListings.length}</div>
+            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>Bills Posted</div>
+          </div>
+          <button onClick={onOrders} style={{ flex: 1, padding: "14px 12px", borderRadius: 12, background: "#111827", border: "1px solid #1e293b", textAlign: "center", cursor: "pointer", WebkitTapHighlightColor: "transparent" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "#10b981" }}>{activeOrderCount || 0}</div>
+            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>Your Trades ↗</div>
+          </button>
+        </div>
+
+        {/* ── How it works ── */}
+        <div style={{ margin: "16px 16px 24px", padding: "16px", borderRadius: 14, background: "#111827", border: "1px solid #1e293b", textAlign: "center" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 14 }}>How it works</div>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "center", gap: 0 }}>
             {[
               { icon: "🧾", label: "Post", desc: "Tell us your bill", color: "#f59e0b" },
@@ -98,13 +105,13 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
               { icon: "✅", label: "Done", desc: "Confirm & earn", color: "#3b82f6" },
             ].map((s, i, arr) => (
               <div key={s.label} style={{ display: "flex", alignItems: "flex-start" }}>
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, minWidth: 60 }}>
-                  <div style={{ width: 36, height: 36, borderRadius: 10, background: s.color + "15", border: "1px solid " + s.color + "30", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>{s.icon}</div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, minWidth: 64 }}>
+                  <div style={{ width: 38, height: 38, borderRadius: 11, background: s.color + "18", border: "1px solid " + s.color + "35", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 17 }}>{s.icon}</div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: "#f8fafc" }}>{s.label}</div>
-                  <div style={{ fontSize: 9, color: "#475569", lineHeight: 1.2 }}>{s.desc}</div>
+                  <div style={{ fontSize: 9, color: "#475569", lineHeight: 1.3 }}>{s.desc}</div>
                 </div>
                 {i < arr.length - 1 && (
-                  <div style={{ color: "#334155", fontSize: 14, paddingTop: 11, flexShrink: 0 }}>→</div>
+                  <div style={{ color: "#334155", fontSize: 14, paddingTop: 12, flexShrink: 0 }}>{"→"}</div>
                 )}
               </div>
             ))}
