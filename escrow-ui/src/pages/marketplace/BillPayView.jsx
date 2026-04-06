@@ -46,18 +46,21 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
   // CHOOSER
   if (mode === null) {
     return (
-      <div style={{ display: "flex", flexDirection: "column", flex: 1, overflowY: "auto", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box", justifyContent: "center" }}>
-        {/* ── Compact header: back + title in one row ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px 16px" }}>
-          <button onClick={onBack} style={{ background: "rgba(30,41,59,0.5)", color: "#cbd5e1", padding: 9, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(51,65,85,0.3)", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none", flexShrink: 0 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 22 }}>🧾</span>
-              <h2 style={{ fontSize: 20, fontWeight: 900, color: "#f8fafc", margin: 0, letterSpacing: -0.3 }}>Bill Pay</h2>
-            </div>
-            <p style={{ fontSize: 11, color: "#64748b", margin: "2px 0 0", lineHeight: 1.3 }}>Pay any bill with sats · Your community has your back</p>
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, overflowY: "auto", maxWidth: 480, margin: "0 auto", width: "100%", boxSizing: "border-box" }}>
+
+        {/* ── Standard header: [←]  🧾 Bill Pay  [spacer] ── */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 16px 4px" }}>
+          <button onClick={onBack} style={{ background: "rgba(30,41,59,0.5)", color: "#cbd5e1", padding: 9, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid rgba(51,65,85,0.3)", cursor: "pointer", WebkitTapHighlightColor: "transparent", outline: "none", width: 36, height: 36, flexShrink: 0 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <span style={{ fontSize: 18 }}>🧾</span>
+            <span style={{ fontSize: 17, fontWeight: 600, color: "#f8fafc" }}>Bill Pay</span>
           </div>
+          <div style={{ width: 36 }} />
         </div>
+
+        {/* ── Tagline ── */}
+        <div style={{ textAlign: "center", fontSize: 12, color: "#475569", padding: "2px 16px 14px", lineHeight: 1.4 }}>Pay any bill with sats · Your community has your back</div>
+
         {/* ── Action cards ── */}
         <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 10 }}>
           <button onClick={() => setMode("need")} style={{ width: "100%", padding: "20px 16px", borderRadius: 16, background: "linear-gradient(135deg, rgba(245,158,11,0.10), rgba(245,158,11,0.03))", border: "1.5px solid rgba(245,158,11,0.3)", cursor: "pointer", textAlign: "left", WebkitTapHighlightColor: "transparent" }}>
@@ -118,6 +121,7 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
             ))}
           </div>
         </div>
+
       </div>
     );
   }
