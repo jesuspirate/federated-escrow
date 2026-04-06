@@ -779,30 +779,30 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
             <div style={{ marginTop: 16, textAlign: "center", width: "100%" }}>
               {isBrowser ? (
                 <>
-                  <div style={{ padding: "12px 14px", marginBottom: 14, borderRadius: 10, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", textAlign: "left" }}>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: "#10b981", marginBottom: 8 }}>Get started in 30 seconds:</div>
-                    <div style={{ fontSize: 11, color: "#cbd5e1", lineHeight: 2 }}>
-                      <span style={{ color: "#f59e0b", fontWeight: 700 }}>1.</span> Install Fedi from your app store<br/>
-                      <span style={{ color: "#f59e0b", fontWeight: 700 }}>2.</span> Tap <strong style={{ color: "#f8fafc" }}>Get Started</strong><br/>
-                      <span style={{ color: "#f59e0b", fontWeight: 700 }}>3.</span> Tap <strong style={{ color: "#f8fafc" }}>Do it later</strong> at the bottom<br/>
-                      <span style={{ color: "#f59e0b", fontWeight: 700 }}>4.</span> Come back here and join a community below
+                  {/* Step 1 */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", marginBottom: 10, borderRadius: 10, background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.15)", textAlign: "left" }}>
+                    <span style={{ fontSize: 22, flexShrink: 0 }}>1️⃣</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#10b981", marginBottom: 6 }}>Download Fedi (free)</div>
+                      <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{
+                        display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 14px", borderRadius: 8,
+                        background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontSize: 12, fontWeight: 700, textDecoration: "none",
+                      }}>📲 Get Fedi</a>
                     </div>
                   </div>
-                  <a href="https://fedi.xyz/product" target="_blank" rel="noopener noreferrer" style={{
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "12px 0", marginBottom: 8, borderRadius: 10,
-                    background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontSize: 14, fontWeight: 700, textDecoration: "none",
-                  }}>{"📲"} Download Fedi (Free)</a>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: 12, justifyContent: "center" }}>
-                    <span style={{ fontSize: 18, lineHeight: 1 }}>5️⃣</span>
-                    <div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#f59e0b", marginBottom: 4 }}>Join our community inside Fedi</div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyv33vvmnzvmxx5unqwpkxdnxxvfs893rjwfcvsukxcmzxsmkxcnyvf3kywpnxscxzdnyxq6rvcmpxuengvp4xdsn2wfcvymrgvpexesjytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfskyephv5cnqwpjvdnrqenrxpnrxvmrxs6nscfkxymnvdrpv4jngwpjvdskgce3xy6nvdf5vfjxyef4x9jrvceevejrvcenxcekydtrygkzyer9vde8jur5d9hkuhmtv4ujyw3zvymkvmr0gcu4wuth2eh9zkr9vdc8z3m4w4m56v60w3j9zwrpxdvhw3n9ga3kwcfcgc4kk0fz05fkv4p3" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#f59e0b", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>🇬🇧 English</a>
-                        <a href="fedi:community210v3xzat5dphhyhmsw43xketeygazyde5xf3kzvpnx9skzdnyxpjrvdm9xpskzc3kxucrxwpex33xxe3exvmnxvtxv9jryefexsmnqvty8yunvd35vgunywrzxvmrsvpj8q6jytpzvdhk6mt4de5hg72lw46kjezldpjhsg36yfnrqcf3vserxvfevyck2wtyxanxzvf5x9skgdfhvd3rwc3jv5crsetyx3jxvdesxserxerpvdskzcehxpjr2wf5vymkxenpx56kvwrpygkzyer9vde8jur5d9hkuhmtv4ujyw3zfphhy3t3vym8sd6vg4a9v6n2fsek7m6k23ux6v6ytp65jeekd4pkj5nzw39xcanh0pkrg0fz055t3dve" style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 8, background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", color: "#3b82f6", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>🇫🇷 Français</a>
-                      </div>
+                  {/* Step 2 — the magic link */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1.5px solid rgba(245,158,11,0.25)", textAlign: "left" }}>
+                    <span style={{ fontSize: 22, flexShrink: 0 }}>2️⃣</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: "#f59e0b", marginBottom: 2 }}>Come back and tap below</div>
+                      <div style={{ fontSize: 10, color: "#64748b", marginBottom: 8 }}>Don't even open Fedi — just tap this</div>
+                      <a href="https://app.fedi.xyz/link#screen=join&id=fed11qgqyj3mfwfhksw309ajrwvmxvenxgvpkvyursenxxvur2c3sv4jkxdfcxf3kgdmyvs6nzcehvc6xzctzxumrxdmr89jnwdtpv5enqwtpxqmrsvfh89skxv34qqqjpzytwrkr28r8mjas4ej467utd7excr7fapj7ukgc4ugacm6nu2u73k7ram" target="_blank" rel="noopener noreferrer" style={{
+                        display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8,
+                        background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontSize: 12, fontWeight: 800, textDecoration: "none",
+                      }}>⚡ Join Bitcoin Life</a>
+                      <div style={{ fontSize: 9, color: "#475569", marginTop: 6 }}>Wallet · federation · community · SatoshiMarket</div>
                     </div>
                   </div>
-
                 </>
               ) : (
                 <>
