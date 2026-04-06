@@ -130,7 +130,20 @@ export default function OrderDetailView({ order: o, pubkey, onBack, onProfile, o
               </div>
             </div>
           )}
-          {fiatRates && <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>≈ {fmtFiat(o.amountMsats, fiatRates, "USD")}</div>}
+          {fiatRates && <div style={{ fontSize: 13, color: "#64748b", marginTop: 2 }}>
+            {(() => {
+              const terms = detail?.listing?.terms || escrow?.terms || "";
+              const fm = terms.match(/Fiat needed:\s*(\w+)\s+([\d.]+)/);
+              const rm = terms.match(/Rate:\s*(\d+)/);
+              if (fm && o.listingCategory === "bill-pay") {
+                const amt = parseFloat(fm[2]);
+                const rate = rm ? parseFloat(rm[1]) : 0;
+                const withPremium = amt * (1 + rate / 100);
+                return "≈ " + fm[1] + " " + withPremium.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              }
+              return "≈ " + fmtFiat(o.amountMsats, fiatRates, "USD");
+            })()}
+          </div>}
         </div>
         {/* ── Federation — shown high for picker visibility ── */}
         {(detail?.listing?.sellerFedDomain || escrow?.federationId) && (
@@ -235,7 +248,18 @@ export default function OrderDetailView({ order: o, pubkey, onBack, onProfile, o
             {status === "pending"
               ? (isP2P
                   ? (isBuyer ? (isRepayment ? "💰 Lock Repayment" : isLoan ? "✓ Accept Loan" : (fiatRates ? "💵 " + (t("mkPrepare") || "Prepare") + " " + fmtFiat(o.amountMsats, fiatRates, "USD") : t("mkViewTrade") || "View Trade")) : (isRepayment ? "🔍 View Repayment" : isLoan ? "🤝 Fund Loan" : "🔐 " + (t("mkLockEcash") || "Lock E-cash")))
-: (isRepayment ? (isBuyer ? "💰 Lock Repayment" : "🔍 View Repayment") : isLoan ? (isBuyer ? "✓ Accept Loan" : "🤝 Fund Loan") : (o.listingCategory === "bill-pay" ? (isBuyer ? (fiatRates ? "💵 " + (t("mkPrepare") || "Prepare") + " " + (() => { const rm = (detail?.listing?.terms || "").match(/Rate:\s*(\d+)/); const rp = rm ? parseFloat(rm[1]) : 0; const base = rp > 0 ? Math.floor(o.amountMsats / (1 + rp / 100)) : o.amountMsats; return fmtFiat(base, fiatRates, "USD"); })() : "View Trade") : "🧾 " + (t("mkLockSats") || "Lock Sats")) : (isBuyer ? "🔐 " + (t("mkLockPayment") || "Lock Payment") : "View Trade"))))
+: (isRepayment ? (isBuyer ? "💰 Lock Repayment" : "🔍 View Repayment") : isLoan ? (isBuyer ? "✓ Accept Loan" : "🤝 Fund Loan") : (o.listingCategory === "bill-pay" ? (isBuyer ? (fiatRates ? "💵 " + (t("mkPrepare") || "Prepare") + " " + (() => { const rm = (detail?.listing?.terms || "").match(/Rate:\s*(\d+)/); const rp = rm ? parseFloat(rm[1]) : 0; const base = rp > 0 ? Math.floor(o.amountMsats / (1 + rp / 100)) : o.amountMsats; return (() => {
+                      const terms2 = detail?.listing?.terms || escrow?.terms || "";
+                      const fm2 = terms2.match(/Fiat needed:\s*(\w+)\s+([\d.]+)/);
+                      const rm2 = terms2.match(/Rate:\s*(\d+)/);
+                      if (fm2 && o.listingCategory === "bill-pay") {
+                        const amt2 = parseFloat(fm2[2]);
+                        const rate2 = rm2 ? parseFloat(rm2[1]) : 0;
+                        const withPremium2 = amt2 * (1 + rate2 / 100);
+                        return fm2[1] + " " + withPremium2.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                      }
+                      return fmtFiat(base, fiatRates, "USD");
+                    })(); })() : "View Trade") : "🧾 " + (t("mkLockSats") || "Lock Sats")) : (isBuyer ? "🔐 " + (t("mkLockPayment") || "Lock Payment") : "View Trade"))))
               : isRepayment ? "💰 Open Repayment" : isLoan ? "🤝 Open Loan" : "⚡ Open Trade"
             }
           </button>
