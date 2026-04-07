@@ -440,7 +440,7 @@ export default function App() {
       </div>
 
       {showProductionNav && !escrowInTrade && (
-        <AppNavigator activeSubdomain={prodSubdomain} onSwitch={handleSubdomainSwitch} />
+        <AppNavigator activeSubdomain={effectiveSubdomain} onSwitch={handleSubdomainSwitch} />
       )}
     </div>
   );
