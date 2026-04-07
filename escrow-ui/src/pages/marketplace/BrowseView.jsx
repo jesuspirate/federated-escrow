@@ -259,8 +259,7 @@ export default function BrowseView({ listings, loading, pubkey, searchQuery, set
       {/* ══ PINNED HEADER SECTION ══ */}
       <div style={{ flexShrink: 0 }}>
         <div style={M.header}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          </div>
+
           <div>
             <img src="/satoshimarket-logo.png" alt="SatoshiMarket" style={{ height: subdomain === "marketplace" ? 112 : 80, objectFit: "contain" }} />
             {subdomain !== "marketplace" && (
@@ -342,7 +341,6 @@ export default function BrowseView({ listings, loading, pubkey, searchQuery, set
         ))}
         </div>
       </div>
-
 
       {/* Payment method filter */}
       {(subdomain !== "escrow") && (

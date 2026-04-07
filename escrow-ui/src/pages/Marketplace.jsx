@@ -244,7 +244,7 @@ function useBtcPrice() {
 // Per-view loading states prevent cross-contamination between views.
 // ═══════════════════════════════════════════════════════════════════════
 
-export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscrow, initialEscrowId, onOpened , onRegisterGoHome}) {
+export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscrow, initialEscrowId, onOpened , goHomeSignal}) {
   const [sessionReady, setSessionReady] = useState(isDevMode());
   const [lightMode, setLightMode] = useState(() => { try { return localStorage.getItem("sm_lightmode") === "1"; } catch { return false; } });
   useEffect(() => {
@@ -296,6 +296,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
   // Deep-link: if arriving from escrow with an escrowId, find the linked order and open it
   useEffect(() => {
     if (!sessionReady || !initialEscrowId || !pubkey) return;
+    if (initialEscrowId === "__HUB__") { setView("hub"); if (onOpened) onOpened(); return; }
 
     // Special marker: go directly to orders list (no API lookup)
     if (initialEscrowId === "__ORDERS__") {
@@ -362,10 +363,17 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
   const switchLocale = useCallback((code) => {
     setLocale(code);
 
-  // Register go-home callback for AppNavigator retap
+  // Watch for go-home signal from AppNavigator retap
   useEffect(() => {
-    if (onRegisterGoHome) onRegisterGoHome(() => setView("hub"));
-  }, [onRegisterGoHome]);
+    if (goHomeSignal > 0) setView("hub");
+  }, [goHomeSignal]);
+
+  // Fallback: listen for global go-home event
+  useEffect(() => {
+    const handler = () => setView("hub");
+    window.addEventListener("sm-go-home", handler);
+    return () => window.removeEventListener("sm-go-home", handler);
+  }, []);
 
     setLocaleState(code);
   }, []);

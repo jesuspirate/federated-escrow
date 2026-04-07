@@ -300,6 +300,7 @@ export default function App() {
   useEffect(() => { setActiveApp(effectiveSubdomain === "escrow" ? "escrow" : "marketplace"); }, [effectiveSubdomain]);
   const [initialEscrowId, setInitialEscrowId] = useState(null);
   const [initialMarketplaceEscrowId, setInitialMarketplaceEscrowId] = useState(null);
+  const [goHomeSignal, setGoHomeSignal] = useState(0);
   const [escrowInTrade, setEscrowInTrade] = useState(false);
 
   const [pubkey, setPubkey] = useState(isSandbox ? DEV_IDENTITIES["seller"] : null);
@@ -356,7 +357,8 @@ export default function App() {
   const handleSubdomainSwitch = (newSub, isRetap) => {
     // Re-tap active tab → go to hub/home
     if (isRetap) {
-      if (goHomeRef.current) goHomeRef.current();
+      setActiveApp("marketplace");
+      setInitialMarketplaceEscrowId("__HUB__");
       return;
     }
     // Browser/sandbox: navigate to real subdomain URL for truthful routing
@@ -394,7 +396,7 @@ export default function App() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
             {SUBDOMAINS.map(s => { const active = sandboxSubdomain === s.id; return (
-              <button key={s.id} onClick={() => handleSubdomainSwitch(s.id)} style={{ padding: "5px 10px", borderRadius: 6, background: active ? (s.color + "20") : "#111827", color: active ? s.color : "#64748b", fontSize: 11, fontWeight: active ? 700 : 500, border: active ? ("1px solid " + s.color + "40") : "1px solid transparent", cursor: "pointer", WebkitTapHighlightColor: "rgba(0,0,0,0)", display: "flex", alignItems: "center", gap: 4 }}>
+              <button key={s.id} onClick={() => handleSubdomainSwitch(s.id, s.id === sandboxSubdomain)} style={{ padding: "5px 10px", borderRadius: 6, background: active ? (s.color + "20") : "#111827", color: active ? s.color : "#64748b", fontSize: 11, fontWeight: active ? 700 : 500, border: active ? ("1px solid " + s.color + "40") : "1px solid transparent", cursor: "pointer", WebkitTapHighlightColor: "rgba(0,0,0,0)", display: "flex", alignItems: "center", gap: 4 }}>
                 <span style={{ fontSize: 12 }}>{s.icon}</span> {s.label}
               </button>
             ); })}
@@ -434,13 +436,13 @@ export default function App() {
           onSwitchToEscrow={switchToEscrow}
           initialEscrowId={initialMarketplaceEscrowId}
           onOpened={() => setInitialMarketplaceEscrowId(null)}
-          onRegisterGoHome={(fn) => { goHomeRef.current = fn; }}
+          goHomeSignal={goHomeSignal}
         />
       )}
       </div>
 
       {showProductionNav && !escrowInTrade && (
-        <AppNavigator activeSubdomain={prodSubdomain} onSwitch={handleSubdomainSwitch} />
+        <AppNavigator activeSubdomain={effectiveSubdomain} onSwitch={handleSubdomainSwitch} />
       )}
     </div>
   );
