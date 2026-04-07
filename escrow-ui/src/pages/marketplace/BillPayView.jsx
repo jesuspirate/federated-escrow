@@ -68,6 +68,8 @@ export default function BillPayView({ onBrowse, listings, loading, pubkey, onBac
           <button onClick={() => setMode("need")} style={{ width: "100%", padding: "20px 16px", borderRadius: 16, background: "linear-gradient(135deg, rgba(245,158,11,0.10), rgba(245,158,11,0.03))", border: "1.5px solid rgba(245,158,11,0.3)", cursor: "pointer", textAlign: "left", WebkitTapHighlightColor: "transparent" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(245,158,11,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>{"💸"}</div>
+            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>Your Trades ↗</div>
+
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 17, fontWeight: 800, color: "#f59e0b", marginBottom: 3 }}>I need fiat for a bill</div>
                 <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.4 }}>Lock your sats. Someone pays your bill. You confirm receipt.</div>
@@ -96,7 +98,6 @@ export default function BillPayView({ onBrowse, listings, loading, pubkey, onBac
           </div>
           <button onClick={onOrders} style={{ flex: 1, padding: "14px 12px", borderRadius: 12, background: "#111827", border: activeOrderCount > 0 ? "1px solid rgba(245,158,11,0.4)" : "1px solid #1e293b", textAlign: "center", cursor: "pointer", WebkitTapHighlightColor: "transparent", boxShadow: activeOrderCount > 0 ? "0 0 12px rgba(245,158,11,0.15)" : "none", animation: activeOrderCount > 0 ? "pulse 2s infinite" : "none" }}>
             <div style={{ fontSize: 22, fontWeight: 900, color: "#10b981" }}>{activeOrderCount || 0}</div>
-            <div style={{ fontSize: 10, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.5, marginTop: 2 }}>Your Trades ↗</div>
           </button>
         </div>
 
