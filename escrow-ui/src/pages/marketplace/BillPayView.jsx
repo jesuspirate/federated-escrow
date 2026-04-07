@@ -124,6 +124,14 @@ export default function BillPayView({ listings, loading, pubkey, onBack, onCreat
           </div>
         </div>
 
+
+
+        {/* ── Advanced mode link ── */}
+        <div style={{ textAlign: "center", padding: "0 16px 8px" }}>
+          <button onClick={onBrowse || onBack} style={{ background: "none", border: "none", color: "#334155", fontSize: 11, cursor: "pointer", textDecoration: "underline", textUnderlineOffset: 2 }}>
+            Advanced mode — browse & create custom offers →
+          </button>
+        </div>
       </div>
     );
   }
