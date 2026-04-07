@@ -468,7 +468,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
   }, [view, sessionReady]);
 
   const openListing = async (id) => {
-    navigateTo("detail");
+    const dest = "detail"; setPrevView(prev => prev === "billpay" ? "billpay" : view); setView(dest);
     setSelected(null);
     setActionLoading(true);
     try {
@@ -582,7 +582,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           searchQuery={searchQuery} setSearchQuery={setSearchQuery}
           onSearch={(q) => { setSearchQuery(q); loadListings(q); }}
           onOpen={openListing}
-          onCreate={() => setView("create")}
+          onCreate={() => { setPrevView("browse"); setView("create"); }}
           onOrders={openOrders}
           activeOrderCount={orders.length > 0 ? orders.filter(o => (o.status === "pending" || o.status === "active") && !o.isRepayment).length : cachedOrderCount}
           onRefresh={() => { loadListings(searchQuery); loadOrders(); }}
@@ -642,7 +642,8 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
         <BillPayView
           listings={listings} loading={browseLoading} pubkey={pubkey}
           onBack={() => setView(["market","p2p","lending"].includes(subdomain) ? "hub" : "browse")}
-          onCreate={() => { navigateTo("create"); }}
+          onBrowse={() => { setPrevView("hub"); setView("browse"); }}
+          onCreate={() => { setPrevView("billpay"); setView("create"); }}
           onOpen={(id) => { setPrevView("billpay"); openListing(id); }}
           onOrders={() => { setPrevView("billpay"); navigateTo("orders"); loadOrders(); }}
           onRefresh={() => { loadListings(); }}
@@ -656,8 +657,8 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           pubkey={pubkey}
           subdomain={subdomain}
           myFederation={myFederation}
-          onBack={() => setView(["market","p2p","lending"].includes(subdomain) && prevView === "hub" ? "hub" : "browse")}
-          onCreated={(id) => { openListing(id); }}
+          onBack={() => setView(["market","p2p","lending"].includes(subdomain) ? (prevView === "billpay" ? "billpay" : "hub") : "browse")}
+          onCreated={(id) => { setPrevView(prevView); openListing(id); }}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
           mapi={mapi} isDevMode={isDevMode}
         />

@@ -139,7 +139,7 @@ function GlobeLangPicker({ locale, onSwitchLocale }) {
   );
 }
 
-export default function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale, onChapSmart, subdomain, myFederation, onArbiters, onFaq, showToast, onBillPay, fiatRates, mapi, isDevMode, _isFediRuntime }) {
+export default function BrowseView({ listings, loading, pubkey, searchQuery, setSearchQuery, onSearch, onOpen, onCreate, onOrders, activeOrderCount, onNotifications, onRefresh, onSwitchToEscrow, onProfile, locale, onSwitchLocale, onChapSmart, subdomain, myFederation, onArbiters, onFaq, showToast, onBillPay, fiatRates, mapi, isDevMode, _isFediRuntime, onHub, onBack }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState(() => { const h = window.location.hash.replace("#", ""); if (h === "billpay" && onBillPay) { setTimeout(() => onBillPay(), 100); } return "all"; });
   const [helpOpen, setHelpOpen] = useState(false);
@@ -259,6 +259,13 @@ export default function BrowseView({ listings, loading, pubkey, searchQuery, set
       {/* ══ PINNED HEADER SECTION ══ */}
       <div style={{ flexShrink: 0 }}>
         <div style={M.header}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {onHub && (
+              <button style={M.iconBtn} onClick={onHub} title="Home">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              </button>
+            )}
+          </div>
           <div>
             <img src="/satoshimarket-logo.png" alt="SatoshiMarket" style={{ height: subdomain === "marketplace" ? 112 : 80, objectFit: "contain" }} />
             {subdomain !== "marketplace" && (
