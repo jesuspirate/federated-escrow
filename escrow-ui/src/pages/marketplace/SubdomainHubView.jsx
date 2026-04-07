@@ -61,6 +61,14 @@ const HUB_CONFIG = {
   },
 };
 
+
+// Ensure pulse animation is available
+const pulseStyle = typeof document !== "undefined" && !document.getElementById("sm-pulse-kf") ? (() => {
+  const s = document.createElement("style"); s.id = "sm-pulse-kf";
+  s.textContent = "@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }";
+  document.head.appendChild(s); return true;
+})() : true;
+
 export default function SubdomainHubView({ subdomain, onBrowse, onCreate, onOrders, onBillPay, listingCount, activeOrderCount }) {
   const cfg = HUB_CONFIG[subdomain] || HUB_CONFIG.market;
   const isP2P = subdomain === "p2p";

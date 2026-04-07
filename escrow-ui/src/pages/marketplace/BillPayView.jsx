@@ -1,6 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { BILL_TYPES, PAYMENT_METHODS } from "./constants";
 
+
+// Ensure pulse animation is available
+const pulseStyleBP = typeof document !== "undefined" && !document.getElementById("sm-pulse-kf") ? (() => {
+  const s = document.createElement("style"); s.id = "sm-pulse-kf";
+  s.textContent = "@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }";
+  document.head.appendChild(s); return true;
+})() : true;
+
 export default function BillPayView({ onBrowse, listings, loading, pubkey, onBack, onCreate, onOpen, onOrders, onRefresh, fiatRates, showToast, subdomain, activeOrderCount, mapi, isDevMode }) {
   const [mode, setMode] = useState(null);
   const [posting, setPosting] = useState(false);

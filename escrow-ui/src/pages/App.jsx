@@ -359,8 +359,10 @@ export default function App() {
     if (isSandbox) {
       const urls = { market: "https://market.satoshimarket.app", p2p: "https://p2p.satoshimarket.app", lending: "https://lending.satoshimarket.app", escrow: "https://escrow.satoshimarket.app" };
       if (urls[newSub]) { window.location.href = urls[newSub]; return; }
+      setSandboxSubdomain(newSub);
+    } else {
+      setProdSubdomain(newSub);
     }
-    setSandboxSubdomain(newSub);
     if (newSub === "escrow") { setActiveApp("escrow"); } else { setActiveApp("marketplace"); }
   }
 
