@@ -15,6 +15,7 @@ import OrderDetailView from "./marketplace/OrderDetailView";
 import CreateListingView from "./marketplace/CreateListingView";
 import SellerProfileView from "./marketplace/SellerProfileView";
 import BrowseView from "./marketplace/BrowseView";
+import SubdomainHubView from "./marketplace/SubdomainHubView";
 import EditListingView from "./marketplace/EditListingView";
 import ListingDetail from "./marketplace/ListingDetail";
 // FUTURE: Re-enable for PWA/Start9/Umbrel push notifications
@@ -271,7 +272,9 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
   const [onboarded, setOnboarded] = useState(() => {
     try { return localStorage.getItem(MK_ONBOARDING_KEY) === "1"; } catch { return false; }
   });
-  const [view, setView] = useState(() => { const h = window.location.hash.replace("#", ""); return ["faq", "arbiters"].includes(h) ? h : "browse"; });
+  const [view, setView] = useState(() => { const h = window.location.hash.replace("#", ""); if (["faq", "arbiters"].includes(h)) return h; if (["market", "p2p", "lending"].includes(subdomain)) return "hub"; return "browse"; });
+  const [prevView, setPrevView] = useState("hub");
+  const navigateTo = (next) => { setPrevView(view); setView(next); };
   const [listings, setListings] = useState([]);
   const [fiatRates, setFiatRates] = useState(null);
   const [selected, setSelected] = useState(null);
@@ -466,7 +469,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
   }, [view, sessionReady]);
 
   const openListing = async (id) => {
-    setView("detail");
+    navigateTo("detail");
     setSelected(null);
     setActionLoading(true);
     try {
@@ -477,7 +480,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
     setActionLoading(false);
   };
 
-  const openOrders = async () => { setView("orders"); loadOrders(); };
+  const openOrders = async () => { navigateTo("orders"); loadOrders(); };
 
   const handleEdit = (listing) => { setEditingListing(listing); setView("edit"); };
 
@@ -563,6 +566,17 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
       </button>
       <Toast {...toast} />
 
+      {view === "hub" && ["market", "p2p", "lending"].includes(subdomain) && (
+        <SubdomainHubView
+          subdomain={subdomain}
+          onBrowse={() => { setPrevView("hub"); setView("browse"); }}
+          onCreate={() => { setPrevView("hub"); setView("create"); }}
+          onOrders={() => { setPrevView("hub"); openOrders(); }}
+          onBillPay={subdomain === "p2p" ? () => setView("billpay") : null}
+          listingCount={listings.filter(l => l.sellerPubkey !== pubkey).length}
+          activeOrderCount={orders.filter(o => o.status === "pending" || o.status === "active").length}
+        />
+      )}
       {view === "browse" && (
         <BrowseView
           listings={listings} loading={browseLoading} pubkey={pubkey}
@@ -584,6 +598,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           showToast={showToast}
         
           onBillPay={() => setView("billpay")} fiatRates={fiatRates}
+          onHub={["market", "p2p", "lending"].includes(subdomain) ? () => setView("hub") : null}
           mapi={mapi} isDevMode={isDevMode} _isFediRuntime={_isFediRuntime}
         />
       )}
@@ -601,7 +616,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
       {view === "detail" && selected && (
         <ListingDetail
           listing={selected} pubkey={pubkey}
-          onBack={() => { setSelected(null); setView("browse"); }}
+          onBack={() => { setSelected(null); setView(prevView || "hub"); }}
           onProfile={openProfile}
           onEdit={handleEdit}
           onPause={handlePause}
@@ -627,9 +642,10 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
             {view === "billpay" && (
         <BillPayView
           listings={listings} loading={browseLoading} pubkey={pubkey}
-          onBack={() => setView("browse")}
-          onCreate={() => { setView("create"); }}
-          onOpen={openListing} onOrders={openOrders}
+          onBack={() => setView(["market","p2p","lending"].includes(subdomain) ? "hub" : "browse")}
+          onCreate={() => { navigateTo("create"); }}
+          onOpen={(id) => { setPrevView("billpay"); openListing(id); }}
+          onOrders={() => { setPrevView("billpay"); navigateTo("orders"); loadOrders(); }}
           onRefresh={() => { loadListings(); }}
           fiatRates={fiatRates} showToast={showToast} subdomain={subdomain}
           activeOrderCount={orders.filter(o => o.status === "pending" || o.status === "active").length}
@@ -641,7 +657,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
           pubkey={pubkey}
           subdomain={subdomain}
           myFederation={myFederation}
-          onBack={() => setView("browse")}
+          onBack={() => setView(["market","p2p","lending"].includes(subdomain) && prevView === "hub" ? "hub" : "browse")}
           onCreated={(id) => { openListing(id); }}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}
           mapi={mapi} isDevMode={isDevMode}
@@ -650,9 +666,9 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
       {view === "orders" && (
         <OrdersView
           orders={orders} loading={ordersLoading} pubkey={pubkey}
-          onBack={() => setView("browse")}
+          onBack={() => setView(["market","p2p","lending"].includes(subdomain) ? (prevView === "billpay" ? "billpay" : "hub") : "browse")}
           onRefresh={loadOrders}
-          onOpenOrder={(order) => { setSelected(order); setView("orderDetail"); }}
+          onOpenOrder={(order) => { setSelected(order); navigateTo("orderDetail"); }}
           onProfile={openProfile}
           fiatRates={fiatRates}
           initialFilter={orderFilterHint}
@@ -662,7 +678,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
       {view === "orderDetail" && selected && (
         <OrderDetailView
           order={selected} pubkey={pubkey}
-          onBack={() => { const s = selected?.status; setSelected(null); openOrders(); if (s === "completed") setTimeout(() => setOrderFilter("completed"), 50); else if (s === "cancelled" || s === "expired") setTimeout(() => setOrderFilter("cancelled"), 50); }}
+          onBack={() => { const s = selected?.status; setSelected(null); if (prevView === "billpay") { setView("billpay"); } else { openOrders(); if (s === "completed") setTimeout(() => setOrderFilter("completed"), 50); else if (s === "cancelled" || s === "expired") setTimeout(() => setOrderFilter("cancelled"), 50); } }}
           onProfile={openProfile}
           onSwitchToEscrow={onSwitchToEscrow}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}

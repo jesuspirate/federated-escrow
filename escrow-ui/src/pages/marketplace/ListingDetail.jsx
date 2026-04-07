@@ -206,51 +206,25 @@ export default function ListingDetail({ listing: l, pubkey, onBack, onProfile, o
           const premiumSats = ratePct > 0 ? Math.ceil(baseSats * ratePct / 100) : 0;
           const totalSats = baseSats + premiumSats;
           const fiatAmount = fmtFiat(l.priceMsats, fiatRates, l.fiatCurrency || "USD");
+          const isBP = isBillPay(l.category);
+          const bpMatch = isBP ? (l.terms || "").match(/Fiat needed:\s*(\w+)\s+([\d.]+)/) : null;
+          const bpFiatStr = bpMatch ? (bpMatch[1] + " " + parseFloat(bpMatch[2]).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })) : null;
           return (
             <div style={{ marginBottom: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
-              {isBillPay(l.category) ? (() => {
-                const fm = (l.terms || "").match(/Fiat needed:\s*(\w+)\s+([\d.]+)/);
-                const origFiat = fm ? parseFloat(fm[2]) : 0;
-                const origCurr = fm ? fm[1] : "?";
-                const fiatStr = origCurr + " " + origFiat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                return (
-                  <>
-                    {/* Volunteer pays the ORIGINAL bill amount — no premium */}
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>
-                      <span>Volunteer pays</span>
-                      <span style={{ fontWeight: 700, color: "#f8fafc" }}>{fiatStr}</span>
-                    </div>
-                    {premiumSats > 0 && (
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#10b981", marginBottom: 4 }}>
-                        <span>{t("mkVolunteerEarns") || "Volunteer earns"} ({ratePct}%)</span>
-                        <span>+ {premiumSats.toLocaleString()} sats</span>
-                      </div>
-                    )}
-                    {/* Volunteer receives total sats (base + premium) */}
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: "#f59e0b", borderTop: "1px solid rgba(245,158,11,0.15)", paddingTop: 6, marginTop: 4 }}>
-                      <span>{t("mkVolunteerReceives") || "Volunteer receives"}</span>
-                      <span>{"₿"} {totalSats.toLocaleString()} sats</span>
-                    </div>
-                  </>
-                );
-              })() : (
-                <>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>
-                    <span>{t("mkBaseAmount") || "Base amount"}</span>
-                    <span>{fiatAmount} ({baseSats.toLocaleString()} sats)</span>
-                  </div>
-                  {premiumSats > 0 && (
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#10b981", marginBottom: 4 }}>
-                      <span>{t("mkVolunteerEarns") || "Volunteer earns"} ({ratePct}%)</span>
-                      <span>+ {premiumSats.toLocaleString()} sats</span>
-                    </div>
-                  )}
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: "#f59e0b", borderTop: "1px solid rgba(245,158,11,0.15)", paddingTop: 6, marginTop: 4 }}>
-                    <span>{t("mkTotal") || "Total"}</span>
-                    <span>{totalSats.toLocaleString()} sats</span>
-                  </div>
-                </>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>
+                <span>{isBP ? "Volunteer pays" : (t("mkBaseAmount") || "Base amount")}</span>
+                <span style={isBP ? { fontWeight: 700, color: "#f8fafc" } : {}}>{isBP ? (bpFiatStr || fiatAmount) : (fiatAmount + " (" + baseSats.toLocaleString() + " sats)")}</span>
+              </div>
+              {premiumSats > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#10b981", marginBottom: 4 }}>
+                  <span>{t("mkVolunteerEarns") || "Volunteer earns"} ({ratePct}%)</span>
+                  <span>+ {premiumSats.toLocaleString()} sats</span>
+                </div>
               )}
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: "#f59e0b", borderTop: "1px solid rgba(245,158,11,0.15)", paddingTop: 6, marginTop: 4 }}>
+                <span>{isBP ? (t("mkVolunteerReceives") || "Volunteer receives") : (t("mkTotal") || "Total")}</span>
+                <span>{isBP ? ("₿ " + totalSats.toLocaleString() + " sats") : (totalSats.toLocaleString() + " sats")}</span>
+              </div>
             </div>
           );
         })()}
