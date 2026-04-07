@@ -269,7 +269,7 @@ function AppNavigator({ activeSubdomain, onSwitch }) {
       {SUBDOMAINS.map(s => {
         const active = activeSubdomain === s.id;
         return (
-          <button key={s.id} onClick={() => onSwitch(s.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "8px 0 6px", background: "none", border: "none", cursor: "pointer", WebkitTapHighlightColor: "rgba(0,0,0,0)", position: "relative" }}>
+          <button key={s.id} onClick={() => onSwitch(s.id, s.id === activeSubdomain)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, padding: "8px 0 6px", background: "none", border: "none", cursor: "pointer", WebkitTapHighlightColor: "rgba(0,0,0,0)", position: "relative" }}>
             {active && <div style={{ position: "absolute", top: 0, left: "20%", right: "20%", height: 2, borderRadius: "0 0 2px 2px", background: s.color }} />}
             <span style={{ fontSize: 18, filter: active ? "none" : "grayscale(0.6) opacity(0.5)" }}>{s.icon}</span>
             <span style={{ fontSize: 9, fontWeight: active ? 700 : 500, letterSpacing: 0.3, color: active ? s.color : "#475569", textTransform: "uppercase" }}>{s.label}</span>
@@ -353,7 +353,13 @@ export default function App() {
     setActiveApp("marketplace"); setEscrowInTrade(false);
   }, []);
 
-  const handleSubdomainSwitch = (newSub) => {
+  const handleSubdomainSwitch = (newSub, isRetap) => {
+    // Re-tap active tab → go to hub/home
+    if (isRetap) {
+      // Signal Marketplace to go to hub view
+      setInitialMarketplaceEscrowId("__HUB__");
+      return;
+    }
     // Browser/sandbox: navigate to real subdomain URL for truthful routing
     // Fedi: use React state for instant switching (no reload)
     if (isSandbox) {

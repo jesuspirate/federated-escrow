@@ -298,7 +298,8 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
     if (!sessionReady || !initialEscrowId || !pubkey) return;
 
     // Special marker: go directly to orders list (no API lookup)
-    if (initialEscrowId === "__ORDERS__") {
+    if (initialEscrowId === "__HUB__") { setView("hub"); if (onOpened) onOpened(); }
+    else if (initialEscrowId === "__ORDERS__") {
     if (initialEscrowId === "__ORDERS_ALL__") {
       setView("orders");
       loadOrders();
