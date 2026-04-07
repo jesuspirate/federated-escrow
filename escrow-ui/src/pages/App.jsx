@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import EcashEscrow from "./EcashEscrow";
 import Marketplace from "./Marketplace";
 
@@ -356,8 +356,7 @@ export default function App() {
   const handleSubdomainSwitch = (newSub, isRetap) => {
     // Re-tap active tab → go to hub/home
     if (isRetap) {
-      // Signal Marketplace to go to hub view
-      setInitialMarketplaceEscrowId("__HUB__");
+      if (goHomeRef.current) goHomeRef.current();
       return;
     }
     // Browser/sandbox: navigate to real subdomain URL for truthful routing
@@ -435,6 +434,7 @@ export default function App() {
           onSwitchToEscrow={switchToEscrow}
           initialEscrowId={initialMarketplaceEscrowId}
           onOpened={() => setInitialMarketplaceEscrowId(null)}
+          onRegisterGoHome={(fn) => { goHomeRef.current = fn; }}
         />
       )}
       </div>
