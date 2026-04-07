@@ -31,7 +31,7 @@ const translations = {
 
     // ── Onboarding (Sandbox / browser) ─────────────────────────────────
     obSandboxTitle: "Welcome to the Escrow Sandbox",
-    obSandboxDesc: "This is a live demo of our 2-of-3 multisig escrow — powered by Fedimint and Lightning. Try every role: create escrows, fund them, vote, and claim. No real sats, no risk.",
+    obSandboxDesc: "This is a live demo of our 2-of-3 Shamir escrow — powered by Fedimint e-cash. Try every role: create escrows, fund them, vote, and claim. No real sats, no risk.",
     obRolesTitle: "Play Every Role",
     obRolesDesc: "Switch between Seller, Buyer, and Arbiter using the role bar at the top. Each role sees a different view — just like a real trade. Walk through a full escrow lifecycle in minutes.",
     obCommunityTitle: "Ready for Real Trades?",
@@ -288,7 +288,7 @@ const translations = {
     obFedLimit: "Limite fédération : {limit} sats par échange",
 
     obSandboxTitle: "Bienvenue dans le bac à sable",
-    obSandboxDesc: "Ceci est une démo en direct de notre séquestre multisig 2-sur-3 — propulsé par Fedimint et Lightning. Essayez chaque rôle : créez des séquestres, financez-les, votez et réclamez. Pas de vrais sats, aucun risque.",
+    obSandboxDesc: "Démo en direct de notre séquestre Shamir 2-sur-3 — propulsé par Fedimint e-cash. Essayez chaque rôle : créez, financez, votez et réclamez. Pas de vrais sats, aucun risque.",
     obRolesTitle: "Jouez chaque rôle",
     obRolesDesc: "Basculez entre Vendeur, Acheteur et Arbitre avec la barre de rôle en haut. Chaque rôle a une vue différente — comme dans un vrai échange. Parcourez un cycle complet en quelques minutes.",
     obCommunityTitle: "Prêt pour de vrais échanges ?",
@@ -528,7 +528,7 @@ const translations = {
     obFedLimit: "Límite de federación: {limit} sats por intercambio",
 
     obSandboxTitle: "Bienvenido al Sandbox de Custodia",
-    obSandboxDesc: "Esta es una demo en vivo de nuestra custodia multisig 2-de-3 — impulsada por Fedimint y Lightning. Prueba cada rol: crea custodias, fináncias, vota y reclama. Sin sats reales, sin riesgo.",
+    obSandboxDesc: "Demo en vivo de nuestra custodia Shamir 2-de-3 — impulsada por Fedimint e-cash. Prueba cada rol: crea, financia, vota y reclama. Sin sats reales, sin riesgo.",
     obRolesTitle: "Prueba cada rol",
     obRolesDesc: "Alterna entre Vendedor, Comprador y Árbitro con la barra de roles arriba. Cada rol tiene una vista diferente — como en un intercambio real. Completa un ciclo entero en minutos.",
     obCommunityTitle: "¿Listo para intercambios reales?",
@@ -768,7 +768,7 @@ const translations = {
     obFedLimit: "Kikomo cha shirikisho: sats {limit} kwa biashara",
 
     obSandboxTitle: "Karibu kwenye Sandbox ya Escrow",
-    obSandboxDesc: "Hii ni demo ya moja kwa moja ya escrow yetu ya multisig 2-kati-ya-3 — inayotumia Fedimint na Lightning. Jaribu kila jukumu: tengeneza escrow, weka fedha, piga kura na dai. Hakuna sats halisi, hakuna hatari.",
+    obSandboxDesc: "Demo ya escrow ya Shamir 2-kati-ya-3 — inayotumia Fedimint e-cash. Jaribu kila jukumu: tengeneza, weka fedha, piga kura na dai. Hakuna sats halisi, hakuna hatari.",
     obRolesTitle: "Cheza kila jukumu",
     obRolesDesc: "Badilisha kati ya Muuzaji, Mnunuzi na Msuluhishi kwa kutumia upau wa majukumu juu. Kila jukumu lina mtazamo tofauti — kama biashara halisi. Pita mzunguko mzima katika dakika chache.",
     obCommunityTitle: "Uko tayari kwa biashara halisi?",

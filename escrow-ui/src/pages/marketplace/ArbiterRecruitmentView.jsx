@@ -8,6 +8,7 @@ export default function ArbiterRecruitmentView({ pubkey, onBack, showToast, mapi
   const [displayName, setDisplayName] = useState("");
   const [motivation, setMotivation] = useState("");
   const [communityRoom, setCommunityRoom] = useState("");
+  const [communityRoom2, setCommunityRoom2] = useState("");
   const [fedPrefix, setFedPrefix] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [myStatus, setMyStatus] = useState(null);
@@ -30,12 +31,12 @@ export default function ArbiterRecruitmentView({ pubkey, onBack, showToast, mapi
 
   const handleApply = async () => {
     if (!displayName.trim()) return showToast("Enter your display name", "error");
-    if (!communityRoom.trim() || !communityRoom.includes("fedi:community")) return showToast("Paste your Fedi community room link", "error");
+    if (!communityRoom.trim() || !communityRoom.includes("fedi:community")) return showToast("Paste your Fedi community link", "error");
     setSubmitting(true);
     try {
       const res = await mapi("/arbiters/apply", {
         method: "POST",
-        body: JSON.stringify({ fediProfile, displayName, motivation, communityRoom, fedEcashPrefix: fedPrefix }),
+        body: JSON.stringify({ fediProfile, displayName, motivation, communityRoom, communityRoom2, fedEcashPrefix: fedPrefix }),
       });
       if (res.error) throw new Error(res.error);
       showToast(res.message || "Application submitted!");
@@ -102,14 +103,15 @@ export default function ArbiterRecruitmentView({ pubkey, onBack, showToast, mapi
             </div>
 
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 12, color: "#10b981", fontWeight: 600, display: "block", marginBottom: 4 }}>{"🏛️"} Community Room Link *</label>
+              <label style={{ fontSize: 12, color: "#10b981", fontWeight: 600, display: "block", marginBottom: 4 }}>{"🏛️"} Community Link *</label>
               <input style={M.input} placeholder="fedi:community210v3xz..." value={communityRoom} onChange={e => setCommunityRoom(e.target.value)} />
-              <div style={{ fontSize: 10, color: "#475569", marginTop: 3 }}>Open your Fedi community chat {"→"} tap share/invite {"→"} paste the link</div>
+              <div style={{ fontSize: 10, color: "#475569", marginTop: 3 }}>Open your Fedi community {"→"} tap share/invite {"→"} paste the link</div>
+              <input style={{ ...M.input, marginTop: 8 }} placeholder="Second community link (optional)" value={communityRoom2} onChange={e => setCommunityRoom2(e.target.value)} />
             </div>
 
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 12, color: "#64748b", fontWeight: 600, display: "block", marginBottom: 4 }}>Fedi Profile Link (optional)</label>
-              <input style={M.input} placeholder="@npub1...:server.domain" value={fediProfile} onChange={e => setFediProfile(e.target.value)} />
+              <input style={M.input} placeholder="https://app.fedi.xyz/link?screen=user&id=@npub1...:server.domain" value={fediProfile} onChange={e => setFediProfile(e.target.value)} />
               {detectedFed && (
                 <div style={{ marginTop: 6, padding: "4px 10px", borderRadius: 6, background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.2)", display: "inline-flex", alignItems: "center", gap: 4 }}>
                   <span style={{ fontSize: 11, color: "#a78bfa", fontWeight: 600 }}>{"🏛️"} Detected: {getFedName(null, detectedFed)}</span>

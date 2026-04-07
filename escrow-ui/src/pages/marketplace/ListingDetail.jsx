@@ -210,9 +210,19 @@ export default function ListingDetail({ listing: l, pubkey, onBack, onProfile, o
             <div style={{ marginBottom: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#94a3b8", marginBottom: 4 }}>
                 <span>{isBillPay(l.category) ? "Volunteer pays" : t("mkBaseAmount") || "Base amount"}</span>
-                <span>{fiatAmount} ({baseSats.toLocaleString()} sats)</span>
+                <span>{fiatAmount} {isBillPay(l.category) ? "" : "(" + baseSats.toLocaleString() + " sats)"}</span>
               </div>
-              {premiumSats > 0 && (
+              {premiumSats > 0 && isBillPay(l.category) && (() => {
+                const fm = (l.terms || "").match(/Fiat needed:\s*(\w+)\s+([\d.]+)/);
+                const premFiat = fm ? (parseFloat(fm[2]) * ratePct / 100) : 0;
+                return (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#10b981", marginBottom: 4 }}>
+                    <span>{t("mkVolunteerEarns") || "Volunteer earns"} ({ratePct}%)</span>
+                    <span>+ {fm ? fm[1] + " " + premFiat.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : premiumSats.toLocaleString() + " sats"}</span>
+                  </div>
+                );
+              })()}
+              {premiumSats > 0 && !isBillPay(l.category) && (
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#10b981", marginBottom: 4 }}>
                   <span>{t("mkVolunteerEarns") || "Volunteer earns"} ({ratePct}%)</span>
                   <span>+ {premiumSats.toLocaleString()} sats</span>
@@ -220,7 +230,7 @@ export default function ListingDetail({ listing: l, pubkey, onBack, onProfile, o
               )}
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14, fontWeight: 700, color: "#f59e0b", borderTop: "1px solid rgba(245,158,11,0.15)", paddingTop: 6, marginTop: 4 }}>
                 <span>{isBillPay(l.category) ? t("mkVolunteerReceives") || "Volunteer receives" : t("mkTotal") || "Total"}</span>
-                <span>{totalSats.toLocaleString()} sats</span>
+                <span>{isBillPay(l.category) ? (() => { const fm = (l.terms || "").match(/Fiat needed:\s*(\w+)\s+([\d.]+)/); const base = fm ? parseFloat(fm[2]) : 0; const total = base * (1 + ratePct / 100); return fm ? fm[1] + " " + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : totalSats.toLocaleString() + " sats"; })() : totalSats.toLocaleString() + " sats"}</span>
               </div>
             </div>
           );
@@ -231,7 +241,7 @@ export default function ListingDetail({ listing: l, pubkey, onBack, onProfile, o
               ? (isP2P ? "Starting trade…" : t("mkBuying"))
               : isP2P
                 ? (hasRange ? ("Start Trade — ₿ " + (() => { const b = parseInt(buyAmount) || 0; const rm = (l.terms || "").match(/Rate:\s*(\d+)/); const rp = rm ? parseFloat(rm[1]) : 0; return rp > 0 ? (b + Math.ceil(b * rp / 100)).toLocaleString() : (buyAmount || "?"); })() + " sats") : ("Start Trade — ₿ " + fmtSats(l.priceMsats) + " sats"))
-                : isLending(l.category) ? ("🤝 Accept Loan — ₿ " + fmtSats(l.priceMsats)) : isBillPay(l.category) ? ("🧾 Pay Bill — ₿ " + fmtSats(l.priceMsats)) : ("⚡ Buy for ₿ " + fmtSats(l.priceMsats + (l.shippingCostSats ? l.shippingCostSats * 1000 : 0)))
+                : isLending(l.category) ? ("🤝 Accept Loan — ₿ " + fmtSats(l.priceMsats)) : isBillPay(l.category) ? ("🧾 Pay Bill — " + (() => { const fm = (l.terms || "").match(/Fiat needed:\s*(\w+)\s+([\d.]+)/); const rm = (l.terms || "").match(/Rate:\s*(\d+)/); const rate = rm ? parseFloat(rm[1]) : 0; if (fm) { const total = parseFloat(fm[2]) * (1 + rate / 100); return fm[1] + " " + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } return "₿ " + fmtSats(l.priceMsats); })()) : ("⚡ Buy for ₿ " + fmtSats(l.priceMsats + (l.shippingCostSats ? l.shippingCostSats * 1000 : 0)))
             }
           </button>
         )}

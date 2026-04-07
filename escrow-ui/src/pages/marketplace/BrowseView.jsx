@@ -307,7 +307,7 @@ export default function BrowseView({ listings, loading, pubkey, searchQuery, set
             ...(subdomain === "p2p" ? { background: "linear-gradient(135deg, #f59e0b, #d97706)" } :
                 subdomain === "lending" ? { background: "linear-gradient(135deg, #10b981, #059669)" } :
                 subdomain === "market" ? { background: "linear-gradient(135deg, #a78bfa, #7c3aed)" } : {})
-          }} onClick={onCreate}><Icons.Plus /> {subdomain === "p2p" ? t("mkSellSats") || "Sell Sats" : subdomain === "lending" ? "Offer Loan" : subdomain === "market" ? "List Item" : t("mkSell")}</button>
+          }} onClick={onCreate}><Icons.Plus /> {subdomain === "p2p" ? t("mkSellSats") || "Sell Sats" : subdomain === "lending" ? t("mkOfferLoan") || "Offer Loan" : subdomain === "market" ? t("mkListItem") || "List Item" : t("mkSell")}</button>
           <button style={{ ...M.secondaryBtn, flex: 1, minWidth: 0, justifyContent: "center", position: "relative", ...(activeOrderCount > 0 ? { borderColor: "rgba(245,158,11,0.4)", boxShadow: "0 0 12px rgba(245,158,11,0.15)", animation: "pulse 2s infinite" } : {}) }} onClick={onOrders}>
             <Icons.Package /> {t("mkOrders")}
             {activeOrderCount > 0 && (
