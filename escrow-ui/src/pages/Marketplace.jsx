@@ -686,7 +686,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
       {view === "orderDetail" && selected && (
         <OrderDetailView
           order={selected} pubkey={pubkey}
-          onBack={() => { const s = selected?.status; setSelected(null); if (prevView === "billpay") { setView("billpay"); } else { openOrders(); if (s === "completed") setTimeout(() => setOrderFilter("completed"), 50); else if (s === "cancelled" || s === "expired") setTimeout(() => setOrderFilter("cancelled"), 50); } }}
+          onBack={() => { const s = selected?.status; setSelected(null); if (prevView === "billpay") { setView("billpay"); } else { openOrders(); if (s === "completed") setOrderFilterHint("completed"); else if (s === "cancelled" || s === "expired") setOrderFilterHint("cancelled"); } }}
           onProfile={openProfile}
           onSwitchToEscrow={onSwitchToEscrow}
           showToast={showToast} loading={actionLoading} setLoading={setActionLoading}

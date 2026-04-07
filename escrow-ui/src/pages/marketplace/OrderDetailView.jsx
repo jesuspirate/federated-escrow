@@ -255,8 +255,7 @@ export default function OrderDetailView({ order: o, pubkey, onBack, onProfile, o
                       if (fm2 && o.listingCategory === "bill-pay") {
                         const amt2 = parseFloat(fm2[2]);
                         const rate2 = rm2 ? parseFloat(rm2[1]) : 0;
-                        const withPremium2 = amt2 * (1 + rate2 / 100);
-                        return fm2[1] + " " + withPremium2.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        return fm2[1] + " " + amt2.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                       }
                       return fmtFiat(base, fiatRates, "USD");
                     })(); })() : "View Trade") : "🧾 " + (t("mkLockSats") || "Lock Sats")) : (isBuyer ? "🔐 " + (t("mkLockPayment") || "Lock Payment") : "View Trade"))))
