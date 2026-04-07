@@ -354,9 +354,12 @@ export default function App() {
   }, []);
 
   const handleSubdomainSwitch = (newSub) => {
-    // In browser/sandbox: navigate to actual subdomain URL
-    const urls = { market: "https://market.satoshimarket.app", p2p: "https://p2p.satoshimarket.app", lending: "https://lending.satoshimarket.app", escrow: "https://escrow.satoshimarket.app" };
-    if (urls[newSub]) { window.location.href = urls[newSub]; return; }
+    // Browser/sandbox: navigate to real subdomain URL for truthful routing
+    // Fedi: use React state for instant switching (no reload)
+    if (isSandbox) {
+      const urls = { market: "https://market.satoshimarket.app", p2p: "https://p2p.satoshimarket.app", lending: "https://lending.satoshimarket.app", escrow: "https://escrow.satoshimarket.app" };
+      if (urls[newSub]) { window.location.href = urls[newSub]; return; }
+    }
     setSandboxSubdomain(newSub);
     if (newSub === "escrow") { setActiveApp("escrow"); } else { setActiveApp("marketplace"); }
   }
