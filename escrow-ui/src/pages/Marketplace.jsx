@@ -244,7 +244,7 @@ function useBtcPrice() {
 // Per-view loading states prevent cross-contamination between views.
 // ═══════════════════════════════════════════════════════════════════════
 
-export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscrow, initialEscrowId, onOpened }) {
+export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscrow, initialEscrowId, onOpened , onRegisterGoHome}) {
   const [sessionReady, setSessionReady] = useState(isDevMode());
   const [lightMode, setLightMode] = useState(() => { try { return localStorage.getItem("sm_lightmode") === "1"; } catch { return false; } });
   useEffect(() => {
@@ -298,8 +298,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
     if (!sessionReady || !initialEscrowId || !pubkey) return;
 
     // Special marker: go directly to orders list (no API lookup)
-    if (initialEscrowId === "__HUB__") { setView("hub"); if (onOpened) onOpened(); }
-    else if (initialEscrowId === "__ORDERS__") {
+    if (initialEscrowId === "__ORDERS__") {
     if (initialEscrowId === "__ORDERS_ALL__") {
       setView("orders");
       loadOrders();
@@ -362,6 +361,12 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
 
   const switchLocale = useCallback((code) => {
     setLocale(code);
+
+  // Register go-home callback for AppNavigator retap
+  useEffect(() => {
+    if (onRegisterGoHome) onRegisterGoHome(() => setView("hub"));
+  }, [onRegisterGoHome]);
+
     setLocaleState(code);
   }, []);
 
