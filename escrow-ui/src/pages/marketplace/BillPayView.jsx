@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { BILL_TYPES, PAYMENT_METHODS } from "./constants";
 
-export default function BillPayView({ listings, loading, pubkey, onBack, onCreate, onOpen, onOrders, onRefresh, fiatRates, showToast, subdomain, activeOrderCount, mapi, isDevMode }) {
+export default function BillPayView({ onBrowse, listings, loading, pubkey, onBack, onCreate, onOpen, onOrders, onRefresh, fiatRates, showToast, subdomain, activeOrderCount, mapi, isDevMode }) {
   const [mode, setMode] = useState(null);
   const [posting, setPosting] = useState(false);
   const [billType, setBillType] = useState(null);

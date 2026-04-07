@@ -27,7 +27,6 @@ import ListingDetail from "./marketplace/ListingDetail";
 // NIP-98 Nostr auth • Fedi + browser sandbox
 // ═══════════════════════════════════════════════════════════════════════
 
-
 // ── Auth ─────────────────────────────────────────────────────────────
 
 function _detectFediApp() {
@@ -239,12 +238,6 @@ function useBtcPrice() {
   }, []);
   return prices;
 }
-
-
-
-
-
-
 
 // ═══════════════════════════════════════════════════════════════════════
 // MAIN MARKETPLACE COMPONENT
@@ -642,6 +635,7 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
         <BillPayView
           listings={listings} loading={browseLoading} pubkey={pubkey}
           onBack={() => setView(["market","p2p","lending"].includes(subdomain) ? "hub" : "browse")}
+
           onBrowse={() => { setPrevView("hub"); setView("browse"); }}
           onCreate={() => { setPrevView("billpay"); setView("create"); }}
           onOpen={(id) => { setPrevView("billpay"); openListing(id); }}
@@ -869,13 +863,9 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
 // CATEGORY QUICK-FILTERS
 // ═══════════════════════════════════════════════════════════════════════
 
-
-
 // ═══════════════════════════════════════════════════════════════════════
 // GLOBE LANG PICKER — collapses 4 flag buttons into a single globe icon
 // ═══════════════════════════════════════════════════════════════════════
-
-
 
 // ═══════════════════════════════════════════════════════════════════════
 // EDIT LISTING VIEW — seller can update title, description, price, qty
@@ -885,26 +875,16 @@ function MarketplaceOnboarding({ onComplete, subdomain }) {
 // LISTING DETAIL
 // ═══════════════════════════════════════════════════════════════════════
 
-
 // ═══════════════════════════════════════════════════════════════════════
 // CREATE LISTING VIEW
 // ═══════════════════════════════════════════════════════════════════════
-
-
 
 // =====================================================================
 // BILL PAY VIEW - Simplified two-door flow
 // "I need fiat for a bill" / "I want to buy sats"
 // =====================================================================
 
-
-
-
-
-
-
 // ═══════════════════════════════════════════════════════════════════════
 // SELLER PROFILE VIEW
 // ═══════════════════════════════════════════════════════════════════════
-
 

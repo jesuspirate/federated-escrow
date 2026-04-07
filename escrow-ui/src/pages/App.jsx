@@ -291,10 +291,7 @@ export default function App() {
     return "marketplace";
   })();
   const isSandbox = _isSandboxCheck();
-  const [sandboxSubdomain, setSandboxSubdomain] = useState(() => {
-    if (realSubdomain !== "sandbox" && realSubdomain !== "marketplace" && !isSandbox) return realSubdomain;
-    return "market";
-  });
+  const [sandboxSubdomain, setSandboxSubdomain] = useState(() => { return realSubdomain === "marketplace" ? "market" : realSubdomain; });
   const isDirectSubdomain = ["escrow", "lending"].includes(realSubdomain);
   const showProductionNav = !isSandbox && !isDirectSubdomain && realSubdomain !== "marketplace";
   const [prodSubdomain, setProdSubdomain] = useState(realSubdomain === "market" ? "market" : realSubdomain);
@@ -356,13 +353,13 @@ export default function App() {
     setActiveApp("marketplace"); setEscrowInTrade(false);
   }, []);
 
-  const handleSubdomainSwitch = useCallback((newSub) => {
-    if (isSandbox) setSandboxSubdomain(newSub);
-    else setProdSubdomain(newSub);
-    setInitialEscrowId(null);
-    setInitialMarketplaceEscrowId(null);
-    setActiveApp(newSub === "escrow" ? "escrow" : "marketplace"); setEscrowInTrade(false);
-  }, [isSandbox]);
+  const handleSubdomainSwitch = (newSub) => {
+    // In browser/sandbox: navigate to actual subdomain URL
+    const urls = { market: "https://market.satoshimarket.app", p2p: "https://p2p.satoshimarket.app", lending: "https://lending.satoshimarket.app", escrow: "https://escrow.satoshimarket.app" };
+    if (urls[newSub]) { window.location.href = urls[newSub]; return; }
+    setSandboxSubdomain(newSub);
+    if (newSub === "escrow") { setActiveApp("escrow"); } else { setActiveApp("marketplace"); }
+  }
 
   // ── Landing page for root domain ──────────────────────────────
   // Landing page for root domain (satoshimarket.app) — not sandbox, not subdomains
