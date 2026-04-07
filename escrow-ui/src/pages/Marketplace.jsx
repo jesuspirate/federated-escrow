@@ -345,7 +345,6 @@ export default function Marketplace({ pubkey, devRole, subdomain, onSwitchToEscr
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [profilePubkey, setProfilePubkey] = useState(null);
-  const [prevView, setPrevView] = useState("browse");
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState({ msg: "", type: "ok", visible: false });
   const [locale, setLocaleState] = useState(getLocale);
