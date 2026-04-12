@@ -1102,8 +1102,14 @@ router.post("/:id/confirm-ecash-received", (req: AuthenticatedRequest, res: Resp
 
     // Now safe to complete and wipe notes
     DB.completeEscrow(row.id);
-    // Wipe the encrypted notes from DB
-    try { db.prepare("UPDATE escrows SET locked_notes = NULL WHERE id = ?").run(row.id); } catch(e) {}
+    // Wipe the encrypted notes from DB — but preserve SHAMIR flag for retry recovery
+    try {
+      if (row.lock_mode !== "ecash-nip44") {
+        db.prepare("UPDATE escrows SET locked_notes = NULL WHERE id = ?").run(row.id);
+      }
+      // For ecash-nip44: keep locked_notes = 'SHAMIR' so ecash-payout can retry
+      // The SSS shares remain in shamir_seller/buyer/arbiter columns
+    } catch(e) {}
 
 
     // ── Auto-create repayment escrow for lending trades ──
