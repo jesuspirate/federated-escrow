@@ -135,12 +135,12 @@ export default function SubdomainHubView({ subdomain, onBrowse, onCreate, onOrde
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {cfg.cards.map((card) => (
               <button key={card.action} onClick={card.action === "browse" ? onBrowse : card.action === "create" ? onCreate : null}
-                style={{ display: "flex", flexDirection: "column", gap: 6, padding: "13px 12px", borderRadius: 12, background: "rgba(15,23,42,0.5)", border: "1px solid #1e293b", cursor: "pointer", textAlign: "left" }}
+                style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 11px", borderRadius: 12, background: "rgba(15,23,42,0.5)", border: "1px solid #1e293b", cursor: "pointer", textAlign: "left" }}
                 onMouseEnter={e => e.currentTarget.style.borderColor = "#334155"}
                 onMouseLeave={e => e.currentTarget.style.borderColor = "#1e293b"}
               >
-                <div style={{ width: 32, height: 32, borderRadius: 9, background: card.iconBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>{card.icon}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: card.titleColor }}>{card.title}</div>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: card.iconBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>{card.icon}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: card.titleColor }}>{card.title}</div>
                 <div style={{ fontSize: 10, color: "#64748b", lineHeight: 1.4 }}>{card.desc}</div>
                 <div style={{ fontSize: 10, color: "#334155", alignSelf: "flex-end" }}>→</div>
               </button>
