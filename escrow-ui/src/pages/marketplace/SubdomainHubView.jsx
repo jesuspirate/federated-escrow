@@ -105,18 +105,6 @@ export default function SubdomainHubView({ subdomain, onBrowse, onCreate, onOrde
         </div>
       </div>
       <div style={{ padding: "0 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-        {isP2P && onBillPay && (
-          <button onClick={onBillPay} style={{ width: "100%", padding: "20px 16px", borderRadius: 16, background: "linear-gradient(135deg, rgba(245,158,11,0.10), rgba(245,158,11,0.03))", border: "1.5px solid rgba(245,158,11,0.3)", cursor: "pointer", textAlign: "left", WebkitTapHighlightColor: "transparent" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ width: 52, height: 52, borderRadius: 14, background: "rgba(245,158,11,0.15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>🧾</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 17, fontWeight: 800, color: "#f59e0b", marginBottom: 3 }}>Pay a Bill</div>
-                <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.4 }}>Need fiat? Lock sats. Your community pays your bill.</div>
-              </div>
-              <span style={{ color: "#f59e0b", fontSize: 20, flexShrink: 0 }}>{"→"}</span>
-            </div>
-          </button>
-        )}
         {/* ── Hero card: Pay a Bill (p2p only) ── */}
         {cfg.billPayHero && (
           <button onClick={onBillPay}
