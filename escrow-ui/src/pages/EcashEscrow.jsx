@@ -1588,6 +1588,353 @@ function TradeChat({ escrowId, pubkey, participants }) {
   );
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// FIAT OFF-RAMP — Cash out sats after trade completion
+// ═══════════════════════════════════════════════════════════════════════
+// Currency-agnostic: detects provider from currency in escrow terms.
+//   TZS → ChapSmart (M-Pesa)    | Live now
+//   CFA/KES → Flash (Alphonse)  | Coming soon — detection ready
+// Shows for: Bill Pay, Marketplace, Lending disbursement
+// Skips: P2P (buyer wants sats), Repayment (separate flow)
+
+function FiatOfframp({ amountSats, currency, tradeType, showToast, pubkey }) {
+  const [expanded, setExpanded] = useState(false);
+  const [tab, setTab] = useState("send"); // send | airtime
+  const [step, setStep] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [account, setAccount] = useState(() => { try { return localStorage.getItem("sm_chap_account") || ""; } catch { return ""; } });
+  const [amountFiat, setAmountFiat] = useState("");
+  const [phone, setPhone] = useState("");
+  const [recipientName, setRecipientName] = useState("");
+  const [quote, setQuote] = useState(null);
+  const [invoice, setInvoice] = useState(null);
+  const [result, setResult] = useState(null);
+  const [polling, setPolling] = useState(false);
+  const pollRef = useRef(null);
+
+  useEffect(() => { return () => { if (pollRef.current) clearInterval(pollRef.current); }; }, []);
+
+  // Provider detection — extensible for Flash
+  const provider = currency === "TZS" ? "chapsmart" : null;
+  const providerName = provider === "chapsmart" ? "ChapSmart" : null;
+  const providerEmoji = currency === "TZS" ? "\u{1F1F9}\u{1F1FF}" : currency === "CFA" ? "\u{1F1E8}\u{1F1EB}" : currency === "KES" ? "\u{1F1F0}\u{1F1EA}" : "\u{1F30D}";
+  const mobileMoney = currency === "TZS" ? "M-Pesa" : currency === "KES" ? "M-Pesa" : currency === "CFA" ? "Mobile Money" : "Mobile Money";
+
+  // Context-aware messaging per trade type
+  const ctaMessage = tradeType === "billpay"
+    ? "Convert your volunteer reward to " + currency
+    : tradeType === "lending"
+    ? "Receive your loan in " + currency + " via " + mobileMoney
+    : "Cash out your sales to " + currency;
+
+  // If no provider wired yet, show a "coming soon" teaser
+  if (!provider) {
+    return (
+      <div style={{
+        padding: "12px 16px", borderRadius: 14, marginBottom: 14,
+        border: "1px dashed rgba(100,116,139,0.3)", background: "rgba(100,116,139,0.04)",
+        display: "flex", alignItems: "center", gap: 12, opacity: 0.7,
+      }}>
+        <span style={{ fontSize: 20 }}>{providerEmoji}</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#94a3b8" }}>{currency} off-ramp coming soon</div>
+          <div style={{ fontSize: 11, color: "#64748b" }}>Your sats are in your wallet. {currency} cash-out launching shortly.</div>
+        </div>
+      </div>
+    );
+  }
+
+  const ensureAccount = async () => {
+    if (account) return account;
+    if (window.nostr) {
+      try {
+        const pk = await window.nostr.getPublicKey();
+        const loginEvt = { kind: 27235, created_at: Math.floor(Date.now() / 1000), tags: [["u", location.origin + "/api/chapsmart/nostr/login"], ["method", "POST"]], content: "" };
+        const signedLogin = await window.nostr.signEvent(loginEvt);
+        const loginRes = await fetch("/api/chapsmart/nostr/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ signedEvent: signedLogin }) });
+        const loginData = await loginRes.json();
+        if (loginData.success && loginData.accountNumber) {
+          setAccount(loginData.accountNumber);
+          try { localStorage.setItem("sm_chap_account", loginData.accountNumber); } catch {}
+          return loginData.accountNumber;
+        }
+        if (loginRes.status === 404) {
+          const signupEvt = { kind: 27235, created_at: Math.floor(Date.now() / 1000), tags: [["u", location.origin + "/api/chapsmart/nostr/signup"], ["method", "POST"]], content: "" };
+          const signedSignup = await window.nostr.signEvent(signupEvt);
+          const signupRes = await fetch("/api/chapsmart/nostr/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ signedEvent: signedSignup }) });
+          const signupData = await signupRes.json();
+          if (signupData.success && signupData.accountNumber) {
+            setAccount(signupData.accountNumber);
+            try { localStorage.setItem("sm_chap_account", signupData.accountNumber); } catch {}
+            return signupData.accountNumber;
+          }
+        }
+      } catch (err) { console.warn("[offramp] Nostr auth failed:", err); }
+    }
+    try {
+      const res = await fetch("/api/chapsmart/create-account", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const data = await res.json();
+      if (data.success && data.accountNumber) {
+        setAccount(data.accountNumber);
+        try { localStorage.setItem("sm_chap_account", data.accountNumber); } catch {}
+        return data.accountNumber;
+      }
+    } catch {}
+    showToast("Failed to create account", "error");
+    return null;
+  };
+
+  const getQuote = async () => {
+    if (!amountFiat || !phone) { showToast("Enter amount and phone number", "error"); return; }
+    setLoading(true);
+    const acct = await ensureAccount();
+    if (!acct) { setLoading(false); return; }
+    try {
+      let cleanPhone = phone.replace(/[^0-9]/g, "");
+      if (cleanPhone.startsWith("255")) cleanPhone = "0" + cleanPhone.substring(3);
+      if (cleanPhone.startsWith("0255")) cleanPhone = "0" + cleanPhone.substring(4);
+      if (!cleanPhone.startsWith("0") && cleanPhone.length >= 9) cleanPhone = "0" + cleanPhone;
+      if (cleanPhone.length !== 10 || !cleanPhone.startsWith("0")) {
+        showToast("Phone must be 10 digits (e.g. 0741000000)", "error");
+        setLoading(false); return;
+      }
+      const endpoint = tab === "airtime" ? "/api/chapsmart/airtime/quote" : "/api/chapsmart/quote";
+      const body = tab === "airtime"
+        ? { amountTZS: parseInt(amountFiat), phoneNumber: cleanPhone, accountNumber: acct }
+        : { amountTZS: parseInt(amountFiat), phoneNumber: cleanPhone, recipientName: recipientName || "Recipient", accountNumber: acct };
+      const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!data.success && data.error) throw new Error(data.error);
+      setQuote(data);
+      setStep(1);
+    } catch (err) { showToast(err.message || "Quote failed", "error"); }
+    setLoading(false);
+  };
+
+  const generateInvoice = async () => {
+    setLoading(true);
+    try {
+      const endpoint = tab === "airtime" ? "/api/chapsmart/airtime/generate" : "/api/chapsmart/generate-invoice";
+      const res = await fetch(endpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ quoteId: quote.quoteId }) });
+      const data = await res.json();
+      if (!data.success && data.error) throw new Error(data.error);
+      setInvoice(data);
+      setStep(2);
+      startPolling(data.invoiceId);
+      if (window.webln && data.bolt11) {
+        try { await window.webln.enable(); await window.webln.sendPayment(data.bolt11); showToast("Payment sent! Delivering..."); } catch {}
+      }
+    } catch (err) { showToast(err.message || "Invoice failed", "error"); }
+    setLoading(false);
+  };
+
+  const startPolling = (invoiceId) => {
+    setPolling(true);
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch("/api/chapsmart/status/" + invoiceId);
+        const data = await res.json();
+        if (data.status === "completed" || data.status === "settled") {
+          clearInterval(pollRef.current); setPolling(false);
+          setResult({ status: "ok" }); setStep(3);
+          showToast(tab === "airtime" ? "Airtime delivered!" : currency + " sent to " + mobileMoney + "!");
+        } else if (data.status === "failed" || data.status === "expired") {
+          clearInterval(pollRef.current); setPolling(false);
+          showToast("Transaction " + data.status, "error");
+        }
+      } catch {}
+    }, 5000);
+  };
+
+  const reset = () => { setStep(0); setQuote(null); setInvoice(null); setResult(null); setAmountFiat(""); setPhone(""); setRecipientName(""); setExpanded(true); };
+
+  const btnBase = { width: "100%", padding: "10px 0", borderRadius: 10, border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer" };
+
+  // ── Collapsed state: attractive CTA button ──
+  if (!expanded) {
+    return (
+      <button onClick={() => setExpanded(true)} style={{
+        width: "100%", padding: "14px 16px", borderRadius: 14, cursor: "pointer",
+        border: "1px solid rgba(59,130,246,0.25)",
+        background: "linear-gradient(135deg, rgba(59,130,246,0.08), rgba(245,158,11,0.06))",
+        display: "flex", alignItems: "center", gap: 12, marginBottom: 14,
+      }}>
+        <span style={{ fontSize: 22 }}>{providerEmoji}</span>
+        <div style={{ textAlign: "left", flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>
+            <span style={{ color: "#3b82f6" }}>Chap</span><span style={{ color: "#f59e0b" }}>Smart</span>
+            {" "}&mdash; Cash out to {mobileMoney}
+          </div>
+          <div style={{ fontSize: 11, color: "#64748b" }}>{ctaMessage}</div>
+        </div>
+        <span style={{ fontSize: 18, color: "#3b82f6" }}>&#x26A1;</span>
+      </button>
+    );
+  }
+
+  // ── Expanded: full off-ramp flow ──
+  return (
+    <div style={{ marginBottom: 14, borderRadius: 14, border: "1px solid rgba(59,130,246,0.2)", background: "linear-gradient(145deg, #0f1629, #111827)", overflow: "hidden" }}>
+      {/* Header */}
+      <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #1e293b" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 18 }}>{providerEmoji}</span>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc" }}>
+            <span style={{ color: "#3b82f6" }}>Chap</span><span style={{ color: "#f59e0b" }}>Smart</span>
+          </span>
+          <span style={{ fontSize: 10, padding: "2px 6px", borderRadius: 6, background: "rgba(16,185,129,0.12)", color: "#10b981", fontWeight: 600 }}>
+            {tradeType === "billpay" ? "Bill Pay reward" : tradeType === "lending" ? "Loan disbursement" : "Sale proceeds"}
+          </span>
+        </div>
+        <button onClick={() => { setExpanded(false); if (pollRef.current) clearInterval(pollRef.current); }} style={{ background: "none", border: "none", color: "#64748b", fontSize: 18, cursor: "pointer", padding: "4px 8px" }}>&times;</button>
+      </div>
+
+      {/* Tabs */}
+      {step < 2 && (
+        <div style={{ display: "flex", gap: 4, padding: "10px 12px 6px", background: "#0a0e17", borderRadius: 8, margin: "10px 12px 0" }}>
+          {[["send", "\u{1F4B8} Send " + currency], ["airtime", "\u{1F4F1} Airtime"]].map(([key, label]) => (
+            <button key={key} onClick={() => { setTab(key); setStep(0); setQuote(null); }} style={{
+              ...btnBase, flex: 1,
+              background: tab === key ? "rgba(59,130,246,0.15)" : "transparent",
+              color: tab === key ? "#3b82f6" : "#64748b",
+            }}>{label}</button>
+          ))}
+        </div>
+      )}
+
+      <div style={{ padding: "12px 14px 16px" }}>
+        {/* Step 0: Form */}
+        {step === 0 && (
+          <div>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>Amount ({currency})</label>
+              <input type="number" value={amountFiat} onChange={e => setAmountFiat(e.target.value)} placeholder="e.g. 10,000"
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #1e293b", background: "#0f1629", color: "#f8fafc", fontSize: 14, marginTop: 4, outline: "none", boxSizing: "border-box" }} />
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>Phone Number</label>
+              <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="0741000000"
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #1e293b", background: "#0f1629", color: "#f8fafc", fontSize: 14, marginTop: 4, outline: "none", boxSizing: "border-box" }} />
+            </div>
+            {tab === "send" && (
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>Recipient Name</label>
+                <input type="text" value={recipientName} onChange={e => setRecipientName(e.target.value)} placeholder={"Name on " + mobileMoney}
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid #1e293b", background: "#0f1629", color: "#f8fafc", fontSize: 14, marginTop: 4, outline: "none", boxSizing: "border-box" }} />
+              </div>
+            )}
+            <button onClick={getQuote} disabled={loading} style={{
+              width: "100%", padding: "12px 0", borderRadius: 10, border: "none", cursor: "pointer",
+              background: "linear-gradient(135deg, #3b82f6, #2563eb)", color: "#fff",
+              fontSize: 14, fontWeight: 700, opacity: loading ? 0.6 : 1,
+            }}>
+              {loading ? "Getting quote..." : "\u{26A1} Get Quote"}
+            </button>
+          </div>
+        )}
+
+        {/* Step 1: Quote confirmation */}
+        {step === 1 && quote && (
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 4 }}>You pay</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#f59e0b" }}>
+              {quote.youPay?.sats?.toLocaleString() || "?"} sats
+            </div>
+            <div style={{ fontSize: 13, color: "#94a3b8", margin: "6px 0" }}>&rarr;</div>
+            <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 2 }}>{tab === "airtime" ? "Airtime delivered" : "They receive"}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: "#10b981" }}>
+              {parseInt(amountFiat).toLocaleString()} {currency}
+            </div>
+            <div style={{ fontSize: 11, color: "#475569", margin: "8px 0 14px" }}>to {phone}</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => { setStep(0); setQuote(null); }} style={{ ...btnBase, flex: 1, background: "#1e293b", color: "#94a3b8" }}>&larr; Back</button>
+              <button onClick={generateInvoice} disabled={loading} style={{
+                ...btnBase, flex: 2,
+                background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff",
+                opacity: loading ? 0.6 : 1,
+              }}>
+                {loading ? "Generating..." : "\u{26A1} Confirm & Pay"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Pay Invoice */}
+        {step === 2 && invoice && (
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 32, marginBottom: 6 }}>&#x26A1;</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc" }}>
+              {invoice.youPay?.sats?.toLocaleString() || "?"} sats
+            </div>
+            {invoice.checkoutLink && (
+              <a href={invoice.checkoutLink} target="_blank" rel="noopener noreferrer"
+                style={{ display: "block", padding: "10px", borderRadius: 8, background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.15)", color: "#3b82f6", fontSize: 12, fontWeight: 600, textDecoration: "none", margin: "10px 0" }}>
+                &#x{1F517} Open BTCPay Checkout
+              </a>
+            )}
+            {invoice.bolt11 && (
+              <button onClick={() => { navigator.clipboard.writeText(invoice.bolt11).then(() => showToast("Invoice copied!"), () => {}); }}
+                style={{ ...btnBase, background: "#1e293b", color: "#94a3b8", marginBottom: 8 }}>
+                &#x{1F4CB} Copy BOLT-11 Invoice
+              </button>
+            )}
+            {window.webln && invoice.bolt11 && (
+              <button onClick={async () => {
+                try { await window.webln.enable(); await window.webln.sendPayment(invoice.bolt11); showToast("Payment sent!"); } catch (err) { showToast("Payment failed", "error"); }
+              }} style={{ ...btnBase, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17" }}>
+                &#x26A1; Pay with Fedi Wallet
+              </button>
+            )}
+            {polling && (
+              <div style={{ marginTop: 12, fontSize: 12, color: "#3b82f6", animation: "pulse 1.5s infinite" }}>
+                Waiting for delivery...
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: Success */}
+        {step === 3 && (
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 8 }}>&#x2705;</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "#10b981" }}>
+              {tab === "airtime" ? "Airtime Delivered!" : currency + " Sent to " + mobileMoney + "!"}
+            </div>
+            <div style={{ fontSize: 13, color: "#94a3b8", margin: "6px 0 14px" }}>
+              {parseInt(amountFiat).toLocaleString()} {currency} &rarr; {phone}
+            </div>
+            <button onClick={reset} style={{ ...btnBase, background: "rgba(59,130,246,0.1)", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.2)" }}>
+              Send More
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Helper: extract fiat currency from escrow terms
+function extractCurrencyFromTerms(terms, description) {
+  const combined = (terms || "") + " " + (description || "");
+  const match = combined.match(/Currency:\s*([A-Z]{3})/i);
+  return match ? match[1].toUpperCase() : null;
+}
+
+// Helper: determine if this trade type should show off-ramp
+function shouldShowOfframp(description) {
+  if (!description) return false;
+  // Bill Pay: volunteer receives sats, wants fiat → YES
+  if (description.startsWith("Bill Pay:")) return "billpay";
+  // Marketplace: seller receives sats, wants operating capital → YES
+  if (description.startsWith("Marketplace:") || description.startsWith("Marketplace Shipping:")) return "marketplace";
+  // Lending: borrower receives loan sats, wants local currency → YES
+  if (description.startsWith("Lending:")) return "lending";
+  // P2P: buyer just BOUGHT sats, doesn't want fiat → NO
+  // Repayment: complex reverse flow → skip for now
+  return false;
+}
+
 function DetailView({ escrow: e, pubkey, onBack, onRefresh, showToast, setLoading, loading, onSwitchToMarketplace, onSwitchToMarketplaceOrders, cameFromMarketplace, subdomain }) {
   const role = e.yourRole || null;
   const status = e.status;
@@ -2251,6 +2598,16 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
             </button>
           </div>
         )}
+
+        {/* ── Fiat Off-Ramp: Marketplace seller cash-out ── */}
+        {status === "COMPLETED" && (() => {
+          const _tt = shouldShowOfframp(e.description);
+          const _cur = extractCurrencyFromTerms(e.terms, e.description);
+          const _lr = e.lock_role || "seller";
+          const _isWinner = (e.resolvedOutcome === "release" && role === (_lr === "seller" ? "buyer" : "seller")) || (e.resolvedOutcome === "refund" && role === _lr);
+          if (!_tt || !_cur || !_isWinner) return null;
+          return <FiatOfframp amountSats={Math.floor((e.amountMsats || 0) / 1000)} currency={_cur} tradeType={_tt} showToast={showToast} pubkey={pubkey} />;
+        })()}
         {status === "COMPLETED" && !e.description?.startsWith("Marketplace:") && (
           <div style={{ margin: "0 0 16px", padding: "16px 20px", borderRadius: 16, background: autoRepaymentId ? "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04))" : "rgba(16,185,129,0.08)", border: autoRepaymentId ? "2px solid rgba(245,158,11,0.4)" : "1px solid rgba(16,185,129,0.2)", textAlign: "center" }}>
             <div style={{ fontSize: 28, marginBottom: 6 }}>{autoRepaymentId ? "✅💰" : "🎉"}</div>
@@ -2262,6 +2619,16 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
                 A repayment escrow has been automatically created. The borrower must lock their repayment sats.
               </div>
             )}
+
+        {/* ── Fiat Off-Ramp: Bill Pay / Lending / other trades ── */}
+        {status === "COMPLETED" && !e.description?.startsWith("Marketplace:") && (() => {
+          const _tt2 = shouldShowOfframp(e.description);
+          const _cur2 = extractCurrencyFromTerms(e.terms, e.description);
+          const _lr2 = e.lock_role || "seller";
+          const _isWinner2 = (e.resolvedOutcome === "release" && role === (_lr2 === "seller" ? "buyer" : "seller")) || (e.resolvedOutcome === "refund" && role === _lr2);
+          if (!_tt2 || !_cur2 || !_isWinner2) return null;
+          return <FiatOfframp amountSats={Math.floor((e.amountMsats || 0) / 1000)} currency={_cur2} tradeType={_tt2} showToast={showToast} pubkey={pubkey} />;
+        })()}
             {autoRepaymentId && onSwitchToMarketplace && (
               <button onClick={() => onSwitchToMarketplace(autoRepaymentId)} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 0", marginBottom: 8, borderRadius: 12, border: "none", cursor: "pointer", background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontSize: 15, fontWeight: 700, boxShadow: "0 4px 16px rgba(245,158,11,0.25)" }}>
                 💰 Open Repayment Escrow
@@ -2546,6 +2913,16 @@ voteConfirmRefund: "Open a dispute? The arbiter will review.",
           <div style={{ textAlign: "center", padding: "12px 0", animation: "celebrateBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1)" }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: "#10b981" }}>{t("tradeComplete")}</div>
             <div style={{ fontSize: 11, color: "#475569", marginTop: 4 }}>{t("satsDelivered", { amount: fmtSats(e.amountMsats) })}</div>
+
+        {/* ── Fiat Off-Ramp: post-celebration (direct escrow view) ── */}
+        {(status === "COMPLETED" || (status === "CLAIMED" && e.resolvedOutcome)) && (() => {
+          const _tt3 = shouldShowOfframp(e.description);
+          const _cur3 = extractCurrencyFromTerms(e.terms, e.description);
+          const _lr3 = e.lock_role || "seller";
+          const _isWinner3 = (e.resolvedOutcome === "release" && role === (_lr3 === "seller" ? "buyer" : "seller")) || (e.resolvedOutcome === "refund" && role === _lr3);
+          if (!_tt3 || !_cur3 || !_isWinner3) return null;
+          return <FiatOfframp amountSats={Math.floor((e.amountMsats || 0) / 1000)} currency={_cur3} tradeType={_tt3} showToast={showToast} pubkey={pubkey} />;
+        })()}
           </div>
         )}
 
