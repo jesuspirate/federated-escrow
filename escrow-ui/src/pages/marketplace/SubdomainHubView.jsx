@@ -27,11 +27,18 @@ const HUB_CONFIG = {
     icon: "₿", title: "P2P Exchange",
     tagline: "Buy & sell Bitcoin · No middleman · Non-custodial",
     color: "#f59e0b",
+    billPayHero: {
+      icon: "🧾",
+      title: "Pay a Bill",
+      desc: "Need fiat? Lock your sats. Your community pays the bill and claims the sats.",
+      ctaLabel: "Get My Bill Paid →",
+      action: "billpay",
+    },
     cards: [
-      { icon: "💰", iconBg: "rgba(245,158,11,0.15)", title: "Buy Bitcoin", titleColor: "#f59e0b",
-        desc: "Send fiat to a seller. Get sats released from escrow.", action: "browse" },
-      { icon: "🏠", iconBg: "rgba(16,185,129,0.15)", title: "Sell Bitcoin", titleColor: "#10b981",
-        desc: "Lock your sats. Receive fiat. Release sats when paid.", action: "create" },
+      { icon: "₿", iconBg: "rgba(245,158,11,0.1)", title: "Buy Bitcoin", titleColor: "#f59e0b",
+        desc: "Send fiat · get sats from escrow", action: "browse" },
+      { icon: "🏠", iconBg: "rgba(16,185,129,0.1)", title: "Sell Bitcoin", titleColor: "#10b981",
+        desc: "Lock sats · receive fiat · release", action: "create" },
     ],
     howItWorks: [
       { icon: "🔒", label: "Lock", desc: "Seller locks sats", color: "#f59e0b" },
@@ -110,11 +117,63 @@ export default function SubdomainHubView({ subdomain, onBrowse, onCreate, onOrde
             </div>
           </button>
         )}
-        {cfg.cards.map((card) => (
-          <button key={card.action} onClick={card.action === "browse" ? onBrowse : onCreate}
-            style={{ width: "100%", padding: "20px 16px", borderRadius: 16,
-              background: "linear-gradient(135deg, " + card.iconBg + ", rgba(0,0,0,0.01))",
-              border: "1.5px solid " + card.iconBg.replace("0.15)", "0.35)"),
+        {/* ── Hero card: Pay a Bill (p2p only) ── */}
+        {cfg.billPayHero && (
+          <button onClick={onBillPay}
+            style={{ display: "flex", flexDirection: "column", padding: "18px 16px", borderRadius: 16, background: "rgba(245,158,11,0.08)", border: "1.5px solid rgba(245,158,11,0.3)", cursor: "pointer", textAlign: "left", width: "100%", marginBottom: 2 }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(245,158,11,0.5)"}
+            onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)"}
+          >
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.22)", borderRadius: 99, padding: "3px 9px", fontSize: 10, fontWeight: 700, color: "#f59e0b", letterSpacing: 0.4, marginBottom: 10 }}>
+              ⭐ FEATURED
+            </div>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+              <div style={{ width: 50, height: 50, borderRadius: 14, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, flexShrink: 0 }}>
+                {cfg.billPayHero.icon}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#fbbf24", marginBottom: 4, letterSpacing: -0.3 }}>{cfg.billPayHero.title}</div>
+                <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.5 }}>{cfg.billPayHero.desc}</div>
+              </div>
+            </div>
+            <div style={{ width: "100%", padding: "10px", borderRadius: 10, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17", fontSize: 13, fontWeight: 700, textAlign: "center", letterSpacing: 0.2 }}>
+              {cfg.billPayHero.ctaLabel}
+            </div>
+          </button>
+        )}
+
+        {/* ── Mini pair: Buy / Sell ── */}
+        {cfg.billPayHero ? (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {cfg.cards.map((card) => (
+              <button key={card.action} onClick={card.action === "browse" ? onBrowse : card.action === "create" ? onCreate : null}
+                style={{ display: "flex", flexDirection: "column", gap: 6, padding: "13px 12px", borderRadius: 12, background: "rgba(15,23,42,0.5)", border: "1px solid #1e293b", cursor: "pointer", textAlign: "left" }}
+                onMouseEnter={e => e.currentTarget.style.borderColor = "#334155"}
+                onMouseLeave={e => e.currentTarget.style.borderColor = "#1e293b"}
+              >
+                <div style={{ width: 32, height: 32, borderRadius: 9, background: card.iconBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15 }}>{card.icon}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: card.titleColor }}>{card.title}</div>
+                <div style={{ fontSize: 10, color: "#64748b", lineHeight: 1.4 }}>{card.desc}</div>
+                <div style={{ fontSize: 10, color: "#334155", alignSelf: "flex-end" }}>→</div>
+              </button>
+            ))}
+          </div>
+        ) : (
+          cfg.cards.map((card) => (
+            <button key={card.action} onClick={card.action === "browse" ? onBrowse : card.action === "create" ? onCreate : card.action === "billpay" ? onBillPay : null}
+              style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 14px", borderRadius: 14, background: "rgba(15,23,42,0.5)", border: "1px solid #1e293b", cursor: "pointer", textAlign: "left", width: "100%" }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = "#334155"}
+              onMouseLeave={e => e.currentTarget.style.borderColor = "#1e293b"}
+            >
+              <div style={{ width: 46, height: 46, borderRadius: 12, background: card.iconBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>{card.icon}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: card.titleColor, marginBottom: 3 }}>{card.title}</div>
+                <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.4 }}>{card.desc}</div>
+              </div>
+              <div style={{ fontSize: 18, color: "#475569", flexShrink: 0 }}>→</div>
+            </button>
+          ))
+        )}
               cursor: "pointer", textAlign: "left", WebkitTapHighlightColor: "transparent" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ width: 52, height: 52, borderRadius: 14, background: card.iconBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>{card.icon}</div>
