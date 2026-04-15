@@ -1618,7 +1618,7 @@ function FiatOfframp({ amountSats, currency, tradeType, showToast, pubkey }) {
   // Provider detection — extensible for Flash
   const provider = currency === "TZS" ? "chapsmart" : null;
   const providerName = provider === "chapsmart" ? "ChapSmart" : null;
-  const providerEmoji = currency === "TZS" ? "🇹🇿" : currency === "CFA" ? "🇨🇫" : currency === "KES" ? "🇰🇪" : "🌍";
+  const providerEmoji = currency === "TZS" ? "🇹🇿" : currency === "CFA" ? "🌍" : currency === "KES" ? "🇰🇪" : "🌍";
   const mobileMoney = currency === "TZS" ? "M-Pesa" : currency === "KES" ? "M-Pesa" : currency === "CFA" ? "Mobile Money" : "Mobile Money";
 
   // Context-aware messaging per trade type
