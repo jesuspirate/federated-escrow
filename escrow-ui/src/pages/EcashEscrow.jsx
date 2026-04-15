@@ -1618,7 +1618,7 @@ function FiatOfframp({ amountSats, currency, tradeType, showToast, pubkey }) {
   // Provider detection — extensible for Flash
   const provider = currency === "TZS" ? "chapsmart" : null;
   const providerName = provider === "chapsmart" ? "ChapSmart" : null;
-  const providerEmoji = currency === "TZS" ? "\u{1F1F9}\u{1F1FF}" : currency === "CFA" ? "\u{1F1E8}\u{1F1EB}" : currency === "KES" ? "\u{1F1F0}\u{1F1EA}" : "\u{1F30D}";
+  const providerEmoji = currency === "TZS" ? "🇹🇿" : currency === "CFA" ? "🇨🇫" : currency === "KES" ? "🇰🇪" : "🌍";
   const mobileMoney = currency === "TZS" ? "M-Pesa" : currency === "KES" ? "M-Pesa" : currency === "CFA" ? "Mobile Money" : "Mobile Money";
 
   // Context-aware messaging per trade type
@@ -1764,11 +1764,11 @@ function FiatOfframp({ amountSats, currency, tradeType, showToast, pubkey }) {
         <div style={{ textAlign: "left", flex: 1 }}>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#f8fafc" }}>
             <span style={{ color: "#3b82f6" }}>Chap</span><span style={{ color: "#f59e0b" }}>Smart</span>
-            {" "}&mdash; Cash out to {mobileMoney}
+            {" "}— Cash out to {mobileMoney}
           </div>
           <div style={{ fontSize: 11, color: "#64748b" }}>{ctaMessage}</div>
         </div>
-        <span style={{ fontSize: 18, color: "#3b82f6" }}>&#x26A1;</span>
+        <span style={{ fontSize: 18, color: "#3b82f6" }}>⚡</span>
       </button>
     );
   }
@@ -1787,13 +1787,13 @@ function FiatOfframp({ amountSats, currency, tradeType, showToast, pubkey }) {
             {tradeType === "billpay" ? "Bill Pay reward" : tradeType === "lending" ? "Loan disbursement" : "Sale proceeds"}
           </span>
         </div>
-        <button onClick={() => { setExpanded(false); if (pollRef.current) clearInterval(pollRef.current); }} style={{ background: "none", border: "none", color: "#64748b", fontSize: 18, cursor: "pointer", padding: "4px 8px" }}>&times;</button>
+        <button onClick={() => { setExpanded(false); if (pollRef.current) clearInterval(pollRef.current); }} style={{ background: "none", border: "none", color: "#64748b", fontSize: 18, cursor: "pointer", padding: "4px 8px" }}>✕</button>
       </div>
 
       {/* Tabs */}
       {step < 2 && (
         <div style={{ display: "flex", gap: 4, padding: "10px 12px 6px", background: "#0a0e17", borderRadius: 8, margin: "10px 12px 0" }}>
-          {[["send", "\u{1F4B8} Send " + currency], ["airtime", "\u{1F4F1} Airtime"]].map(([key, label]) => (
+          {[["send", "💸 Send " + currency], ["airtime", "📱 Airtime"]].map(([key, label]) => (
             <button key={key} onClick={() => { setTab(key); setStep(0); setQuote(null); }} style={{
               ...btnBase, flex: 1,
               background: tab === key ? "rgba(59,130,246,0.15)" : "transparent",
@@ -1829,7 +1829,7 @@ function FiatOfframp({ amountSats, currency, tradeType, showToast, pubkey }) {
               background: "linear-gradient(135deg, #3b82f6, #2563eb)", color: "#fff",
               fontSize: 14, fontWeight: 700, opacity: loading ? 0.6 : 1,
             }}>
-              {loading ? "Getting quote..." : "\u{26A1} Get Quote"}
+              {loading ? "Getting quote..." : "⚡ Get Quote"}
             </button>
           </div>
         )}
@@ -1841,20 +1841,20 @@ function FiatOfframp({ amountSats, currency, tradeType, showToast, pubkey }) {
             <div style={{ fontSize: 24, fontWeight: 800, color: "#f59e0b" }}>
               {quote.youPay?.sats?.toLocaleString() || "?"} sats
             </div>
-            <div style={{ fontSize: 13, color: "#94a3b8", margin: "6px 0" }}>&rarr;</div>
+            <div style={{ fontSize: 13, color: "#94a3b8", margin: "6px 0" }}>→</div>
             <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 2 }}>{tab === "airtime" ? "Airtime delivered" : "They receive"}</div>
             <div style={{ fontSize: 20, fontWeight: 800, color: "#10b981" }}>
               {parseInt(amountFiat).toLocaleString()} {currency}
             </div>
             <div style={{ fontSize: 11, color: "#475569", margin: "8px 0 14px" }}>to {phone}</div>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => { setStep(0); setQuote(null); }} style={{ ...btnBase, flex: 1, background: "#1e293b", color: "#94a3b8" }}>&larr; Back</button>
+              <button onClick={() => { setStep(0); setQuote(null); }} style={{ ...btnBase, flex: 1, background: "#1e293b", color: "#94a3b8" }}>← Back</button>
               <button onClick={generateInvoice} disabled={loading} style={{
                 ...btnBase, flex: 2,
                 background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff",
                 opacity: loading ? 0.6 : 1,
               }}>
-                {loading ? "Generating..." : "\u{26A1} Confirm & Pay"}
+                {loading ? "Generating..." : "⚡ Confirm & Pay"}
               </button>
             </div>
           </div>
@@ -1863,27 +1863,27 @@ function FiatOfframp({ amountSats, currency, tradeType, showToast, pubkey }) {
         {/* Step 2: Pay Invoice */}
         {step === 2 && invoice && (
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 32, marginBottom: 6 }}>&#x26A1;</div>
+            <div style={{ fontSize: 32, marginBottom: 6 }}>⚡</div>
             <div style={{ fontSize: 15, fontWeight: 700, color: "#f8fafc" }}>
               {invoice.youPay?.sats?.toLocaleString() || "?"} sats
             </div>
             {invoice.checkoutLink && (
               <a href={invoice.checkoutLink} target="_blank" rel="noopener noreferrer"
                 style={{ display: "block", padding: "10px", borderRadius: 8, background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.15)", color: "#3b82f6", fontSize: 12, fontWeight: 600, textDecoration: "none", margin: "10px 0" }}>
-                &#x{1F517} Open BTCPay Checkout
+                🔗 Open BTCPay Checkout
               </a>
             )}
             {invoice.bolt11 && (
               <button onClick={() => { navigator.clipboard.writeText(invoice.bolt11).then(() => showToast("Invoice copied!"), () => {}); }}
                 style={{ ...btnBase, background: "#1e293b", color: "#94a3b8", marginBottom: 8 }}>
-                &#x{1F4CB} Copy BOLT-11 Invoice
+                📋 Copy BOLT-11 Invoice
               </button>
             )}
             {window.webln && invoice.bolt11 && (
               <button onClick={async () => {
                 try { await window.webln.enable(); await window.webln.sendPayment(invoice.bolt11); showToast("Payment sent!"); } catch (err) { showToast("Payment failed", "error"); }
               }} style={{ ...btnBase, background: "linear-gradient(135deg, #f59e0b, #d97706)", color: "#0c0f17" }}>
-                &#x26A1; Pay with Fedi Wallet
+                ⚡ Pay with Fedi Wallet
               </button>
             )}
             {polling && (
@@ -1897,12 +1897,12 @@ function FiatOfframp({ amountSats, currency, tradeType, showToast, pubkey }) {
         {/* Step 3: Success */}
         {step === 3 && (
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 48, marginBottom: 8 }}>&#x2705;</div>
+            <div style={{ fontSize: 48, marginBottom: 8 }}>✅</div>
             <div style={{ fontSize: 16, fontWeight: 800, color: "#10b981" }}>
               {tab === "airtime" ? "Airtime Delivered!" : currency + " Sent to " + mobileMoney + "!"}
             </div>
             <div style={{ fontSize: 13, color: "#94a3b8", margin: "6px 0 14px" }}>
-              {parseInt(amountFiat).toLocaleString()} {currency} &rarr; {phone}
+              {parseInt(amountFiat).toLocaleString()} {currency} → {phone}
             </div>
             <button onClick={reset} style={{ ...btnBase, background: "rgba(59,130,246,0.1)", color: "#3b82f6", border: "1px solid rgba(59,130,246,0.2)" }}>
               Send More
