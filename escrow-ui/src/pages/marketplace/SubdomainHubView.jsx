@@ -112,7 +112,7 @@ export default function SubdomainHubView({ subdomain, onBrowse, onCreate, onOrde
             onMouseEnter={e => e.currentTarget.style.borderColor = "rgba(245,158,11,0.5)"}
             onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)"}
           >
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.22)", borderRadius: 99, padding: "3px 9px", fontSize: 10, fontWeight: 700, color: "#f59e0b", letterSpacing: 0.4, marginBottom: 10 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.22)", borderRadius: 99, padding: "3px 9px", fontSize: 10, fontWeight: 700, color: "#f59e0b", letterSpacing: 0.4, marginBottom: 10, alignSelf: "flex-start" }}>
               ⭐ FEATURED
             </div>
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
