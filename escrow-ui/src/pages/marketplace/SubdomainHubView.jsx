@@ -174,17 +174,6 @@ export default function SubdomainHubView({ subdomain, onBrowse, onCreate, onOrde
             </button>
           ))
         )}
-              cursor: "pointer", textAlign: "left", WebkitTapHighlightColor: "transparent" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ width: 52, height: 52, borderRadius: 14, background: card.iconBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26, flexShrink: 0 }}>{card.icon}</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 17, fontWeight: 800, color: card.titleColor, marginBottom: 3 }}>{card.title}</div>
-                <div style={{ fontSize: 12, color: "#94a3b8", lineHeight: 1.4 }}>{card.desc}</div>
-              </div>
-              <span style={{ color: card.titleColor, fontSize: 20, flexShrink: 0 }}>{"→"}</span>
-            </div>
-          </button>
-        ))}
       </div>
       <div style={{ display: "flex", gap: 10, margin: "16px 16px 0" }}>
         <div style={{ flex: 1, padding: "14px 12px", borderRadius: 12, background: "#111827", border: "1px solid #1e293b", textAlign: "center" }}>
